@@ -196,7 +196,7 @@ const Attendance = () => {
                         ));
                       }}
                     >
-                      <option value="">--Select--</option>
+                      <option value="">-------Select-------</option>
                       <option value="QR">QR</option>
                       <option value="Manual">Manual</option>
                       <option value="App">App</option>
