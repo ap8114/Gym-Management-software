@@ -15,6 +15,7 @@ const CreatePlan = () => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [requestToProcess, setRequestToProcess] = useState(null);
   const [selectedBranch, setSelectedBranch] = useState('all');
+
   const [newPlan, setNewPlan] = useState({
     name: '',
     sessions: '',
@@ -32,10 +33,7 @@ const CreatePlan = () => {
 
   // Custom color for all blue elements
   const customColor = '#6EB2CC';
-
-  // Available branches
-  const branches = ['Downtown', 'North Branch', 'South Branch', 'East Branch'];
-
+  const [branches, setBranches] = useState([]);
   // Plans (Admin-created only)
   const [groupPlans, setGroupPlans] = useState([]);
   const [personalPlans, setPersonalPlans] = useState([]);
@@ -50,14 +48,14 @@ const CreatePlan = () => {
   const fetchPlansFromAPI = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Get adminId from localStorage using "userId" key
       const adminId = localStorage.getItem('userId') || '4'; // Default to '4' if not found
-      
+
       // Make API call to get plans by admin ID
       const response = await axiosInstance.get(`${BaseUrl}/MemberPlan?adminId=${adminId}`);
-      
+
       if (response.data.success) {
         // Format the API response to match our component structure
         const formattedPlans = response.data.plans.map(plan => ({
@@ -70,14 +68,14 @@ const CreatePlan = () => {
           branch: 'Downtown', // Default branch since API doesn't provide it
           type: plan.type.toLowerCase() // Convert to lowercase for our component
         }));
-        
+
         setApiPlans(formattedPlans);
         setPlansLoaded(true);
-        
+
         // Separate plans by type
         const newGroupPlans = formattedPlans.filter(plan => plan.type === 'group');
         const newPersonalPlans = formattedPlans.filter(plan => plan.type === 'personal');
-        
+
         setGroupPlans(newGroupPlans);
         setPersonalPlans(newPersonalPlans);
       } else {
@@ -96,10 +94,10 @@ const CreatePlan = () => {
     try {
       // Get adminId from localStorage using "userId" key
       const adminId = localStorage.getItem('userId') || '4'; // Default to '4' if not found
-      
+
       // Make API call to get booking requests
       // const response = await axiosInstance.get(`${BaseUrl}/BookingRequest?adminId=${adminId}`);
-      
+
       if (response.data.success) {
         // Format the API response to match our component structure
         const formattedRequests = response.data.requests.map(request => ({
@@ -113,26 +111,54 @@ const CreatePlan = () => {
           requestedAt: new Date(request.requestedAt).toLocaleString(),
           status: request.status.toLowerCase()
         }));
-        
+
         setBookingRequests(formattedRequests);
       } else {
-        setError("Failed to fetch booking requests. Please try again.");
+
       }
     } catch (err) {
       console.error("Error fetching booking requests:", err);
-      setError(err.response?.data?.message || "Failed to fetch booking requests. Please try again.");
+
     }
   };
+
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const response = await fetch('https://84kmwvvs-4000.inc1.devtunnels.ms/api/branches');
+        if (!response.ok) {
+          throw new Error('Failed to fetch branches');
+        }
+        const data = await response.json();
+
+        // Assuming the API returns an array like ["Branch A", "Branch B", ...]
+        // If it returns objects (e.g., { name: "X" }), adjust accordingly.
+        if (Array.isArray(data)) {
+          setBranches(data);
+        } else {
+          console.error('Unexpected API response format:', data);
+          setBranches([]);
+        }
+      } catch (error) {
+        console.error('Error fetching branches:', error);
+        setBranches([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBranches();
+  }, []);
 
   // Function to fetch a single plan by ID from API
   const fetchPlanById = async (planId) => {
     setViewLoading(true);
     setError(null);
-    
+
     try {
       // Make API call to get plan by ID
       const response = await axiosInstance.get(`${BaseUrl}/MemberPlan/${planId}`);
-      
+
       if (response.data.success) {
         const plan = response.data.plan;
         // Format the API response to match our component structure
@@ -148,7 +174,7 @@ const CreatePlan = () => {
           createdAt: plan.createdAt,
           updatedAt: plan.updatedAt
         };
-        
+
         setSelectedPlan(formattedPlan);
         setShowViewModal(true);
       } else {
@@ -203,7 +229,7 @@ const CreatePlan = () => {
 
       // Make API call
       const response = await axiosInstance.post(`${BaseUrl}/MemberPlan`, payload);
-      
+
       if (response.data.success) {
         // Format the response data to match our component structure
         const plan = {
@@ -285,8 +311,8 @@ const CreatePlan = () => {
       };
 
       // Make API call - assuming you have an update endpoint
-      const response = await axiosInstance.put(`${BaseUrl}/MemberPlan/${selectedPlan.id}`, payload);
-      
+      const response = await axiosInstance.put(`${BaseUrl}MemberPlan/${selectedPlan.id}`, payload);
+
       if (response.data.success) {
         // Format the response data to match our component structure
         const updatedPlan = {
@@ -337,16 +363,16 @@ const CreatePlan = () => {
     try {
       // Make API call - assuming you have a delete endpoint
       const response = await axiosInstance.delete(`${BaseUrl}/MemberPlan/${planToDelete.id}`);
-      
+
       if (response.data.success) {
         // Update local state
         const { id, type } = planToDelete;
         const currentPlans = getPlansByType(type);
         updatePlansByType(type, currentPlans.filter(p => p.id !== id));
-        
+
         // Also update API plans state
         setApiPlans(apiPlans.filter(p => p.id !== id));
-        
+
         setShowDeleteModal(false);
         alert("✅ Plan Deleted!");
       } else {
@@ -374,7 +400,7 @@ const CreatePlan = () => {
       // Find the plan to toggle
       const currentPlans = getPlansByType(planType);
       const plan = currentPlans.find(p => p.id === planId);
-      
+
       if (!plan) {
         setError("Plan not found");
         return;
@@ -384,7 +410,7 @@ const CreatePlan = () => {
       const response = await axiosInstance.patch(`${BaseUrl}/MemberPlan/${planId}`, {
         active: !plan.active
       });
-      
+
       if (response.data.success) {
         // Update local state
         updatePlansByType(
@@ -393,12 +419,12 @@ const CreatePlan = () => {
             p.id === planId ? { ...p, active: !p.active } : p
           )
         );
-        
+
         // Also update API plans state
-        setApiPlans(apiPlans.map(p => 
+        setApiPlans(apiPlans.map(p =>
           p.id === planId ? { ...p, active: !p.active } : p
         ));
-        
+
         alert(`✅ Plan ${planType === 'group' ? 'Group' : 'Personal'} updated!`);
       } else {
         setError("Failed to update plan status. Please try again.");
@@ -426,7 +452,7 @@ const CreatePlan = () => {
       const response = await axiosInstance.patch(`${BaseUrl}/BookingRequest/${requestToProcess.id}`, {
         status: status.toUpperCase()
       });
-      
+
       if (response.data.success) {
         setBookingRequests(
           bookingRequests.map(req =>
@@ -468,7 +494,7 @@ const CreatePlan = () => {
       const response = await axiosInstance.patch(`${BaseUrl}/BookingRequest/${requestId}`, {
         status: newStatus.toUpperCase()
       });
-      
+
       if (response.data.success) {
         setBookingRequests(
           bookingRequests.map(req =>
@@ -1134,7 +1160,7 @@ const CreatePlan = () => {
             </Button>
           </Modal.Footer>
         </Modal>
-        
+
         {/* Edit Plan Modal - Responsive */}
         <Modal show={showEditModal} onHide={() => setShowEditModal(false)} centered size="lg" fullscreen="sm-down">
           <Modal.Header closeButton style={{ backgroundColor: '#f8f9fa', borderBottom: `2px solid ${customColor}` }}>
@@ -1198,15 +1224,21 @@ const CreatePlan = () => {
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-4">
-                    <Form.Label className="fw-medium" style={{ color: '#333' }}>Branch</Form.Label>
+                    <Form.Label className="fw-medium" style={{ color: '#333' }}>
+                      Branch
+                    </Form.Label>
                     <Form.Select
                       value={newPlan.branch}
                       onChange={(e) => setNewPlan({ ...newPlan, branch: e.target.value })}
                       required
                       style={{ padding: '12px', fontSize: '1rem' }}
+                      disabled={loading} // disable while loading
                     >
-                      {branches.map(branch => (
-                        <option key={branch} value={branch}>{branch}</option>
+                      <option value="">Select a branch</option>
+                      {branches.map((branch) => (
+                        <option key={branch} value={branch}>
+                          {branch}
+                        </option>
                       ))}
                     </Form.Select>
                   </Form.Group>
