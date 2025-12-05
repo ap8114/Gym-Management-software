@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axiosInstance from '../../Api/axiosInstance'; // Import your axios instance
+import axiosInstance from '../../Api/axiosInstance'; 
 import BaseUrl from '../../Api/BaseUrl';
 import {
   Search,
@@ -55,7 +55,7 @@ const [branchesError, setBranchesError] = useState(null);
     paymentMode: "cash",
     amountPaid: "",
     interestedIn: "", // Added field for "Interested In" selection
-    status: "Active" // Added status field
+    status: "Active" 
   });
   
   const [editMember, setEditMember] = useState({
