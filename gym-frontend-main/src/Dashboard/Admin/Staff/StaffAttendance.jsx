@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTrashAlt, FaEdit, FaEye, FaSearch, FaFileExport, FaExclamationTriangle, FaFilter } from 'react-icons/fa';
+import GetAdminId from '../../../Api/GetAdminId';
+import axiosInstance from '../../../Api/axiosInstance';
 
 const StaffAttendance = () => {
+  const adminId = GetAdminId();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [modalType, setModalType] = useState('view');

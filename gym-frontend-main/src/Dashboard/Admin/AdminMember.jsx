@@ -17,8 +17,10 @@ import {
   MapPin,
   Filter
 } from "lucide-react";
+import GetAdminId from "../../../src/Api/GetAdminId"
 
 const AdminMember = () => {
+  const adminId = GetAdminId();
   const [members, setMembers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
