@@ -34,12 +34,13 @@ const ManageStaff = () => {
   const [staff, setStaff] = useState([]);
   const [staffLoading, setStaffLoading] = useState(true);
   
-  // Role ID mappings
+  // Role ID mappings - Updated to match API expectations
   const roleIds = {
-    'Manager': 5,
-    'Trainer': 6,
-    'Receptionist': 7,
-    'Housekeeping': 8
+    'Admin': 1,
+    'Manager': 2,
+    'Trainer': 3,
+    'Receptionist': 4,
+    'Housekeeping': 5
   };
 
   // Normalize server staff object to frontend model
@@ -142,7 +143,7 @@ const ManageStaff = () => {
     };
     
     fetchBranches();
-  }, []);
+  }, [adminId]);
   
   // Helper function to get branch name by ID
   const getBranchName = (branchId) => {
@@ -344,85 +345,74 @@ const ManageStaff = () => {
   };
   
   const handleFormSubmit = async () => {
-    const userId = localStorage.getItem("userId");
-    if (!userId) {
-      alert("User ID not found. Please log in again.");
+    if (!adminId) {
+      alert("Admin ID not found. Please log in again.");
       return;
     }
     
     try {
+      // Create JSON payload instead of FormData
+      const payload = {
+        fullName: document.getElementById('fullName').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        password: document.getElementById('passwordField').value,
+        roleId: roleIds[document.getElementById('role').value],
+        branchId: parseInt(document.getElementById('branch').value),
+        adminId: parseInt(adminId),
+        gender: document.getElementById('gender').value,
+        dateOfBirth: document.getElementById('dob').value,
+        joinDate: document.getElementById('joinDate').value,
+        exitDate: document.getElementById('exitDate').value || null,
+        status: staffStatus,
+        profilePhoto: "uploads/staff/default.png" // Default profile photo
+      };
+      
+      // Handle profile photo if provided (this would need to be uploaded separately)
+      if (fileInputRef.current && fileInputRef.current.files[0]) {
+        // In a real implementation, you would first upload the file
+        // and then use the returned path in the payload
+        // For now, we'll use a placeholder
+        payload.profilePhoto = "uploads/staff/custom.png";
+      }
+      
       if (modalType === 'add') {
-        const formData = new FormData();
-        formData.append('fullName', document.getElementById('fullName').value);
-        formData.append('email', document.getElementById('email').value);
-        formData.append('phone', document.getElementById('phone').value);
-        formData.append('password', document.getElementById('passwordField').value);
-        formData.append('roleId', roleIds[document.getElementById('role').value]);
-        formData.append('branchId', parseInt(document.getElementById('branch').value));
-        formData.append('adminId', parseInt(userId));
-        formData.append('gender', document.getElementById('gender').value);
-        formData.append('dateOfBirth', document.getElementById('dob').value);
-        formData.append('joinDate', document.getElementById('joinDate').value);
-        formData.append('exitDate', document.getElementById('exitDate').value || null);
-        
-        // Handle profile photo if provided
-        if (fileInputRef.current && fileInputRef.current.files[0]) {
-          formData.append('profilePhoto', fileInputRef.current.files[0]);
-        }
-        
-        const response = await axiosInstance.post('/staff/create', formData, {
+        const response = await axiosInstance.post('/staff/create', payload, {
           headers: {
-            'Content-Type': 'multipart/form-data'
+            'Content-Type': 'application/json'
           }
         });
-
+        
         if (response.data && response.data.success) {
-          const returned = response.data.staff ?? response.data;
-          const newStaff = Array.isArray(returned) ? normalizeStaffItem(returned[0]) : normalizeStaffItem(returned);
+          // Add the new staff member to the list
+          const newStaff = normalizeStaffItem(response.data.staff);
           setStaff(prev => [...prev, newStaff]);
-          alert('New staff member added successfully!');
+          alert("Staff member added successfully!");
           closeModal();
         } else {
+          console.error('Add failed:', response.data);
           alert('Failed to add staff member. Please try again.');
         }
       } else if (modalType === 'edit') {
-        const formData = new FormData();
-        formData.append('fullName', document.getElementById('fullName').value);
-        formData.append('email', document.getElementById('email').value);
-        formData.append('phone', document.getElementById('phone').value);
-        
-        // Only include password if it's changed
-        const newPassword = document.getElementById('passwordField').value;
-        if (newPassword) {
-          formData.append('password', newPassword);
+        // For edit, don't include password if it's empty
+        if (!payload.password) {
+          delete payload.password;
         }
         
-        formData.append('roleId', roleIds[document.getElementById('role').value]);
-        formData.append('branchId', parseInt(document.getElementById('branch').value));
-        formData.append('adminId', parseInt(userId));
-        formData.append('gender', document.getElementById('gender').value);
-        formData.append('dateOfBirth', document.getElementById('dob').value);
-        formData.append('joinDate', document.getElementById('joinDate').value);
-        formData.append('exitDate', document.getElementById('exitDate').value || null);
-        
-        // Handle profile photo if provided
-        if (fileInputRef.current && fileInputRef.current.files[0]) {
-          formData.append('profilePhoto', fileInputRef.current.files[0]);
-        }
-        
-        const response = await axiosInstance.put(`/staff/update/${selectedStaff.id}`, formData, {
+        const response = await axiosInstance.put(`/staff/update/${selectedStaff.id}`, payload, {
           headers: {
-            'Content-Type': 'multipart/form-data'
+            'Content-Type': 'application/json'
           }
         });
-
+        
         if (response.data && response.data.success) {
-          const returned = response.data.staff ?? response.data;
-          const updatedStaff = Array.isArray(returned) ? normalizeStaffItem(returned[0]) : normalizeStaffItem(returned);
-          setStaff(prev => prev.map(member => member.id === selectedStaff.id ? updatedStaff : member));
-          alert('Staff member updated successfully!');
+          // Update the staff member in the list
+          const updatedStaff = normalizeStaffItem(response.data.staff);
+          setStaff(prev => prev.map(s => s.id === selectedStaff.id ? updatedStaff : s));
+          alert("Staff member updated successfully!");
           closeModal();
         } else {
+          console.error('Update failed:', response.data);
           alert('Failed to update staff member. Please try again.');
         }
       }
@@ -570,7 +560,7 @@ const ManageStaff = () => {
             <table className="table table-hover align-middle mb-0">
               <thead className="bg-light">
                 <tr>
-                  <th>PHOTO</th>
+                  {/* <th>PHOTO</th> */}
                   <th>NAME</th>
                   <th>ROLE</th>
                   <th className="d-none d-lg-table-cell">EMAIL</th>
@@ -583,7 +573,7 @@ const ManageStaff = () => {
               <tbody>
                 {filteredStaff.map((member) => (
                   <tr key={member.id}>
-                    <td>
+                    {/* <td>
                       {member.profilePhoto ? (
                         <img src={member.profilePhoto} alt={member.fullName} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #eee' }} />
                       ) : (
@@ -591,10 +581,10 @@ const ManageStaff = () => {
                           {getInitials(member.fullName)}
                         </div>
                       )}
-                    </td>
+                    </td> */}
                     <td>
                       <strong>{member.fullName}</strong>
-                      <div><small className="text-muted">ID: {member.id}</small></div>
+                     
                     </td>
                     <td>{getRoleBadge(member.roleId)}</td>
                     <td className="d-none d-lg-table-cell">{member.email}</td>

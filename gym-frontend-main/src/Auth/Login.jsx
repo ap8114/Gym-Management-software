@@ -11,7 +11,6 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Role-based redirect paths (must match .toUpperCase() version of roleName from API)
   const roleRedirectMap = {
     SUPERADMIN: "/superadmin/dashboard",
     ADMIN: "/admin/admin-dashboard",
@@ -64,10 +63,7 @@ const Login = () => {
           <div className="col-md-6 d-none d-md-block">
             <img
               src="https://hips.hearstapps.com/hmg-prod/images/muscular-man-doing-pushup-exercise-with-dumbbell-royalty-free-image-1728661212.jpg?crop=0.668xw:1.00xh;0.00680xw,0&resize=640:*"
-              alt="login"
-              className="img-fluid rounded-start"
-              style={{ height: "100%", objectFit: "cover" }}
-            />
+             alt="login"   className="img-fluid rounded-start"   style={{ height: "100%", objectFit: "cover" }} />
           </div>
 
           <div className="col-md-6 d-flex align-items-center p-5">
@@ -77,10 +73,7 @@ const Login = () => {
 
               <form onSubmit={handleSubmit}>
                 {error && (
-                  <div className="alert alert-danger mb-3" role="alert">
-                    {error}
-                  </div>
-                )}
+                  <div className="alert alert-danger mb-3" role="alert"> {error}</div> )}
 
                 <div className="mb-3">
                   <label className="form-label">Email address</label>
