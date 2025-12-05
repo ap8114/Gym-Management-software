@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaEye, FaEdit, FaTrashAlt, FaPlus, FaSearch, FaFilter, FaCaretDown } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import GetAdminId from '../../../Api/GetAdminId';
 import axiosInstance from "../../../Api/axiosInstance"; // 🔁 Adjust path if needed
 
 const ManageStaff = () => {
+  const adminId = GetAdminId();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add', 'edit', 'view'
@@ -16,44 +18,88 @@ const ManageStaff = () => {
   const [statusFilter, setStatusFilter] = useState('All');
   const [branchFilter, setBranchFilter] = useState('All');
   const fileInputRef = useRef(null);
-
+ 
+  
   // State for status
   const [staffStatus, setStaffStatus] = useState('Active');
-
+  
   // Custom color for all blue elements
   const customColor = '#6EB2CC';
-
+  
   // DYNAMIC BRANCHES — will be loaded from API
-  const [branches, setBranches] = useState([]); // ← Updated: no hardcoded data
+  const [branches, setBranches] = useState([]);
   const [branchesLoading, setBranchesLoading] = useState(true);
+  
+  // Staff data from API
+  const [staff, setStaff] = useState([]);
+  const [staffLoading, setStaffLoading] = useState(true);
+  
+  // Role ID mappings - Updated to match API expectations
+  const roleIds = {
+    'Manager': 2,
+    'generaltrainer': 6,
+    'personaltrainer': 5,
+    'Receptionist': 7,
+    'Housekeeping': 8
+  };
 
-  // Sample staff data (unchanged)
-  const [staff, setStaff] = useState([
-    {
-      id: 101,
-      staff_id: "STAFF001",
-      first_name: "Alex",
-      last_name: "Martinez",
-      gender: "Male",
-      dob: "1985-03-15",
-      email: "alex.martinez@gym.com",
-      phone: "+1 555-123-4567",
-      profile_photo: "https://randomuser.me/api/portraits/men/32.jpg",
-      status: "Active",
-      role_id: "Manager",
-      branch_id: 1,
-      join_date: "2020-01-15",
-      exit_date: null,
-      salary_type: "Fixed",
-      fixed_salary: 60000,
-      login_enabled: true,
-      username: "alex.m",
-      password: "auto-generated"
-    },
-    // ... other sample staff
-  ]);
-
-  // 🔁 FETCH BRANCHES ON MOUNT USING USER ID FROM LOCAL STORAGE
+  // Normalize server staff object to frontend model
+  const normalizeStaffItem = (item) => {
+    if (!item) return null;
+    return {
+      id: item.staffId ?? item.id,
+      userId: item.userId ?? null,
+      fullName: item.fullName ?? item.name ?? '',
+      email: item.email ?? '',
+      phone: item.phone ?? '',
+      roleId: item.roleId ?? null,
+      branchId: item.branchId ?? null,
+      adminId: item.adminId ?? null,
+      gender: item.gender ?? null,
+      dateOfBirth: item.dateOfBirth ?? item.dob ?? null,
+      joinDate: item.joinDate ?? null,
+      exitDate: item.exitDate ?? null,
+      profilePhoto: item.profilePhoto ?? item.avatar ?? null,
+      status: item.status ?? null,
+      _raw: item,
+    };
+  };
+  
+  // Get role name from ID
+  const getRoleName = (roleId) => {
+    const roleEntry = Object.entries(roleIds).find(([name, id]) => id === roleId);
+    return roleEntry ? roleEntry[0] : 'Unknown';
+  };
+  
+  // FETCH STAFF ON MOUNT
+  useEffect(() => {
+    const fetchStaff = async () => {
+      try {
+        const response = await axiosInstance.get('/staff/all');
+        if (response.data && response.data.success && response.data.staff) {
+          const staffArr = Array.isArray(response.data.staff) ? response.data.staff : [response.data.staff];
+          const normalized = staffArr.map(normalizeStaffItem);
+          setStaff(normalized);
+        } else if (response.data && Array.isArray(response.data)) {
+          // fallback if API returns array directly
+          setStaff(response.data.map(normalizeStaffItem));
+        } else {
+          console.error("Unexpected API response format:", response.data);
+          setStaff([]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch staff:", error);
+        alert("Failed to load staff data.");
+        setStaff([]);
+      } finally {
+        setStaffLoading(false);
+      }
+    };
+    
+    fetchStaff();
+  }, []);
+  
+  // FETCH BRANCHES ON MOUNT USING USER ID FROM LOCAL STORAGE
   useEffect(() => {
     const userId = localStorage.getItem("userId");
     if (!userId) {
@@ -61,12 +107,12 @@ const ManageStaff = () => {
       setBranchesLoading(false);
       return;
     }
-
+    
     const fetchBranches = async () => {
       try {
-        const response = await axiosInstance.get(`/branches/${userId}`);
+        const response = await axiosInstance.get(`/branches/by-admin/${adminId}`);
         let branchList = [];
-
+        
         // Handle both: { branch: {...} } and { branches: [...] } or direct array
         if (Array.isArray(response.data)) {
           branchList = response.data;
@@ -78,13 +124,13 @@ const ManageStaff = () => {
           // Fallback: assume the whole response is a single branch object
           branchList = [response.data];
         }
-
+        
         // Normalize branch objects
         const normalized = branchList.map(b => ({
           id: b.id,
           name: b.name || `Branch ${b.id}`,
         }));
-
+        
         setBranches(normalized);
       } catch (error) {
         console.error("Failed to fetch branches:", error);
@@ -95,62 +141,72 @@ const ManageStaff = () => {
         setBranchesLoading(false);
       }
     };
-
+    
     fetchBranches();
-  }, []);
-
+  }, [adminId]);
+  
   // Helper function to get branch name by ID
   const getBranchName = (branchId) => {
     const branch = branches.find(b => b.id === branchId);
     return branch ? branch.name : "Unknown";
   };
-
+  
   // Filter staff based on search query and filters
   const filteredStaff = staff.filter(member => 
-    (member.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.role_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.email.toLowerCase().includes(searchQuery.toLowerCase())) &&
-    (roleFilter === 'All' || member.role_id === roleFilter) &&
+    (member.fullName && member.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    member.email && member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    member.phone && member.phone.includes(searchQuery.toLowerCase())) &&
+    (roleFilter === 'All' || member.roleId === roleIds[roleFilter]) &&
     (statusFilter === 'All' || member.status === statusFilter) &&
-    (branchFilter === 'All' || member.branch_id === parseInt(branchFilter))
+    (branchFilter === 'All' || member.branchId === parseInt(branchFilter))
   );
-
+  
   const handleAddNew = () => {
     setModalType('add');
     setSelectedStaff(null);
     setStaffStatus('Active');
     setIsModalOpen(true);
   };
-
+  
   const handleView = (staffMember) => {
     setModalType('view');
     setSelectedStaff(staffMember);
     setStaffStatus(staffMember.status || 'Active');
     setIsModalOpen(true);
   };
-
+  
   const handleEdit = (staffMember) => {
     setModalType('edit');
     setSelectedStaff(staffMember);
     setStaffStatus(staffMember.status || 'Active');
     setIsModalOpen(true);
   };
-
+  
   const handleDeleteClick = (staffMember) => {
     setSelectedStaff(staffMember);
     setIsDeleteModalOpen(true);
   };
-
-  const confirmDelete = () => {
+  
+  const confirmDelete = async () => {
     if (selectedStaff) {
-      setStaff(prev => prev.filter(s => s.id !== selectedStaff.id));
-      alert(`Staff member "${selectedStaff.first_name} ${selectedStaff.last_name}" has been deleted.`);
+      try {
+        const response = await axiosInstance.delete(`/staff/delete/${selectedStaff.id}`);
+        if (response.data && response.data.success) {
+          setStaff(prev => prev.filter(s => s.id !== selectedStaff.id));
+          alert(`Staff member "${selectedStaff.fullName}" has been deleted.`);
+        } else {
+          console.error('Delete failed:', response.data);
+          alert('Failed to delete staff member. Please try again.');
+        }
+      } catch (error) {
+        console.error("Failed to delete staff:", error);
+        alert("Failed to delete staff member. Please try again.");
+      }
     }
     setIsDeleteModalOpen(false);
     setSelectedStaff(null);
   };
-
+  
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedStaff(null);
@@ -158,12 +214,12 @@ const ManageStaff = () => {
       fileInputRef.current.value = "";
     }
   };
-
+  
   const closeDeleteModal = () => {
     setIsDeleteModalOpen(false);
     setSelectedStaff(null);
   };
-
+  
   // Prevent background scroll
   React.useEffect(() => {
     if (isModalOpen || isDeleteModalOpen) {
@@ -175,7 +231,7 @@ const ManageStaff = () => {
       document.body.style.overflow = 'unset';
     };
   }, [isModalOpen, isDeleteModalOpen]);
-
+  
   // Close dropdowns when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event) => {
@@ -194,7 +250,7 @@ const ManageStaff = () => {
       document.removeEventListener('click', handleClickOutside);
     };
   }, [roleFilterOpen, statusFilterOpen, branchFilterOpen]);
-
+  
   const getStatusBadge = (status) => {
     const badgeClasses = {
       Active: "bg-success-subtle text-success-emphasis",
@@ -206,22 +262,25 @@ const ManageStaff = () => {
       </span>
     );
   };
-
-  const getRoleBadge = (role) => {
+  
+  const getRoleBadge = (roleId) => {
+    const roleName = getRoleName(roleId);
     const roleColors = {
-      Admin: "bg-primary-subtle text-primary-emphasis",
       Manager: "bg-info-subtle text-info-emphasis",
-      Trainer: "bg-warning-subtle text-warning-emphasis",
+      generaltrainer: "bg-warning-subtle text-warning-emphasis",
+      personaltrainer: "bg-primary-subtle text-primary-emphasis",
       Receptionist: "bg-secondary-subtle text-secondary-emphasis",
       Housekeeping: "bg-success-subtle text-success-emphasis"
     };
     return (
-      <span className={`badge rounded-pill ${roleColors[role] || 'bg-light'} px-3 py-1`}>
-        {role}
+      <span className={`badge rounded-pill ${roleColors[roleName] || 'bg-light'} px-3 py-1`}>
+        {roleName === 'generaltrainer' ? 'General Trainer' : 
+         roleName === 'personaltrainer' ? 'Personal Trainer' : 
+         roleName}
       </span>
     );
   };
-
+  
   const getModalTitle = () => {
     switch (modalType) {
       case 'add': return 'Add New Staff Member';
@@ -230,61 +289,53 @@ const ManageStaff = () => {
       default: return 'Staff Management';
     }
   };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
-
+  
   const formatDate = (dateString) => {
     if (!dateString) return "—";
-    return new Date(dateString).toLocaleDateString('en-US', {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     });
   };
-
-  const getNextStaffId = () => {
-    const prefix = "STAFF";
-    const maxId = staff.length > 0 ? Math.max(...staff.map(s => parseInt(s.staff_id.replace(prefix, '')) || 0)) : 0;
-    return `${prefix}${String(maxId + 1).padStart(3, '0')}`;
+  
+  const getInitials = (fullName) => {
+    if (!fullName) return "U";
+    const names = fullName.split(' ');
+    if (names.length >= 2) {
+      return `${names[0].charAt(0)}${names[names.length-1].charAt(0)}`.toUpperCase();
+    }
+    return names[0].charAt(0).toUpperCase();
   };
-
-  const getInitials = (firstName, lastName) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-  };
-
+  
   const getInitialColor = (initials) => {
     const colors = [customColor, '#F4B400', '#E84A5F', '#4ECDC4', '#96CEB4', '#FFEAA7'];
     const index = initials.charCodeAt(0) % colors.length;
     return colors[index];
   };
-
+  
   const clearFilters = () => {
     setRoleFilter('All');
     setStatusFilter('All');
     setBranchFilter('All');
   };
-
+  
   const exportData = () => {
-    const headers = ['ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Status', 'Branch'];
+    const headers = ['ID', 'Full Name', 'Email', 'Phone', 'Role', 'Status', 'Branch'];
     const csvContent = [
       headers.join(','),
       ...filteredStaff.map(member => [
-        member.staff_id,
-        member.first_name,
-        member.last_name,
+        member.id,
+        member.fullName,
         member.email,
         member.phone,
-        member.role_id,
-        member.status,
-        getBranchName(member.branch_id)
+        getRoleName(member.roleId),
+        member.status || 'Active',
+        getBranchName(member.branchId)
       ].join(','))
     ].join('\n');
-
+    
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -294,61 +345,85 @@ const ManageStaff = () => {
     link.click();
     document.body.removeChild(link);
   };
-
-  const handleFormSubmit = () => {
-    if (modalType === 'add') {
-      const newStaff = {
-        id: staff.length > 0 ? Math.max(...staff.map(s => s.id)) + 1 : 101,
-        staff_id: getNextStaffId(),
-        first_name: document.getElementById('firstName').value,
-        last_name: document.getElementById('lastName').value,
-        gender: document.getElementById('gender').value,
-        dob: document.getElementById('dob').value,
+  
+  const handleFormSubmit = async () => {
+    if (!adminId) {
+      alert("Admin ID not found. Please log in again.");
+      return;
+    }
+    
+    try {
+      // Create JSON payload instead of FormData
+      const payload = {
+        fullName: document.getElementById('fullName').value,
         email: document.getElementById('email').value,
         phone: document.getElementById('phone').value,
-        profile_photo: "",
+        password: document.getElementById('passwordField').value,
+        roleId: roleIds[document.getElementById('role').value],
+        branchId: parseInt(document.getElementById('branch').value),
+        adminId: parseInt(adminId),
+        gender: document.getElementById('gender').value,
+        dateOfBirth: document.getElementById('dob').value,
+        joinDate: document.getElementById('joinDate').value,
+        exitDate: document.getElementById('exitDate').value || null,
         status: staffStatus,
-        role_id: document.getElementById('role').value,
-        branch_id: parseInt(document.getElementById('branch').value),
-        join_date: document.getElementById('joinDate').value,
-        exit_date: document.getElementById('exitDate').value || null,
-        salary_type: "Fixed",
-        fixed_salary: 0,
-        login_enabled: document.getElementById('loginEnabled').checked,
-        username: document.getElementById('username').value,
-        password: document.getElementById('passwordField').value || 'auto-generated'
+        profilePhoto: "uploads/staff/default.png" // Default profile photo
       };
-      setStaff([...staff, newStaff]);
-      alert('New staff member added successfully!');
-    } else if (modalType === 'edit') {
-      const updatedStaff = staff.map(member => {
-        if (member.id === selectedStaff.id) {
-          return {
-            ...member,
-            first_name: document.getElementById('firstName').value,
-            last_name: document.getElementById('lastName').value,
-            gender: document.getElementById('gender').value,
-            dob: document.getElementById('dob').value,
-            email: document.getElementById('email').value,
-            phone: document.getElementById('phone').value,
-            status: staffStatus,
-            role_id: document.getElementById('role').value,
-            branch_id: parseInt(document.getElementById('branch').value),
-            join_date: document.getElementById('joinDate').value,
-            exit_date: document.getElementById('exitDate').value || null,
-            login_enabled: document.getElementById('loginEnabled').checked,
-            username: document.getElementById('username').value,
-            password: document.getElementById('passwordField').value || member.password
-          };
+      
+      // Handle profile photo if provided (this would need to be uploaded separately)
+      if (fileInputRef.current && fileInputRef.current.files[0]) {
+        // In a real implementation, you would first upload the file
+        // and then use the returned path in the payload
+        // For now, we'll use a placeholder
+        payload.profilePhoto = "uploads/staff/custom.png";
+      }
+      
+      if (modalType === 'add') {
+        const response = await axiosInstance.post('/staff/create', payload, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.data && response.data.success) {
+          // Add the new staff member to the list
+          const newStaff = normalizeStaffItem(response.data.staff);
+          setStaff(prev => [...prev, newStaff]);
+          alert("Staff member added successfully!");
+          closeModal();
+        } else {
+          console.error('Add failed:', response.data);
+          alert('Failed to add staff member. Please try again.');
         }
-        return member;
-      });
-      setStaff(updatedStaff);
-      alert('Staff member updated successfully!');
+      } else if (modalType === 'edit') {
+        // For edit, don't include password if it's empty
+        if (!payload.password) {
+          delete payload.password;
+        }
+        
+        const response = await axiosInstance.put(`/staff/update/${selectedStaff.id}`, payload, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.data && response.data.success) {
+          // Update the staff member in the list
+          const updatedStaff = normalizeStaffItem(response.data.staff);
+          setStaff(prev => prev.map(s => s.id === selectedStaff.id ? updatedStaff : s));
+          alert("Staff member updated successfully!");
+          closeModal();
+        } else {
+          console.error('Update failed:', response.data);
+          alert('Failed to update staff member. Please try again.');
+        }
+      }
+    } catch (error) {
+      console.error("Error in form submission:", error);
+      alert(`Failed to ${modalType === 'add' ? 'add' : 'update'} staff member. Please try again.`);
     }
-    closeModal();
   };
-
+  
   return (
     <div className="container-fluid p-2 p-md-4">
       {/* Header */}
@@ -376,7 +451,7 @@ const ManageStaff = () => {
           </button>
         </div>
       </div>
-
+      
       {/* Search & Actions */}
       <div className="row mb-3 mb-md-4 g-3 align-items-center">
         <div className="col-12 col-md-6">
@@ -387,7 +462,7 @@ const ManageStaff = () => {
             <input
               type="text"
               className="form-control border"
-              placeholder="Search staff by name or role..."
+              placeholder="Search staff by name or email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -411,12 +486,20 @@ const ManageStaff = () => {
                 >
                   All Roles
                 </button>
-                <button className={`dropdown-item ${roleFilter === 'Manager' ? 'active' : ''}`} onClick={() => { setRoleFilter('Manager'); setRoleFilterOpen(false); }}>Manager</button>
-                <button className={`dropdown-item ${roleFilter === 'Trainer' ? 'active' : ''}`} onClick={() => { setRoleFilter('Trainer'); setRoleFilterOpen(false); }}>Trainer</button>
-                <button className={`dropdown-item ${roleFilter === 'Receptionist' ? 'active' : ''}`} onClick={() => { setRoleFilter('Receptionist'); setRoleFilterOpen(false); }}>Receptionist</button>
+                {Object.keys(roleIds).map(role => (
+                  <button 
+                    key={role}
+                    className={`dropdown-item ${roleFilter === role ? 'active' : ''}`} 
+                    onClick={() => { setRoleFilter(role); setRoleFilterOpen(false); }}
+                  >
+                    {role === 'generaltrainer' ? 'General Trainer' : 
+                     role === 'personaltrainer' ? 'Personal Trainer' : 
+                     role}
+                  </button>
+                ))}
               </div>
             </div>
-
+            
             <div className="status-filter-dropdown">
               <button 
                 className="btn btn-outline-secondary btn-sm dropdown-toggle" 
@@ -432,7 +515,7 @@ const ManageStaff = () => {
                 <button className={`dropdown-item ${statusFilter === 'Inactive' ? 'active' : ''}`} onClick={() => { setStatusFilter('Inactive'); setStatusFilterOpen(false); }}>Inactive</button>
               </div>
             </div>
-
+            
             <div className="branch-filter-dropdown">
               <button 
                 className="btn btn-outline-secondary btn-sm dropdown-toggle" 
@@ -463,7 +546,7 @@ const ManageStaff = () => {
                 ))}
               </div>
             </div>
-
+            
             <button 
               className="btn btn-outline-secondary btn-sm" 
               onClick={clearFilters}
@@ -473,7 +556,7 @@ const ManageStaff = () => {
           </div>
         </div>
       </div>
-
+      
       {/* Desktop Table View */}
       <div className="d-none d-md-block">
         <div className="card shadow-sm border-0">
@@ -481,7 +564,7 @@ const ManageStaff = () => {
             <table className="table table-hover align-middle mb-0">
               <thead className="bg-light">
                 <tr>
-                  <th>PHOTO</th>
+                  {/* <th>PHOTO</th> */}
                   <th>NAME</th>
                   <th>ROLE</th>
                   <th className="d-none d-lg-table-cell">EMAIL</th>
@@ -494,24 +577,24 @@ const ManageStaff = () => {
               <tbody>
                 {filteredStaff.map((member) => (
                   <tr key={member.id}>
-                    <td>
-                      {member.profile_photo ? (
-                        <img src={member.profile_photo} alt={`${member.first_name} ${member.last_name}`} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #eee' }} />
+                    {/* <td>
+                      {member.profilePhoto ? (
+                        <img src={member.profilePhoto} alt={member.fullName} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #eee' }} />
                       ) : (
-                        <div className="rounded-circle text-white d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px', fontSize: '0.85rem', fontWeight: 'bold', backgroundColor: getInitialColor(getInitials(member.first_name, member.last_name)) }}>
-                          {getInitials(member.first_name, member.last_name)}
+                        <div className="rounded-circle text-white d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px', fontSize: '0.85rem', fontWeight: 'bold', backgroundColor: getInitialColor(getInitials(member.fullName)) }}>
+                          {getInitials(member.fullName)}
                         </div>
                       )}
-                    </td>
+                    </td> */}
                     <td>
-                      <strong>{member.first_name} {member.last_name}</strong>
-                      <div><small className="text-muted">{member.staff_id}</small></div>
+                      <strong>{member.fullName}</strong>
+                     
                     </td>
-                    <td>{getRoleBadge(member.role_id)}</td>
+                    <td>{getRoleBadge(member.roleId)}</td>
                     <td className="d-none d-lg-table-cell">{member.email}</td>
                     <td className="d-none d-lg-table-cell">{member.phone}</td>
-                    <td><span className="badge bg-light text-dark">{getBranchName(member.branch_id)}</span></td>
-                    <td>{getStatusBadge(member.status)}</td>
+                    <td><span className="badge bg-light text-dark">{getBranchName(member.branchId)}</span></td>
+                    <td>{getStatusBadge(member.status || 'Active')}</td>
                     <td className="text-center">
                       <div className="d-flex justify-content-center flex-nowrap" style={{ gap: '4px' }}>
                         <button className="btn btn-sm btn-outline-secondary" onClick={() => handleView(member)}><FaEye size={14} /></button>
@@ -526,30 +609,30 @@ const ManageStaff = () => {
           </div>
         </div>
       </div>
-
+      
       {/* Mobile Card View */}
       <div className="d-md-none">
         {filteredStaff.map((member) => (
           <div className="card shadow-sm border-0 mb-3" key={member.id}>
             <div className="card-body p-3">
               <div className="d-flex align-items-start mb-3">
-                {member.profile_photo ? (
-                  <img src={member.profile_photo} alt="" style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #eee' }} />
+                {member.profilePhoto ? (
+                  <img src={member.profilePhoto} alt="" style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #eee' }} />
                 ) : (
-                  <div className="rounded-circle text-white d-flex align-items-center justify-content-center me-3" style={{ width: '60px', height: '60px', fontSize: '1.2rem', fontWeight: 'bold', backgroundColor: getInitialColor(getInitials(member.first_name, member.last_name)) }}>
-                    {getInitials(member.first_name, member.last_name)}
+                  <div className="rounded-circle text-white d-flex align-items-center justify-content-center me-3" style={{ width: '60px', height: '60px', fontSize: '1.2rem', fontWeight: 'bold', backgroundColor: getInitialColor(getInitials(member.fullName)) }}>
+                    {getInitials(member.fullName)}
                   </div>
                 )}
                 <div className="flex-grow-1">
-                  <h5 className="mb-1">{member.first_name} {member.last_name}</h5>
-                  <p className="text-muted small mb-2">{member.staff_id}</p>
-                  <div className="d-flex gap-2 flex-wrap">{getRoleBadge(member.role_id)} {getStatusBadge(member.status)}</div>
+                  <h5 className="mb-1">{member.fullName}</h5>
+                  <p className="text-muted small mb-2">ID: {member.id}</p>
+                  <div className="d-flex gap-2 flex-wrap">{getRoleBadge(member.roleId)} {getStatusBadge(member.status || 'Active')}</div>
                 </div>
               </div>
               <div className="row g-2 mb-3">
                 <div className="col-12"><small className="text-muted d-block">Email</small><span>{member.email}</span></div>
                 <div className="col-12"><small className="text-muted d-block">Phone</small><span>{member.phone}</span></div>
-                <div className="col-12"><small className="text-muted d-block">Branch</small><span className="badge bg-light text-dark">{getBranchName(member.branch_id)}</span></div>
+                <div className="col-12"><small className="text-muted d-block">Branch</small><span className="badge bg-light text-dark">{getBranchName(member.branchId)}</span></div>
               </div>
               <div className="d-flex justify-content-end gap-2">
                 <button className="btn btn-sm btn-outline-secondary" onClick={() => handleView(member)}><FaEye size={14} /></button>
@@ -560,7 +643,7 @@ const ManageStaff = () => {
           </div>
         ))}
       </div>
-
+      
       {/* MAIN MODAL */}
       {isModalOpen && (
         <div className="modal fade show" tabIndex="-1" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -576,10 +659,37 @@ const ManageStaff = () => {
                   <h6 className="fw-bold mb-3">Basic Information</h6>
                   <div className="row mb-3 g-3">
                     <div className="col-12 col-md-6">
+                      <label className="form-label">Full Name <span className="text-danger">*</span></label>
+                      <input type="text" className="form-control rounded-3" id="fullName" defaultValue={selectedStaff?.fullName || ''} disabled={modalType === 'view'} required />
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">Email <span className="text-danger">*</span></label>
+                      <input type="email" className="form-control rounded-3" id="email" defaultValue={selectedStaff?.email || ''} disabled={modalType === 'view'} required />
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">Phone <span className="text-danger">*</span></label>
+                      <input type="tel" className="form-control rounded-3" id="phone" defaultValue={selectedStaff?.phone || ''} disabled={modalType === 'view'} required />
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">Password {modalType === 'add' && <span className="text-danger">*</span>}</label>
+                      <input type="password" className="form-control rounded-3" id="passwordField" placeholder={modalType === 'edit' ? "Leave blank to keep current password" : ""} disabled={modalType === 'view'} required={modalType === 'add'} />
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">Gender <span className="text-danger">*</span></label>
+                      <select className="form-select rounded-3" id="gender" defaultValue={selectedStaff?.gender || 'Male'} disabled={modalType === 'view'} required>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">Date of Birth <span className="text-danger">*</span></label>
+                      <input type="date" className="form-control rounded-3" id="dob" defaultValue={selectedStaff?.dateOfBirth ? new Date(selectedStaff.dateOfBirth).toISOString().split('T')[0] : ''} disabled={modalType === 'view'} required />
+                    </div>
+                    <div className="col-12">
                       <label className="form-label">Profile Photo</label>
                       <input type="file" className="form-control rounded-3" accept="image/*" ref={fileInputRef} disabled={modalType === 'view'} />
                     </div>
-                    {/* ... other basic fields unchanged ... */}
                     <div className="col-12">
                       <label className="form-label">Status</label>
                       <select className="form-select rounded-3" value={staffStatus} onChange={(e) => setStaffStatus(e.target.value)} disabled={modalType === 'view'}>
@@ -588,27 +698,30 @@ const ManageStaff = () => {
                       </select>
                     </div>
                   </div>
-
+                  
                   {/* Job Details */}
                   <h6 className="fw-bold mb-3">Job Details</h6>
                   <div className="row mb-3 g-3">
                     <div className="col-12 col-md-6">
                       <label className="form-label">Role <span className="text-danger">*</span></label>
-                      <select className="form-select rounded-3" id="role" defaultValue={selectedStaff?.role_id || 'Receptionist'} disabled={modalType === 'view'} required>
-                        <option value="Manager">Manager</option>
-                        <option value="Trainer">Trainer</option>
-                        <option value="Receptionist">Receptionist</option>
-                        <option value="Housekeeping">Housekeeping</option>
+                      <select className="form-select rounded-3" id="role" defaultValue={getRoleName(selectedStaff?.roleId) || 'Receptionist'} disabled={modalType === 'view'} required>
+                        {Object.keys(roleIds).map(role => (
+                          <option key={role} value={role}>
+                            {role === 'generaltrainer' ? 'General Trainer' : 
+                             role === 'personaltrainer' ? 'Personal Trainer' : 
+                             role}
+                          </option>
+                        ))}
                       </select>
                     </div>
-
+                    
                     {/* ✅ DYNAMIC BRANCH DROPDOWN */}
                     <div className="col-12 col-md-6">
                       <label className="form-label">Branch <span className="text-danger">*</span></label>
                       <select
                         className="form-select rounded-3"
                         id="branch"
-                        value={selectedStaff?.branch_id || (branches.length > 0 ? branches[0].id : '')}
+                        value={selectedStaff?.branchId || (branches.length > 0 ? branches[0].id : '')}
                         disabled={modalType === 'view' || branchesLoading}
                         required
                       >
@@ -623,23 +736,17 @@ const ManageStaff = () => {
                         )}
                       </select>
                     </div>
-
+                    
                     <div className="col-12 col-md-6">
                       <label className="form-label">Join Date <span className="text-danger">*</span></label>
-                      <input type="date" className="form-control rounded-3" id="joinDate" defaultValue={selectedStaff?.join_date || new Date().toISOString().split('T')[0]} readOnly={modalType === 'view'} required />
+                      <input type="date" className="form-control rounded-3" id="joinDate" defaultValue={selectedStaff?.joinDate ? new Date(selectedStaff.joinDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]} readOnly={modalType === 'view'} required />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Exit Date</label>
-                      <input type="date" className="form-control rounded-3" id="exitDate" defaultValue={selectedStaff?.exit_date || ''} readOnly={modalType === 'view'} />
+                      <input type="date" className="form-control rounded-3" id="exitDate" defaultValue={selectedStaff?.exitDate ? new Date(selectedStaff.exitDate).toISOString().split('T')[0] : ''} readOnly={modalType === 'view'} />
                     </div>
                   </div>
-
-                  {/* System Access */}
-                  <h6 className="fw-bold mb-3">System Access</h6>
-                  <div className="row mb-3 g-3">
-                    {/* ... unchanged ... */}
-                  </div>
-
+                  
                   <div className="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-4">
                     <button type="button" className="btn btn-outline-secondary px-4 py-2 w-100 w-sm-auto" onClick={closeModal}>Cancel</button>
                     {modalType !== 'view' && (
@@ -654,7 +761,7 @@ const ManageStaff = () => {
           </div>
         </div>
       )}
-
+      
       {/* DELETE MODAL */}
       {isDeleteModalOpen && (
         <div className="modal fade show" tabIndex="-1" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={closeDeleteModal}>
@@ -667,7 +774,7 @@ const ManageStaff = () => {
               <div className="modal-body text-center py-4">
                 <div className="display-6 text-danger mb-3"><i className="fas fa-exclamation-triangle"></i></div>
                 <h5>Are you sure?</h5>
-                <p className="text-muted">This will permanently delete <strong>{selectedStaff?.first_name} {selectedStaff?.last_name}</strong>.<br />This action cannot be undone.</p>
+                <p className="text-muted">This will permanently delete <strong>{selectedStaff?.fullName}</strong>.<br />This action cannot be undone.</p>
               </div>
               <div className="modal-footer border-0 justify-content-center pb-4">
                 <button type="button" className="btn btn-outline-secondary px-4 w-100 w-sm-auto" onClick={closeDeleteModal}>Cancel</button>
@@ -677,7 +784,7 @@ const ManageStaff = () => {
           </div>
         </div>
       )}
-
+      
       <style jsx global>{`
         /* Keep your existing global styles */
         .action-btn {
