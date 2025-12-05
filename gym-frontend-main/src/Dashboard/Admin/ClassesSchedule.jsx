@@ -31,36 +31,64 @@ const ClassesSchedule = () => {
     setLoading(true);
     try {
       // Fetch branches
-      const branchesRes = await axiosInstance.get(`branches/${adminId}`);
+      const branchesRes = await axiosInstance.get(`branches/by-admin/${adminId}`);
       let branchList = [];
+      console.log('Branches API response:', branchesRes.data);
+      
       if (branchesRes.data.success) {
+        // Handle different response structures
         if (branchesRes.data.branch) {
-          branchList = [branchesRes.data.branch];
-        } else if (Array.isArray(branchesRes.data.branches)) {
-          branchList = branchesRes.data.branches;
+          branchList = Array.isArray(branchesRes.data.branch) ? branchesRes.data.branch : [branchesRes.data.branch];
+        } else if (branchesRes.data.branches) {
+          branchList = Array.isArray(branchesRes.data.branches) ? branchesRes.data.branches : [];
+        } else if (Array.isArray(branchesRes.data)) {
+          branchList = branchesRes.data;
         }
       }
       setBranches(branchList);
+      console.log('Processed branches:', branchList);
 
       // Fetch trainers
       const trainersRes = await axiosInstance.get(`class/trainers`);
       let trainerList = [];
-      if (trainersRes.data.success && Array.isArray(trainersRes.data.trainers)) {
-        trainerList = trainersRes.data.trainers;
+      console.log('Trainers API response:', trainersRes.data);
+      
+      if (trainersRes.data.success) {
+        // Handle different response structures
+        if (trainersRes.data.trainers) {
+          trainerList = Array.isArray(trainersRes.data.trainers) ? trainersRes.data.trainers : [];
+        } else if (trainersRes.data.trainer) {
+          trainerList = Array.isArray(trainersRes.data.trainer) ? trainersRes.data.trainer : [trainersRes.data.trainer];
+        } else if (Array.isArray(trainersRes.data)) {
+          trainerList = trainersRes.data;
+        }
       }
       setTrainers(trainerList);
+      console.log('Processed trainers:', trainerList);
 
       // Fetch members (plans = members)
       const membersRes = await axiosInstance.get(`MemberPlan?adminId=${adminId}`);
       let memberList = [];
-      if (membersRes.data.success && Array.isArray(membersRes.data.plans)) {
-        // Assuming plan.name is the member name or use another field if available
-        memberList = membersRes.data.plans.map(plan => ({
+      console.log('Members API response:', membersRes.data);
+      
+      if (membersRes.data.success) {
+        // Handle different response structures
+        let plans = [];
+        if (membersRes.data.plans) {
+          plans = Array.isArray(membersRes.data.plans) ? membersRes.data.plans : [];
+        } else if (membersRes.data.plan) {
+          plans = Array.isArray(membersRes.data.plan) ? membersRes.data.plan : [membersRes.data.plan];
+        } else if (Array.isArray(membersRes.data)) {
+          plans = membersRes.data;
+        }
+        
+        memberList = plans.map(plan => ({
           id: plan.id,
-          name: plan.name || `Member ${plan.id}`
+          name: plan.name || plan.fullName || `Member ${plan.id}`
         }));
       }
       setMembers(memberList);
+      console.log('Processed members:', memberList);
 
       // Fetch classes
       const classesRes = await axiosInstance.get(`class/scheduled/all`);
@@ -191,7 +219,7 @@ const ClassesSchedule = () => {
 
   const getTrainerName = (trainerId) => {
     const trainer = trainers.find(t => t.id === trainerId);
-    return trainer?.fullName || '—';
+    return trainer?.fullName || trainer?.name || '—';
   };
 
   const saveClass = async () => {
@@ -318,7 +346,7 @@ const ClassesSchedule = () => {
               fontWeight: '500'
             }}
             onClick={handleAddNew}
-            disabled={loading || branches.length === 0 || trainers.length === 0}
+            disabled={loading}
           >
             <FaUserPlus className="me-2" /> Add Class
           </button>
@@ -416,6 +444,16 @@ const ClassesSchedule = () => {
                 <button type="button" className="btn-close btn-close-white" onClick={closeModal}></button>
               </div>
               <div className="modal-body p-4">
+                {branches.length === 0 && (
+                  <div className="alert alert-warning">
+                    No branches found. Please add branches first before creating classes.
+                  </div>
+                )}
+                {trainers.length === 0 && (
+                  <div className="alert alert-warning">
+                    No trainers found. Please add trainers first before creating classes.
+                  </div>
+                )}
                 <div className="row mb-3">
                   <div className="col-md-6 mb-3">
                     <label className="form-label fw-semibold">Class Name <span className="text-danger">*</span></label>
@@ -433,11 +471,11 @@ const ClassesSchedule = () => {
                       className="form-select rounded-3"
                       value={selectedClass.trainerId || ''}
                       onChange={e => setSelectedClass({ ...selectedClass, trainerId: e.target.value })}
-                      disabled={modalType === 'view'}
+                      disabled={modalType === 'view' || trainers.length === 0}
                     >
                       <option value="">Select trainer</option>
                       {trainers.map(t => (
-                        <option key={t.id} value={t.id}>{t.fullName}</option>
+                        <option key={t.id} value={t.id}>{t.fullName || t.name}</option>
                       ))}
                     </select>
                   </div>
@@ -449,7 +487,7 @@ const ClassesSchedule = () => {
                       className="form-select rounded-3"
                       value={selectedClass.branchId || ''}
                       onChange={e => setSelectedClass({ ...selectedClass, branchId: e.target.value })}
-                      disabled={modalType === 'view'}
+                      disabled={modalType === 'view' || branches.length === 0}
                     >
                       <option value="">Select branch</option>
                       {branches.map(b => (
@@ -596,7 +634,7 @@ const ClassesSchedule = () => {
                       className="btn px-4"
                       style={{ background: '#6EB2CC', color: 'white' }}
                       onClick={saveClass}
-                      disabled={loading}
+                      disabled={loading || branches.length === 0 || trainers.length === 0}
                     >
                       {loading ? 'Saving...' : modalType === 'add' ? 'Add Class' : 'Update Class'}
                     </button>
