@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaEye, FaEdit, FaTrashAlt, FaPlus, FaSearch, FaFilter, FaCaretDown } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import GetAdminId from '../../../Api/GetAdminId';
 import axiosInstance from "../../../Api/axiosInstance"; // 🔁 Adjust path if needed
 
 const ManageStaff = () => {
+  const adminId = GetAdminId();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add', 'edit', 'view'
@@ -16,6 +18,7 @@ const ManageStaff = () => {
   const [statusFilter, setStatusFilter] = useState('All');
   const [branchFilter, setBranchFilter] = useState('All');
   const fileInputRef = useRef(null);
+ 
   
   // State for status
   const [staffStatus, setStaffStatus] = useState('Active');
@@ -38,6 +41,28 @@ const ManageStaff = () => {
     'Receptionist': 7,
     'Housekeeping': 8
   };
+
+  // Normalize server staff object to frontend model
+  const normalizeStaffItem = (item) => {
+    if (!item) return null;
+    return {
+      id: item.staffId ?? item.id,
+      userId: item.userId ?? null,
+      fullName: item.fullName ?? item.name ?? '',
+      email: item.email ?? '',
+      phone: item.phone ?? '',
+      roleId: item.roleId ?? null,
+      branchId: item.branchId ?? null,
+      adminId: item.adminId ?? null,
+      gender: item.gender ?? null,
+      dateOfBirth: item.dateOfBirth ?? item.dob ?? null,
+      joinDate: item.joinDate ?? null,
+      exitDate: item.exitDate ?? null,
+      profilePhoto: item.profilePhoto ?? item.avatar ?? null,
+      status: item.status ?? null,
+      _raw: item,
+    };
+  };
   
   // Get role name from ID
   const getRoleName = (roleId) => {
@@ -50,12 +75,13 @@ const ManageStaff = () => {
     const fetchStaff = async () => {
       try {
         const response = await axiosInstance.get('/staff/all');
-        if (response.data.success && response.data.staff) {
-          // Handle both array and single object
-          const staffList = Array.isArray(response.data.staff) 
-            ? response.data.staff 
-            : [response.data.staff];
-          setStaff(staffList);
+        if (response.data && response.data.success && response.data.staff) {
+          const staffArr = Array.isArray(response.data.staff) ? response.data.staff : [response.data.staff];
+          const normalized = staffArr.map(normalizeStaffItem);
+          setStaff(normalized);
+        } else if (response.data && Array.isArray(response.data)) {
+          // fallback if API returns array directly
+          setStaff(response.data.map(normalizeStaffItem));
         } else {
           console.error("Unexpected API response format:", response.data);
           setStaff([]);
@@ -83,7 +109,7 @@ const ManageStaff = () => {
     
     const fetchBranches = async () => {
       try {
-        const response = await axiosInstance.get(`/branches/${userId}`);
+        const response = await axiosInstance.get(`/branches/by-admin/${adminId}`);
         let branchList = [];
         
         // Handle both: { branch: {...} } and { branches: [...] } or direct array
@@ -163,9 +189,14 @@ const ManageStaff = () => {
   const confirmDelete = async () => {
     if (selectedStaff) {
       try {
-        await axiosInstance.delete(`/staff/delete/${selectedStaff.id}`);
-        setStaff(prev => prev.filter(s => s.id !== selectedStaff.id));
-        alert(`Staff member "${selectedStaff.fullName}" has been deleted.`);
+        const response = await axiosInstance.delete(`/staff/delete/${selectedStaff.id}`);
+        if (response.data && response.data.success) {
+          setStaff(prev => prev.filter(s => s.id !== selectedStaff.id));
+          alert(`Staff member "${selectedStaff.fullName}" has been deleted.`);
+        } else {
+          console.error('Delete failed:', response.data);
+          alert('Failed to delete staff member. Please try again.');
+        }
       } catch (error) {
         console.error("Failed to delete staff:", error);
         alert("Failed to delete staff member. Please try again.");
@@ -344,10 +375,11 @@ const ManageStaff = () => {
             'Content-Type': 'multipart/form-data'
           }
         });
-        
-        if (response.data.success) {
-          // Add the new staff to the state
-          setStaff([...staff, response.data.staff]);
+
+        if (response.data && response.data.success) {
+          const returned = response.data.staff ?? response.data;
+          const newStaff = Array.isArray(returned) ? normalizeStaffItem(returned[0]) : normalizeStaffItem(returned);
+          setStaff(prev => [...prev, newStaff]);
           alert('New staff member added successfully!');
           closeModal();
         } else {
@@ -383,12 +415,11 @@ const ManageStaff = () => {
             'Content-Type': 'multipart/form-data'
           }
         });
-        
-        if (response.data.success) {
-          // Update the staff in the state
-          setStaff(staff.map(member => 
-            member.id === selectedStaff.id ? response.data.staff : member
-          ));
+
+        if (response.data && response.data.success) {
+          const returned = response.data.staff ?? response.data;
+          const updatedStaff = Array.isArray(returned) ? normalizeStaffItem(returned[0]) : normalizeStaffItem(returned);
+          setStaff(prev => prev.map(member => member.id === selectedStaff.id ? updatedStaff : member));
           alert('Staff member updated successfully!');
           closeModal();
         } else {
