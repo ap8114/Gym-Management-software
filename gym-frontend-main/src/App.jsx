@@ -69,6 +69,8 @@ import HouseKeepingQrCheckin from "./Dashboard/HouseKeeping/HouseKeepingQrChecki
 // import HouseKeepingDutyRosters from "./Dashboard/HouseKeeping/HouseKeepingQDutyRoster";
 import ReceptionistWalkinMember from "./Dashboard/Receptionist/ReceptionistWalkinMember"
 import ReceptionistMembershipSignups from "./Dashboard/Receptionist/ReceptionistMembershipSignups";
+import HousekeepingShiftView from "./Dashboard/HouseKeeping/HousekeepingShiftView";
+import HousekeepingTask from "./Dashboard/HouseKeeping/HousekeepingTask";
 
 import ReceptionistQrCheckin from "./Dashboard/Receptionist/ReceptionistQrCheckin";
 import ReceptionistQRCode from "./Dashboard/Receptionist/ReceptionistQRCode";
@@ -343,9 +345,9 @@ function App() {
 
                 <Route path="/housekeeping/dashboard" element={<HouseKeepingDashboard />} />
                 <Route path="/housekeeping/qrcheckin" element={<HouseKeepingQrCheckin />} />
-                <Route path="//housekeeping/members" element={<HouseKeepingDutyRoster />} />
+                <Route path="//housekeeping/members" element={<HousekeepingShiftView />} />
                 <Route path="/housekeeping/membership-plan" element={<HouseKeepingAttendance />} />
-                <Route path="/housekeeping/duty-roster" element={<HouseKeepingTaskChecklist />} />
+                <Route path="/housekeeping/duty-roster" element={<HousekeepingTask/>} />
                 <Route path="/housekeeping/class-schedule" element={<HouseKeepingNotifications />} />
 
               </Routes>

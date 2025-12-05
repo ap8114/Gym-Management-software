@@ -1,93 +1,95 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Calendar, Plus, Check, X
 } from 'react-bootstrap-icons';
+import BaseUrl from '../../Api/BaseUrl';
 
 const ShiftManagement = () => {
   const [showShiftModal, setShowShiftModal] = useState(false);
-
-  // Sample data
-  const staffMembers = [
-    { id: 1, name: "John Doe", role: "Trainer", branch: "Main Branch" },
-    { id: 2, name: "Jane Smith", role: "Receptionist", branch: "Downtown Branch" },
-    { id: 3, name: "Mike Johnson", role: "Manager", branch: "Main Branch" },
-    { id: 4, name: "Sarah Wilson", role: "Cleaner", branch: "West Branch" },
-    { id: 5, name: "David Brown", role: "Trainer", branch: "Downtown Branch" }
-  ];
-
-  const branches = ["Main Branch", "Downtown Branch", "West Branch"];
-
-  const shifts = [
-    {
-      id: 1,
-      staffId: 1,
-      date: "2023-10-15",
-      startTime: "09:00",
-      endTime: "17:00",
-      type: "Morning",
-      branch: "Main Branch",
-      status: "Approved"
-    },
-    {
-      id: 2,
-      staffId: 2,
-      date: "2023-10-15",
-      startTime: "12:00",
-      endTime: "20:00",
-      type: "Evening",
-      branch: "Downtown Branch",
-      status: "Pending"
-    },
-    {
-      id: 3,
-      staffId: 3,
-      date: "2023-10-16",
-      startTime: "14:00",
-      endTime: "22:00",
-      type: "Evening",
-      branch: "Main Branch",
-      status: "Approved"
-    },
-    {
-      id: 4,
-      staffId: 4,
-      date: "2023-10-16",
-      startTime: "22:00",
-      endTime: "06:00",
-      type: "Night",
-      branch: "West Branch",
-      status: "Rejected"
-    },
-    {
-      id: 5,
-      staffId: 5,
-      date: "2023-10-17",
-      startTime: "06:00",
-      endTime: "14:00",
-      type: "Morning",
-      branch: "Downtown Branch",
-      status: "Pending"
-    }
-  ];
+  const [staffMembers, setStaffMembers] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [shifts, setShifts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Fetch data from APIs
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch staff data
+        const staffResponse = await fetch(`${BaseUrl}staff/all`);
+        const staffData = await staffResponse.json();
+        
+        // Fetch branches data
+        const branchesResponse = await fetch(`${BaseUrl}branches`);
+        const branchesData = await branchesResponse.json();
+        
+        // Fetch shifts data
+        const shiftsResponse = await fetch(`${BaseUrl}shift/all`);
+        const shiftsData = await shiftsResponse.json();
+        
+        if (staffData.success) {
+          setStaffMembers(staffData.staff);
+        } else {
+          throw new Error('Failed to fetch staff data');
+        }
+        
+        if (branchesData.success) {
+          setBranches(branchesData.branches);
+        } else {
+          throw new Error('Failed to fetch branches data');
+        }
+        
+        // Fix for shifts data - using 'data' instead of 'shifts'
+        if (shiftsData.success) {
+          setShifts(shiftsData.data || []); // Using 'data' from API response
+        } else {
+          throw new Error('Failed to fetch shifts data');
+        }
+        
+        setLoading(false);
+      } catch (err) {
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [BaseUrl]);
 
   const [shiftForm, setShiftForm] = useState({
-    staffIds: [],
-    date: '',
+    staffId: '',
+    branchId: '',
+    shiftDate: '',
     startTime: '',
     endTime: '',
-    type: 'Morning',
-    branch: ''
+    shiftType: 'Morning Shift',
+    description: ''
   });
 
   const getStaffName = (id) => {
-    const staff = staffMembers.find(s => s.id === id);
-    return staff ? staff.name : 'Unknown';
+    // Handle the case where staffIds might be a string or array
+    if (typeof id === 'string') {
+      id = parseInt(id);
+    }
+    const staff = staffMembers.find(s => s.staffId === id);
+    return staff ? staff.fullName : 'Unknown';
+  };
+
+  const getBranchName = (id) => {
+    const branch = branches.find(b => b.id === id);
+    return branch ? branch.name : 'Unknown';
   };
 
   const getShiftColor = (type) => {
     switch (type) {
+      case 'Morning Shift': 
       case 'Morning': return 'warning';
+      case 'Evening Shift': 
       case 'Evening': return 'info';
+      case 'Night Shift': 
       case 'Night': return 'primary';
       default: return 'secondary';
     }
@@ -118,12 +120,124 @@ const ShiftManagement = () => {
     setShiftForm({ ...shiftForm, staffIds: selectedIds });
   };
 
-  const handleApproveShift = (shiftId) => {
-    console.log(`Approving shift ${shiftId}`);
+  const handleCreateShift = async () => {
+    try {
+      // Validate form
+      if (!shiftForm.staffIds.length || !shiftForm.branchId || !shiftForm.shiftDate || 
+          !shiftForm.startTime || !shiftForm.endTime || !shiftForm.shiftType) {
+        alert('Please fill all required fields');
+        return;
+      }
+      
+      // Create shift via API
+      const response = await fetch(`${BaseUrl}shift/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(shiftForm)
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Refresh shifts data
+        const shiftsResponse = await fetch(`${BaseUrl}shift/all`);
+        const shiftsData = await shiftsResponse.json();
+        
+        if (shiftsData.success) {
+          setShifts(shiftsData.data || []); // Using 'data' from API response
+        }
+        
+        // Reset form and close modal
+        setShiftForm({
+          staffIds: [],
+          branchId: '',
+          shiftDate: '',
+          startTime: '',
+          endTime: '',
+          shiftType: 'Morning Shift',
+          description: ''
+        });
+        setShowShiftModal(false);
+        alert('Shift created successfully');
+      } else {
+        throw new Error(data.message || 'Failed to create shift');
+      }
+    } catch (err) {
+      console.error('Error creating shift:', err);
+      alert('Error creating shift: ' + err.message);
+    }
   };
 
-  const handleRejectShift = (shiftId) => {
-    console.log(`Rejecting shift ${shiftId}`);
+  const handleApproveShift = async (shiftId) => {
+    try {
+      const response = await fetch(`${BaseUrl}shift/status/${shiftId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'Approved' })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Update shifts in state
+        setShifts(shifts.map(shift => 
+          shift.id === shiftId ? { ...shift, status: 'Approved' } : shift
+        ));
+        alert('Shift approved successfully');
+      } else {
+        throw new Error(data.message || 'Failed to approve shift');
+      }
+    } catch (err) {
+      console.error('Error approving shift:', err);
+      alert('Error approving shift: ' + err.message);
+    }
+  };
+
+  const handleRejectShift = async (shiftId) => {
+    try {
+      const response = await fetch(`${BaseUrl}shift/status/${shiftId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'Rejected' })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Update shifts in state
+        setShifts(shifts.map(shift => 
+          shift.id === shiftId ? { ...shift, status: 'Rejected' } : shift
+        ));
+        alert('Shift rejected successfully');
+      } else {
+        throw new Error(data.message || 'Failed to reject shift');
+      }
+    } catch (err) {
+      console.error('Error rejecting shift:', err);
+      alert('Error rejecting shift: ' + err.message);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    // Handle the date format from the API
+    if (!dateString) return '';
+    
+    try {
+      const date = new Date(dateString);
+      // Check if the date is valid
+      if (isNaN(date.getTime())) return dateString;
+      
+      // Format as YYYY-MM-DD
+      return date.toISOString().split('T')[0];
+    } catch (error) {
+      return dateString;
+    }
   };
 
   const renderShiftModal = () => {
@@ -148,30 +262,32 @@ const ShiftManagement = () => {
                     <div className="col-md-6">
                       <label className="form-label">Select Staff</label>
                       <select 
-                        multiple 
+                 
                         className="form-select"
-                        onChange={handleStaffSelection}
-                        size="5"
+                        name='staffId'
+                        value={shiftForm.staffId}
+                        onChange={handleShiftFormChange}
+                      
                       >
                         {staffMembers.map(staff => (
-                          <option key={staff.id} value={staff.id}>
-                            {staff.name} ({staff.role}) - {staff.branch}
+                          <option key={staff.staffId} value={staff.staffId}>
+                            {staff.fullName} - {getBranchName(staff.branchId)}
                           </option>
                         ))}
                       </select>
-                      <div className="form-text">Hold Ctrl to select multiple staff</div>
+                  
                     </div>
                     <div className="col-md-6">
                       <label className="form-label">Branch</label>
                       <select 
                         className="form-select"
-                        name="branch"
-                        value={shiftForm.branch}
+                        name="branchId"
+                        value={shiftForm.branchId}
                         onChange={handleShiftFormChange}
                       >
                         <option value="">Select Branch</option>
                         {branches.map(branch => (
-                          <option key={branch} value={branch}>{branch}</option>
+                          <option key={branch.id} value={branch.id}>{branch.name}</option>
                         ))}
                       </select>
                     </div>
@@ -183,8 +299,8 @@ const ShiftManagement = () => {
                       <input 
                         type="date" 
                         className="form-control"
-                        name="date"
-                        value={shiftForm.date}
+                        name="shiftDate"
+                        value={shiftForm.shiftDate}
                         onChange={handleShiftFormChange}
                       />
                     </div>
@@ -214,15 +330,26 @@ const ShiftManagement = () => {
                     <label className="form-label">Shift Type</label>
                     <select 
                       className="form-select"
-                      name="type"
-                      value={shiftForm.type}
+                      name="shiftType"
+                      value={shiftForm.shiftType}
                       onChange={handleShiftFormChange}
                     >
-                      <option value="Morning">Morning Shift</option>
-                      <option value="Evening">Evening Shift</option>
-                      <option value="Night">Night Shift</option>
+                      <option value="Morning Shift">Morning Shift</option>
+                      <option value="Evening Shift">Evening Shift</option>
+                      <option value="Night Shift">Night Shift</option>
                       <option value="Custom">Custom Shift</option>
                     </select>
+                  </div>
+                  
+                  <div className="mb-3">
+                    <label className="form-label">Description</label>
+                    <textarea 
+                      className="form-control"
+                      name="description"
+                      value={shiftForm.description}
+                      onChange={handleShiftFormChange}
+                      rows="3"
+                    ></textarea>
                   </div>
                 </form>
               </div>
@@ -236,10 +363,7 @@ const ShiftManagement = () => {
                 <button 
                   className="btn btn-outline-light" 
                   style={{ backgroundColor: '#2f6a87', color: '#fff' }} 
-                  onClick={() => {
-                    console.log("Creating shift:", shiftForm);
-                    setShowShiftModal(false);
-                  }}
+                  onClick={handleCreateShift}
                 >
                   Create Shift
                 </button>
@@ -251,6 +375,14 @@ const ShiftManagement = () => {
       </>
     );
   };
+
+  if (loading) {
+    return <div className="container-fluid py-4">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="container-fluid py-4">Error: {error}</div>;
+  }
 
   return (
     <div className="container-fluid py-4">
@@ -283,18 +415,21 @@ const ShiftManagement = () => {
             </tr>
           </thead>
           <tbody>
-            {shifts.map(shift => (
+            {shifts?.map(shift => (
               <tr key={shift.id}>
-                <td>{getStaffName(shift.staffId)}</td>
-                <td>{shift.date}</td>
+                <td>
+                  {/* Handle staffIds as string from API response */}
+                  {shift.staffIds ? getStaffName(shift.staffIds) : 'Not Assigned'}
+                </td>
+                <td>{formatDate(shift.shiftDate)}</td>
                 <td>{shift.startTime}</td>
                 <td>{shift.endTime}</td>
                 <td>
-                  <span className={`badge bg-${getShiftColor(shift.type)}`}>
-                    {shift.type}
+                  <span className={`badge bg-${getShiftColor(shift.shiftType)}`}>
+                    {shift.shiftType || 'Not Specified'}
                   </span>
                 </td>
-                <td>{shift.branch}</td>
+                <td>{getBranchName(shift.branchId)}</td>
                 <td>
                   <span className={`badge bg-${getStatusClass(shift.status)}`}>
                     {shift.status}
@@ -321,13 +456,15 @@ const ShiftManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {shifts
-                .filter(shift => shift.status === 'Pending')
+              {shifts?.filter(shift => shift.status === 'Pending')
                 .map(shift => (
                   <tr key={shift.id}>
-                    <td>{getStaffName(shift.staffId)}</td>
-                    <td>{shift.date} {shift.startTime} - {shift.endTime}</td>
-                    <td>{shift.branch}</td>
+                    <td>
+                      {/* Handle staffIds as string from API response */}
+                      {shift.staffIds ? getStaffName(shift.staffIds) : 'Not Assigned'}
+                    </td>
+                    <td>{formatDate(shift.shiftDate)} {shift.startTime} - {shift.endTime}</td>
+                    <td>{getBranchName(shift.branchId)}</td>
                     <td>
                       <span className={`badge bg-${getStatusClass(shift.status)}`}>
                         {shift.status}
