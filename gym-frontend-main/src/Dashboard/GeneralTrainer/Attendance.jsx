@@ -404,8 +404,7 @@ const Attendance = () => {
         show={showViewModal}
         onHide={() => setShowViewModal(false)}
         centered
-        size="md"
-      >
+        size="md">
         <Modal.Header closeButton>
           <Modal.Title>Attendance Details</Modal.Title>
         </Modal.Header>
