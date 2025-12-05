@@ -36,11 +36,11 @@ const ManageStaff = () => {
   
   // Role ID mappings - Updated to match API expectations
   const roleIds = {
-    'Admin': 1,
     'Manager': 2,
-    'Trainer': 3,
-    'Receptionist': 4,
-    'Housekeeping': 5
+    'generaltrainer': 6,
+    'personaltrainer': 5,
+    'Receptionist': 7,
+    'Housekeeping': 8
   };
 
   // Normalize server staff object to frontend model
@@ -266,15 +266,17 @@ const ManageStaff = () => {
   const getRoleBadge = (roleId) => {
     const roleName = getRoleName(roleId);
     const roleColors = {
-      Admin: "bg-primary-subtle text-primary-emphasis",
       Manager: "bg-info-subtle text-info-emphasis",
-      Trainer: "bg-warning-subtle text-warning-emphasis",
+      generaltrainer: "bg-warning-subtle text-warning-emphasis",
+      personaltrainer: "bg-primary-subtle text-primary-emphasis",
       Receptionist: "bg-secondary-subtle text-secondary-emphasis",
       Housekeeping: "bg-success-subtle text-success-emphasis"
     };
     return (
       <span className={`badge rounded-pill ${roleColors[roleName] || 'bg-light'} px-3 py-1`}>
-        {roleName}
+        {roleName === 'generaltrainer' ? 'General Trainer' : 
+         roleName === 'personaltrainer' ? 'Personal Trainer' : 
+         roleName}
       </span>
     );
   };
@@ -490,7 +492,9 @@ const ManageStaff = () => {
                     className={`dropdown-item ${roleFilter === role ? 'active' : ''}`} 
                     onClick={() => { setRoleFilter(role); setRoleFilterOpen(false); }}
                   >
-                    {role}
+                    {role === 'generaltrainer' ? 'General Trainer' : 
+                     role === 'personaltrainer' ? 'Personal Trainer' : 
+                     role}
                   </button>
                 ))}
               </div>
@@ -702,7 +706,11 @@ const ManageStaff = () => {
                       <label className="form-label">Role <span className="text-danger">*</span></label>
                       <select className="form-select rounded-3" id="role" defaultValue={getRoleName(selectedStaff?.roleId) || 'Receptionist'} disabled={modalType === 'view'} required>
                         {Object.keys(roleIds).map(role => (
-                          <option key={role} value={role}>{role}</option>
+                          <option key={role} value={role}>
+                            {role === 'generaltrainer' ? 'General Trainer' : 
+                             role === 'personaltrainer' ? 'Personal Trainer' : 
+                             role}
+                          </option>
                         ))}
                       </select>
                     </div>
