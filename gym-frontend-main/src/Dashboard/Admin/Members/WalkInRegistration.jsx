@@ -1,311 +1,57 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FaEye, FaEdit, FaTrashAlt, FaUser, FaPhone, FaEnvelope, FaCalendarAlt, FaDumbbell, FaClock, FaStickyNote } from 'react-icons/fa';
-import axios from 'axios';
 
 const WalkInRegistration = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [modalType, setModalType] = useState('view'); // 'add', 'edit', 'view'
   const [selectedWalkIn, setSelectedWalkIn] = useState(null);
-  const [walkIns, setWalkIns] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [apiResponse, setApiResponse] = useState(null); // Debug API responses
   
-  // Mock plans for dropdown
-  const membershipPlans = [
-    { id: 1, name: "Basic Monthly" },
-    { id: 2, name: "Premium Annual" },
-    { id: 3, name: "Student Plan" },
-    { id: 4, name: "Weekend Warrior" },
-    { id: 5, name: "Corporate Package" }
-  ];
-
-  // Create axios instance with default config
-  const api = axios.create({
-    baseURL: 'https://84kmwvvs-4000.inc1.devtunnels.ms/api',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    timeout: 10000 // 10 seconds timeout
-  });
-
-  // Add request interceptor for debugging
-  api.interceptors.request.use(
-    config => {
-      console.log('Making request to:', config.url);
-      console.log('Request data:', config.data);
-      return config;
-    },
-    error => {
-      console.error('Request error:', error);
-      return Promise.reject(error);
-    }
-  );
-
-  // Add response interceptor for debugging
-  api.interceptors.response.use(
-    response => {
-      console.log('Response received:', response);
-      setApiResponse(JSON.stringify(response.data, null, 2));
-      return response;
-    },
-    error => {
-      console.error('Response error:', error);
-      const errorMessage = error.response?.data || error.message || 'Unknown error';
-      setApiResponse(JSON.stringify(errorMessage, null, 2));
-      return Promise.reject(error);
-    }
-  );
-
-  // Mock data for fallback
-  const mockWalkIns = [
+  // Sample data
+  const [walkIns, setWalkIns] = useState([
     {
       id: 1,
-      name: "John Doe",
+      name: "Rahul Sharma",
       phone: "+91 98765 43210",
-      email: "john.doe@example.com",
+      email: "rahul@example.com",
       preferred_membership_plan: "Premium Annual",
-      interested_in: "Personal Training",
-      preferred_time: "2023-06-15T10:30",
-      notes: "Interested in morning slots",
-      registered_at: new Date().toISOString()
+      interested_in: "Both",
+      preferred_time: "2025-04-10T18:00",
+      notes: "Interested in morning slots.",
+      registered_at: "2025-04-05T10:30:00"
     },
     {
       id: 2,
-      name: "Jane Smith",
-      phone: "+91 87654 32109",
-      email: "jane.smith@example.com",
+      name: "Priya Patel",
+      phone: "+91 91234 56789",
+      email: "",
       preferred_membership_plan: "Basic Monthly",
       interested_in: "Group Classes",
-      preferred_time: "2023-06-16T18:00",
-      notes: "Prefers evening workouts",
-      registered_at: new Date().toISOString()
+      preferred_time: "2025-04-08T19:30",
+      notes: "Student, looking for discounts.",
+      registered_at: "2025-04-05T14:15:00"
+    },
+    {
+      id: 3,
+      name: "Amit Verma",
+      phone: "+91 88888 77777",
+      email: "amit.v@example.com",
+      preferred_membership_plan: "",
+      interested_in: "Personal Training",
+      preferred_time: "",
+      notes: "Wants to start next week.",
+      registered_at: "2025-04-04T16:45:00"
     }
+  ]);
+
+  // Mock plans for dropdown
+  const membershipPlans = [
+    "Basic Monthly",
+    "Premium Annual",
+    "Student Plan",
+    "Weekend Warrior",
+    "Corporate Package"
   ];
-
-  // Fetch all members from API
-  const fetchMembers = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Try to get members from the API
-      try {
-        // Try to get a list of members first
-        const response = await api.get('/members');
-        
-        // Transform API data to our format
-        const transformedData = response.data.map(member => ({
-          id: member.id,
-          name: member.fullName || member.name,
-          phone: member.phone,
-          email: member.email,
-          preferred_membership_plan: membershipPlans.find(p => p.id === member.planId)?.name || "",
-          interested_in: member.interestedIn || "",
-          preferred_time: member.membershipFrom || "",
-          notes: member.address || "",
-          registered_at: member.createdAt || new Date().toISOString()
-        }));
-        
-        setWalkIns(transformedData);
-      } catch (listError) {
-        console.error('Error fetching member list:', listError);
-        
-        // If list endpoint fails, try to get a single member to test API
-        try {
-          const response = await api.get('/members/detail/1');
-          
-          // Transform single member data
-          const transformedMember = {
-            id: response.data.id,
-            name: response.data.fullName || response.data.name,
-            phone: response.data.phone,
-            email: response.data.email,
-            preferred_membership_plan: membershipPlans.find(p => p.id === response.data.planId)?.name || "",
-            interested_in: response.data.interestedIn || "",
-            preferred_time: response.data.membershipFrom || "",
-            notes: response.data.address || "",
-            registered_at: response.data.createdAt || new Date().toISOString()
-          };
-          
-          setWalkIns([transformedMember]);
-        } catch (detailError) {
-          console.error('Error fetching member detail:', detailError);
-          
-          // If all API calls fail, use mock data
-          setWalkIns(mockWalkIns);
-          setError('Failed to connect to API. Using mock data.');
-        }
-      }
-    } catch (err) {
-      console.error('Error in fetchMembers:', err);
-      setWalkIns(mockWalkIns);
-      setError('Failed to fetch members. Using mock data.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Create a new member
-  const createMember = async (memberData) => {
-    try {
-      // Transform UI data to API format
-      const apiData = {
-        fullName: memberData.name,
-        email: memberData.email || "",
-        password: "123456", // Default password
-        phone: memberData.phone,
-        planId: membershipPlans.find(p => p.name === memberData.preferred_membership_plan)?.id || 1,
-        membershipFrom: memberData.preferred_time ? new Date(memberData.preferred_time).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        dateOfBirth: "1990-01-01", // Default value
-        paymentMode: "Cash", // Default value
-        amountPaid: 2500, // Default value
-        branchId: 2, // Default value
-        gender: "Other", // Default value
-        interestedIn: memberData.interested_in || "",
-        address: memberData.notes || "",
-        adminId: 1 // Default value
-      };
-
-      console.log('Creating member with data:', apiData);
-      const response = await api.post('/members/create', apiData);
-      console.log('Create response:', response.data);
-      
-      // Add the new member to the state
-      const newMember = {
-        id: response.data.id || getNextId(),
-        name: apiData.fullName,
-        phone: apiData.phone,
-        email: apiData.email,
-        preferred_membership_plan: membershipPlans.find(p => p.id === apiData.planId)?.name || "",
-        interested_in: apiData.interestedIn || "",
-        preferred_time: apiData.membershipFrom || "",
-        notes: apiData.address || "",
-        registered_at: new Date().toISOString()
-      };
-      
-      setWalkIns(prev => [...prev, newMember]);
-      return true;
-    } catch (err) {
-      console.error('Error creating member:', err);
-      setError(`Failed to create member: ${err.response?.data?.message || err.message}`);
-      
-      // If API fails, add to local state with mock data
-      const newMember = {
-        id: getNextId(),
-        name: memberData.name,
-        phone: memberData.phone,
-        email: memberData.email,
-        preferred_membership_plan: memberData.preferred_membership_plan,
-        interested_in: memberData.interested_in,
-        preferred_time: memberData.preferred_time,
-        notes: memberData.notes,
-        registered_at: new Date().toISOString()
-      };
-      
-      setWalkIns(prev => [...prev, newMember]);
-      setError('API call failed, but data was saved locally.');
-      return true;
-    }
-  };
-
-  // Update an existing member
-  const updateMember = async (id, memberData) => {
-    try {
-      // Transform UI data to API format
-      const apiData = {
-        fullName: memberData.name,
-        email: memberData.email || "",
-        phone: memberData.phone,
-        gender: "Other" // Default value
-      };
-
-      // Only include these fields if they have values
-      if (memberData.preferred_membership_plan) {
-        const planId = membershipPlans.find(p => p.name === memberData.preferred_membership_plan)?.id;
-        if (planId) apiData.planId = planId;
-      }
-      
-      if (memberData.interested_in) apiData.interestedIn = memberData.interested_in;
-      
-      if (memberData.preferred_time) {
-        apiData.membershipFrom = new Date(memberData.preferred_time).toISOString().split('T')[0];
-      }
-      
-      if (memberData.notes) apiData.address = memberData.notes;
-
-      console.log(`Updating member ${id} with data:`, apiData);
-      const response = await api.put(`/members/update/${id}`, apiData);
-      console.log('Update response:', response.data);
-      
-      // Update the member in the state
-      setWalkIns(prev => prev.map(member => 
-        member.id === id 
-          ? {
-              ...member,
-              name: apiData.fullName,
-              phone: apiData.phone,
-              email: apiData.email,
-              preferred_membership_plan: apiData.planId ? membershipPlans.find(p => p.id === apiData.planId)?.name || "" : member.preferred_membership_plan,
-              interested_in: apiData.interestedIn || member.interested_in,
-              preferred_time: apiData.membershipFrom || member.preferred_time,
-              notes: apiData.address || member.notes
-            }
-          : member
-      ));
-      
-      return true;
-    } catch (err) {
-      console.error('Error updating member:', err);
-      setError(`Failed to update member: ${err.response?.data?.message || err.message}`);
-      
-      // If API fails, update local state
-      setWalkIns(prev => prev.map(member => 
-        member.id === id 
-          ? {
-              ...member,
-              name: memberData.name,
-              phone: memberData.phone,
-              email: memberData.email,
-              preferred_membership_plan: memberData.preferred_membership_plan,
-              interested_in: memberData.interested_in,
-              preferred_time: memberData.preferred_time,
-              notes: memberData.notes
-            }
-          : member
-      ));
-      
-      setError('API call failed, but data was updated locally.');
-      return true;
-    }
-  };
-
-  // Delete a member
-  const deleteMember = async (id) => {
-    try {
-      console.log(`Deleting member with ID: ${id}`);
-      const response = await api.delete(`/members/delete/${id}`);
-      console.log('Delete response:', response.data);
-      
-      // Remove the member from the state
-      setWalkIns(prev => prev.filter(member => member.id !== id));
-      return true;
-    } catch (err) {
-      console.error('Error deleting member:', err);
-      setError(`Failed to delete member: ${err.response?.data?.message || err.message}`);
-      
-      // If API fails, remove from local state
-      setWalkIns(prev => prev.filter(member => member.id !== id));
-      setError('API call failed, but data was deleted locally.');
-      return true;
-    }
-  };
-
-  // Fetch members on component mount
-  useEffect(() => {
-    fetchMembers();
-  }, []);
 
   const handleAddNew = () => {
     setModalType('add');
@@ -330,12 +76,10 @@ const WalkInRegistration = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = async () => {
+  const confirmDelete = () => {
     if (selectedWalkIn) {
-      const success = await deleteMember(selectedWalkIn.id);
-      if (success) {
-        alert(`Walk-in record for ${selectedWalkIn.name} has been deleted.`);
-      }
+      setWalkIns(prev => prev.filter(w => w.id !== selectedWalkIn.id));
+      alert(`Walk-in record for ${selectedWalkIn.name} has been deleted.`);
     }
     setIsDeleteModalOpen(false);
     setSelectedWalkIn(null);
@@ -525,33 +269,6 @@ const WalkInRegistration = () => {
         </div>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="alert alert-warning" role="alert">
-          {error}
-        </div>
-      )}
-
-      {/* API Response Debug Panel */}
-      {apiResponse && (
-        <div className="card mb-4">
-          <div className="card-header d-flex justify-content-between align-items-center">
-            <h5 className="mb-0">API Response (Debug)</h5>
-            <button 
-              className="btn btn-sm btn-outline-secondary" 
-              onClick={() => setApiResponse(null)}
-            >
-              Close
-            </button>
-          </div>
-          <div className="card-body">
-            <pre className="bg-light p-3 rounded" style={{ maxHeight: '200px', overflow: 'auto' }}>
-              {apiResponse}
-            </pre>
-          </div>
-        </div>
-      )}
-
       {/* Search & Actions */}
       <div className="row mb-4 g-3">
         <div className="col-12 col-md-6 col-lg-5">
@@ -580,69 +297,61 @@ const WalkInRegistration = () => {
 
       {/* Table */}
       <div className="card shadow-sm border-0">
-        {loading ? (
-          <div className="d-flex justify-content-center align-items-center p-5">
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-          </div>
-        ) : (
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
-              <thead className="bg-light">
-                <tr>
-                  <th className="fw-semibold">NAME</th>
-                  <th className="fw-semibold">PHONE</th>
-                  <th className="fw-semibold">EMAIL</th>
-                  <th className="fw-semibold">PREFERRED PLAN</th>
-                  <th className="fw-semibold">INTERESTED IN</th>
-                  <th className="fw-semibold">PREFERRED TIME</th>
-                  <th className="fw-semibold text-center">ACTIONS</th>
+        <div className="table-responsive">
+          <table className="table table-hover align-middle mb-0">
+            <thead className="bg-light">
+              <tr>
+                <th className="fw-semibold">NAME</th>
+                <th className="fw-semibold">PHONE</th>
+                <th className="fw-semibold">EMAIL</th>
+                <th className="fw-semibold">PREFERRED PLAN</th>
+                <th className="fw-semibold">INTERESTED IN</th>
+                <th className="fw-semibold">PREFERRED TIME</th>
+                <th className="fw-semibold text-center">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {walkIns.map((walkIn) => (
+                <tr key={walkIn.id}>
+                  <td><strong>{walkIn.name}</strong></td>
+                  <td>{walkIn.phone}</td>
+                  <td>{walkIn.email || <span className="text-muted">—</span>}</td>
+                  <td>{walkIn.preferred_membership_plan || <span className="text-muted">—</span>}</td>
+                  <td>{walkIn.interested_in || <span className="text-muted">—</span>}</td>
+                  <td>{formatDateTime(walkIn.preferred_time)}</td>
+                  <td className="text-center">
+                    <div className="d-flex justify-content-center flex-nowrap" style={{ gap: '4px' }}>
+                      <button
+                        className="btn btn-sm btn-outline-secondary action-btn"
+                        title="View"
+                        onClick={() => handleView(walkIn)}
+                        style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <FaEye size={14} />
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-primary action-btn"
+                        title="Edit"
+                        onClick={() => handleEdit(walkIn)}
+                        style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <FaEdit size={14} />
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-danger action-btn"
+                        title="Delete"
+                        onClick={() => handleDeleteClick(walkIn)}
+                        style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <FaTrashAlt size={14} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {walkIns.map((walkIn) => (
-                  <tr key={walkIn.id}>
-                    <td><strong>{walkIn.name}</strong></td>
-                    <td>{walkIn.phone}</td>
-                    <td>{walkIn.email || <span className="text-muted">—</span>}</td>
-                    <td>{walkIn.preferred_membership_plan || <span className="text-muted">—</span>}</td>
-                    <td>{walkIn.interested_in || <span className="text-muted">—</span>}</td>
-                    <td>{formatDateTime(walkIn.preferred_time)}</td>
-                    <td className="text-center">
-                      <div className="d-flex justify-content-center flex-nowrap" style={{ gap: '4px' }}>
-                        <button
-                          className="btn btn-sm btn-outline-secondary action-btn"
-                          title="View"
-                          onClick={() => handleView(walkIn)}
-                          style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          <FaEye size={14} />
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-primary action-btn"
-                          title="Edit"
-                          onClick={() => handleEdit(walkIn)}
-                          style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          <FaEdit size={14} />
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-danger action-btn"
-                          title="Delete"
-                          onClick={() => handleDeleteClick(walkIn)}
-                          style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          <FaTrashAlt size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* MAIN MODAL (Add/Edit/View) */}
@@ -717,7 +426,7 @@ const WalkInRegistration = () => {
                       >
                         <option value="">Select a plan</option>
                         {membershipPlans.map(plan => (
-                          <option key={plan.id} value={plan.name}>{plan.name}</option>
+                          <option key={plan} value={plan}>{plan}</option>
                         ))}
                       </select>
                     </div>
@@ -788,33 +497,35 @@ const WalkInRegistration = () => {
                             padding: '10px 20px',
                             fontWeight: '500',
                           }}
-                          onClick={async () => {
+                          onClick={() => {
                             const formData = {
-                              name: document.querySelector('input[placeholder="Enter full name"]').value,
-                              phone: document.querySelector('input[placeholder="+91 98765 43210"]').value,
-                              email: document.querySelector('input[placeholder="example@email.com"]').value,
-                              preferred_membership_plan: document.querySelector('select').value,
+                              name: document.querySelector('[name="name"]')?.value || document.querySelector('input[placeholder="Enter full name"]')?.value,
+                              phone: document.querySelector('[name="phone"]')?.value || document.querySelector('input[placeholder="+91 98765 43210"]')?.value,
+                              email: document.querySelector('[name="email"]')?.value || '',
+                              preferred_membership_plan: document.querySelector('[name="preferred_membership_plan"]')?.value || '',
                               interested_in: document.querySelector('input[name="interested_in"]:checked')?.value || '',
-                              preferred_time: document.querySelector('input[type="datetime-local"]').value,
-                              notes: document.querySelector('textarea').value
+                              preferred_time: document.querySelector('[name="preferred_time"]')?.value || '',
+                              notes: document.querySelector('textarea')?.value || '',
+                              registered_at: new Date().toISOString()
                             };
-                            
-                            let success = false;
                             if (modalType === 'add') {
-                              success = await createMember(formData);
-                              if (success) {
-                                alert('New walk-in registration added successfully!');
-                              }
+                              const newWalkIn = {
+                                id: getNextId(),
+                                ...formData
+                              };
+                              setWalkIns(prev => [...prev, newWalkIn]);
+                              alert('New walk-in registration added successfully!');
                             } else if (modalType === 'edit' && selectedWalkIn) {
-                              success = await updateMember(selectedWalkIn.id, formData);
-                              if (success) {
-                                alert('Walk-in registration updated successfully!');
-                              }
+                              const updatedWalkIn = {
+                                ...selectedWalkIn,
+                                ...formData
+                              };
+                              setWalkIns(prev =>
+                                prev.map(w => w.id === selectedWalkIn.id ? updatedWalkIn : w)
+                              );
+                              alert('Walk-in registration updated successfully!');
                             }
-                            
-                            if (success) {
-                              closeModal();
-                            }
+                            closeModal();
                           }}
                         >
                           {modalType === 'add' ? 'Register Walk-in' : 'Update Registration'}
