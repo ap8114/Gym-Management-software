@@ -115,6 +115,8 @@ import PersonalTraining from "./Dashboard/Admin/Bookings/PersonalTraining";
 import QrCheckin from "./Dashboard/Admin/qrcheckin";
 import Setting from "./Dashboard/SuperAdmin/Setting";
 import DashboardHomePage from "./Dashboard/SuperAdmin/SuperAdminDashbaord";
+import ShiftManagement from "./Dashboard/Admin/ShiftMangamenet";
+import AdminTaskManagement from "./Dashboard/Admin/AdminTaskManagement";
 
 
 
@@ -273,7 +275,8 @@ function App() {
                 <Route path="/admin/staff/attendance" element={<StaffAttendance />} />
                 <Route path="/admin/staff/duty-roster" element={<DutyRoster />} />
                 <Route path="/admin/staff/salary-calculator" element={<SalaryCalculator />} />
-
+                <Route path="/admin/shift-managment" element={<ShiftManagement/>} />
+                <Route path="/admin/task-managment" element={<AdminTaskManagement/>} />
                 {/* setting routes */}
                 <Route path="/admin/settings/BranchManagement" element={< BranchManagement />} />
                 <Route path="/admin/settings/RoleManagement" element={< RoleManagement />} />

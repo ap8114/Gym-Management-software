@@ -100,6 +100,8 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
           { label: "Salary Calculator", path: "/admin/staff/salary-calculator" }
         ]
       },
+      { name: "Shift Managment", icon: faCalendarAlt, path: "/admin/shift-managment" },
+      { name: "Task Managment", icon: faCalendarAlt, path: "/admin/task-managment" },
 
       {
         name: "Personal Training Details",
@@ -163,13 +165,28 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       { name: "Payment", icon: faFileAlt, path: "/receptionist/payemnet" }
     ],
 
+
+
+    MANAGER: [
+      { name: "Dashboard", icon: faChartBar, path: "/manager/dashboard" },
+      { name: "Members", icon: faUsers, path: "/manager/members" },
+      { name: "Duty Roster", icon: faClipboardCheck, path: "/manager/duty-roster" },
+      { name: "Class Schedule", icon: faCalendarAlt, path: "/manager/class-schedule" },
+      { name: "Reports", icon: faFileAlt, path: "/manager/reports" },
+      { name: "Communication", icon: faComments, path: "/manager/communication" },
+    ],
+
     MEMBER: [
       { name: "Dashboard", icon: faChartBar, path: "/member/dashboard" },
       { name: "QR Check-in", icon: faGear, path: "/member/qrcheckin" },
       { name: "View Plan", icon: faEye, path: "/member/viewplan" },
       { name: "Class Schedule", icon: faClapperboard, path: "/member/classSchedule" },
       { name: "My Account", icon: faMoneyBillAlt, path: "/member/account" }
-    ]
+    ],
+
+
+ 
+
   };
 
   // Default to ADMIN if no role is found
