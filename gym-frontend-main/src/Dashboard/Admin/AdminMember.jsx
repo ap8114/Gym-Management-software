@@ -102,7 +102,7 @@ const AdminMember = () => {
     setMembersLoading(true);
     try {
       const response = await axiosInstance.get(
-        `${BaseUrl}/members/admin/${adminId}`
+        `${BaseUrl}members/admin/${adminId}`
       );
 
       if (response.data && response.data.success) {
@@ -149,7 +149,7 @@ const AdminMember = () => {
 
       // Make API call to get plans by admin ID
       const response = await axiosInstance.get(
-        `${BaseUrl}/MemberPlan?adminId=${adminId}`
+        `${BaseUrl}MemberPlan?adminId=${adminId}`
       );
 
       if (response.data && response.data.success) {
@@ -190,7 +190,7 @@ const AdminMember = () => {
     try {
       const adminId = localStorage.getItem("userId") || "5"; // fallback to 5 as per your note
       const response = await axiosInstance.get(
-        `${BaseUrl}/branches/by-admin/${adminId}`
+        `${BaseUrl}branches/by-admin/${adminId}`
       );
       if (response.data?.success && Array.isArray(response.data.branches)) {
         setBranches(response.data.branches);
@@ -302,7 +302,7 @@ const AdminMember = () => {
 
       // ✅ FIX: Make API call using axiosInstance and BaseUrl with the correct URL
       const response = await axiosInstance.put(
-        `${BaseUrl}/members/update/${editMember.id}`,
+        `${BaseUrl}members/update/${editMember.id}`,
         payload
       );
 
@@ -338,7 +338,7 @@ const AdminMember = () => {
       try {
         // Make API call using axiosInstance and BaseUrl
         const response = await axiosInstance.delete(
-          `${BaseUrl}/members/delete/${id}`
+          `${BaseUrl}members/delete/${id}`
         );
 
         // If the API call is successful, remove the member from the local state
