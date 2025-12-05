@@ -18,7 +18,7 @@ const HousekeepingTask = () => {
 
   return (
     <div className="container-fluid py-4">
-      <h2 className="mb-4">Housekeeping Dashboard</h2>
+      <h2 className="mb-4">Task Checklist</h2>
 
       <div className="row">
         <div className="col-12">
