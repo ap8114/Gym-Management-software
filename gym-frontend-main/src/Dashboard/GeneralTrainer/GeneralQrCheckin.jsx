@@ -1,10 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { format } from "date-fns";
-/**
- * QRCode component for gym check-in
- * Displays a QR code with member information that refreshes every 60 seconds
- */
+
 const  GeneralQrCheckin = ({ member_id, member_name }) => {
   const CODE_TTL = 60; // seconds
   const [qrNonce, setQrNonce] = useState(generateNonce(10));
@@ -90,7 +87,6 @@ const  GeneralQrCheckin = ({ member_id, member_name }) => {
           </div>
         </div>
    
-        
         {/* History Table */}
         <div className="mt-4">
           <h6 className="fw-bold mb-3">Today's Check-in History</h6>
