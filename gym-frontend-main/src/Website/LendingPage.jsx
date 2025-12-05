@@ -9,6 +9,7 @@ import {
 import { FiChevronDown, FiCheck as FiCheckIcon, FiArrowRight as FiArrowRightIcon } from 'react-icons/fi';
 import { Button, Container, Row, Col, Card } from 'react-bootstrap';
 import './LendingPage.css';
+import BaseUrl from '../Api/BaseUrl';
 
 const LendingPage = () => {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -21,6 +22,22 @@ const LendingPage = () => {
   const [selectedPlan, setSelectedPlan] = useState('Professional');
   const heroRef = useRef(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [plans, setPlans] = useState([]);
+
+  useEffect(() => {
+    // Fetch plans from API 
+    const fetchPlans = async () => {
+      try {
+        const response = await fetch(`${BaseUrl}/plans`);
+        const data = await response.json();
+        setPlans(data.plans || []);
+      }
+      catch (error) {
+        console.error("Error fetching plans:", error);
+      }
+    };
+    fetchPlans();
+  }, []);
   const navigate = useNavigate();
 
   // Purchase modal form state
@@ -33,32 +50,32 @@ const LendingPage = () => {
   });
 
   // Static plans data instead of API call
-  const [plans] = useState([
-    {
-      id: 1,
-      name: "Basic",
-      price: 999,
-      duration: 30,
-      description: "Essential features for small gyms",
-      status: "ACTIVE"
-    },
-    {
-      id: 2,
-      name: "Professional",
-      price: 1999,
-      duration: 30,
-      description: "Advanced features for growing gyms",
-      status: "ACTIVE"
-    },
-    {
-      id: 3,
-      name: "Enterprise",
-      price: 4999,
-      duration: 30,
-      description: "Complete solution for large fitness centers",
-      status: "ACTIVE"
-    }
-  ]);
+  // const [plans] = useState([
+  //   {
+  //     id: 1,
+  //     name: "Basic",
+  //     price: 999,
+  //     duration: 30,
+  //     description: "Essential features for small gyms",
+  //     status: "ACTIVE"
+  //   },
+  //   {
+  //     id: 2,
+  //     name: "Professional",
+  //     price: 1999,
+  //     duration: 30,
+  //     description: "Advanced features for growing gyms",
+  //     status: "ACTIVE"
+  //   },
+  //   {
+  //     id: 3,
+  //     name: "Enterprise",
+  //     price: 4999,
+  //     duration: 30,
+  //     description: "Complete solution for large fitness centers",
+  //     status: "ACTIVE"
+  //   }
+  // ]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -98,16 +115,44 @@ const LendingPage = () => {
   };
 
   // Simplified purchase handler without API call
-  const handlePurchaseSubmit = () => {
-    if (!purchaseFormData.companyName.trim() || !purchaseFormData.email.trim() || !purchaseFormData.startDate) {
-      alert("Please fill all required fields.");
-      return;
+const handlePurchaseSubmit = async () => {
+  // 表单验证
+  if (!purchaseFormData.companyName.trim() || !purchaseFormData.email.trim() || !purchaseFormData.startDate) {
+    alert("Please fill all required fields.");
+    return;
+  }
+  
+  try {
+    // 发送API请求
+    const response = await fetch(`${BaseUrl}/purchases`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        selectedPlan: purchaseFormData.selectedPlan,
+        companyName: purchaseFormData.companyName,
+        email: purchaseFormData.email,
+        billingDuration: purchaseFormData.billingDuration,
+        startDate: purchaseFormData.startDate
+      })
+    });
+    
+    // 检查响应状态
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to process purchase');
     }
     
-    // Simulate successful purchase
+    // 解析成功响应
+    const data = await response.json();
+    
+    // 关闭模态框并显示成功通知
     setShowPurchaseModal(false);
     setShowSuccessNotification(true);
     setTimeout(() => setShowSuccessNotification(false), 5000);
+    
+    // 重置表单数据
     setPurchaseFormData({
       selectedPlan: 'Professional',
       companyName: '',
@@ -115,7 +160,16 @@ const LendingPage = () => {
       billingDuration: 'Yearly',
       startDate: ''
     });
-  };
+    
+    // 可选：记录成功响应
+    console.log('Purchase successful:', data);
+    
+  } catch (error) {
+    // 处理错误
+    console.error('Purchase error:', error);
+    alert(`Error: ${error.message}`);
+  }
+};
 
   const features = [
     {

@@ -7,6 +7,7 @@ const RequestedPlans = () => {
   const [loading, setLoading] = useState(true);
   const [hoverIndex, setHoverIndex] = useState(null);
   const [expandedRows, setExpandedRows] = useState([]);
+  const [updatingStatus, setUpdatingStatus] = useState({}); // Track which rows are being updated
 
   // 🔁 Fetch real data from /purchases
   useEffect(() => {
@@ -40,12 +41,38 @@ const RequestedPlans = () => {
     fetchPurchases();
   }, []);
 
-  // ❌ TEMP: Local status update (replace with PUT /purchases/:id later)
-  const updateStatus = (index, newStatus) => {
-    const updated = [...purchases];
-    updated[index].status = newStatus;
-    setPurchases(updated);
-    // TODO: Call PUT /purchases/:id with { status: newStatus.toLowerCase() }
+  // ✅ Update status with API call
+  const updateStatus = async (index, newStatus) => {
+    const purchaseId = purchases[index].id;
+    
+    // Set loading state for this specific row
+    setUpdatingStatus(prev => ({ ...prev, [purchaseId]: true }));
+    
+    try {
+      // Make the API call to update status
+      const response = await axiosInstance.put(`/purchases/purchase/status/${purchaseId}`, {
+        status: newStatus.toLowerCase()
+      });
+      
+      if (response.data.success) {
+        // Update local state on success
+        const updated = [...purchases];
+        updated[index].status = newStatus;
+        setPurchases(updated);
+      } else {
+        alert("Failed to update status. Please try again.");
+      }
+    } catch (error) {
+      console.error("Failed to update status:", error);
+      alert("Failed to update status. Please try again.");
+    } finally {
+      // Clear loading state for this row
+      setUpdatingStatus(prev => {
+        const newState = { ...prev };
+        delete newState[purchaseId];
+        return newState;
+      });
+    }
   };
 
   const toggleRowExpansion = (index) => {
@@ -181,9 +208,14 @@ const RequestedPlans = () => {
                                 transform: hoverIndex === index ? "translateY(-2px)" : "translateY(0)"
                               }}
                               onClick={() => updateStatus(index, "Approved")}
-                              disabled={item.status.toLowerCase() !== "pending"}
+                              disabled={item.status.toLowerCase() !== "pending" || updatingStatus[item.id]}
                             >
-                              <FaCheck size={12} /> Approve
+                              {updatingStatus[item.id] ? (
+                                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                              ) : (
+                                <FaCheck size={12} />
+                              )}
+                              Approve
                             </button>
                             <button
                               className="btn btn-sm btn-danger rounded-pill px-3 d-flex align-items-center gap-1"
@@ -193,9 +225,14 @@ const RequestedPlans = () => {
                                 transform: hoverIndex === index ? "translateY(-2px)" : "translateY(0)"
                               }}
                               onClick={() => updateStatus(index, "Rejected")}
-                              disabled={item.status.toLowerCase() !== "pending"}
+                              disabled={item.status.toLowerCase() !== "pending" || updatingStatus[item.id]}
                             >
-                              <FaTimes size={12} /> Reject
+                              {updatingStatus[item.id] ? (
+                                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                              ) : (
+                                <FaTimes size={12} />
+                              )}
+                              Reject
                             </button>
                           </div>
                         </td>
@@ -274,17 +311,25 @@ const RequestedPlans = () => {
                               className="btn btn-sm btn-success rounded-pill px-2 py-1"
                               style={{ fontSize: "11px" }}
                               onClick={() => updateStatus(index, "Approved")}
-                              disabled={item.status.toLowerCase() !== "pending"}
+                              disabled={item.status.toLowerCase() !== "pending" || updatingStatus[item.id]}
                             >
-                              <FaCheck size={10} />
+                              {updatingStatus[item.id] ? (
+                                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                              ) : (
+                                <FaCheck size={10} />
+                              )}
                             </button>
                             <button
                               className="btn btn-sm btn-danger rounded-pill px-2 py-1"
                               style={{ fontSize: "11px" }}
                               onClick={() => updateStatus(index, "Rejected")}
-                              disabled={item.status.toLowerCase() !== "pending"}
+                              disabled={item.status.toLowerCase() !== "pending" || updatingStatus[item.id]}
                             >
-                              <FaTimes size={10} />
+                              {updatingStatus[item.id] ? (
+                                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                              ) : (
+                                <FaTimes size={10} />
+                              )}
                             </button>
                           </div>
                         </td>
@@ -370,17 +415,27 @@ const RequestedPlans = () => {
                       className="btn btn-success rounded-pill flex-fill py-2 d-flex align-items-center justify-content-center gap-1"
                       style={{ fontSize: "13px" }}
                       onClick={() => updateStatus(index, "Approved")}
-                      disabled={item.status.toLowerCase() !== "pending"}
+                      disabled={item.status.toLowerCase() !== "pending" || updatingStatus[item.id]}
                     >
-                      <FaCheck size={12} /> Approve
+                      {updatingStatus[item.id] ? (
+                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                      ) : (
+                        <FaCheck size={12} />
+                      )}
+                      Approve
                     </button>
                     <button
                       className="btn btn-danger rounded-pill flex-fill py-2 d-flex align-items-center justify-content-center gap-1"
                       style={{ fontSize: "13px" }}
                       onClick={() => updateStatus(index, "Rejected")}
-                      disabled={item.status.toLowerCase() !== "pending"}
+                      disabled={item.status.toLowerCase() !== "pending" || updatingStatus[item.id]}
                     >
-                      <FaTimes size={12} /> Reject
+                      {updatingStatus[item.id] ? (
+                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                      ) : (
+                        <FaTimes size={12} />
+                      )}
+                      Reject
                     </button>
                   </div>
                 </div>
