@@ -5,17 +5,63 @@ const Navbar = ({ toggleSidebar }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const dropdownRef = useRef();
+  
+  // Get user data from localStorage
+  const getUserFromLocalStorage = () => {
+    try {
+      const userData = localStorage.getItem('user');
+      return userData ? JSON.parse(userData) : null;
+    } catch (error) {
+      console.error("Error parsing user data from localStorage:", error);
+      return null;
+    }
+  };
 
-  // dummy profile state
+  // Initialize profile state with user data from localStorage
+  const user = getUserFromLocalStorage();
   const [profile, setProfile] = useState({
-    name: "Admin",
-    email: "admin@gymapp.com",
-    phone: "+91 90000 00000",
-    role: "Super Admin",
-    branch: "All Branches",
+    name: user?.fullName || "Admin",
+    email: user?.email || "admin@gymapp.com",
+    phone: user?.phone || "+91 90000 00000",
+    role: user?.roleName || "Super Admin",
+    branch: user?.branchName || "All Branches",
     notifyEmail: true,
     notifySMS: false,
   });
+
+  useEffect(() => {
+    // Update profile when user data changes in localStorage
+    const handleStorageChange = () => {
+      const updatedUser = getUserFromLocalStorage();
+      if (updatedUser) {
+        setProfile({
+          name: updatedUser.fullName || "Admin",
+          email: updatedUser.email || "admin@gymapp.com",
+          phone: updatedUser.phone || "+91 90000 00000",
+          role: updatedUser.roleName || "Super Admin",
+          branch: updatedUser.branchName || "All Branches",
+          notifyEmail: true,
+          notifySMS: false,
+        });
+      }
+    };
+
+    // Listen for storage changes
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check for direct changes in the same tab
+    const intervalId = setInterval(() => {
+      const currentUser = getUserFromLocalStorage();
+      if (JSON.stringify(currentUser) !== JSON.stringify(user)) {
+        handleStorageChange();
+      }
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(intervalId);
+    };
+  }, [user]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -34,9 +80,25 @@ const Navbar = ({ toggleSidebar }) => {
   }, [showProfileModal]);
 
   const handleSaveProfile = () => {
-    // TODO: call API to save
-    alert("Profile saved!");
-    setShowProfileModal(false);
+    // Save updated profile to localStorage
+    try {
+      const currentUser = getUserFromLocalStorage();
+      if (currentUser) {
+        const updatedUser = {
+          ...currentUser,
+          fullName: profile.name,
+          email: profile.email,
+          phone: profile.phone,
+          branchName: profile.branch
+        };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+      alert("Profile saved!");
+      setShowProfileModal(false);
+    } catch (error) {
+      console.error("Error saving profile to localStorage:", error);
+      alert("Error saving profile!");
+    }
   };
 
   return (
@@ -108,7 +170,8 @@ const Navbar = ({ toggleSidebar }) => {
             >
               <FaUserCircle size={24} />
               <div className="d-none d-sm-block text-white">
-                <small className="mb-0">Welcome</small>
+                <small className="mb-0">Welcome    {profile.role} </small>
+            
                 <div className="fw-bold">{profile.name}</div>
               </div>
             </div>
@@ -126,7 +189,7 @@ const Navbar = ({ toggleSidebar }) => {
                   overflow: "hidden",
                 }}
               >
-                {/* <li>
+                <li>
                   <button
                     className="dropdown-item"
                     onClick={() => {
@@ -136,7 +199,7 @@ const Navbar = ({ toggleSidebar }) => {
                   >
                     Profile
                   </button>
-                </li> */}
+                </li>
                 <li>
                   <hr className="dropdown-divider" />
                 </li>
@@ -163,10 +226,9 @@ const Navbar = ({ toggleSidebar }) => {
           >
             <div className="modal-content">
               <div className="modal-header border-0 pb-0">
-                 <div className="d-flex align-items-center gap-3 mb-3">
+                <div className="d-flex align-items-center gap-3 mb-3">
                   <FaUserCircle size={48} color="#6c757d" />
-               
-                <h5 className="modal-title fw-bold">My Profile</h5>
+                  <h5 className="modal-title fw-bold">My Profile</h5>
                 </div>
                 <button
                   type="button"
@@ -176,8 +238,6 @@ const Navbar = ({ toggleSidebar }) => {
               </div>
 
               <div className="modal-body">
-                
-
                 <div className="row g-3">
                   <div className="col-12 col-md-6">
                     <label className="form-label">Full Name</label>
@@ -202,6 +262,14 @@ const Navbar = ({ toggleSidebar }) => {
                       className="form-control"
                       value={profile.phone}
                       onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-12 col-md-6">
+                    <label className="form-label">Role</label>
+                    <input
+                      className="form-control"
+                      value={profile.role}
+                      readOnly
                     />
                   </div>
                   <div className="col-12 col-md-6">
@@ -239,8 +307,6 @@ const Navbar = ({ toggleSidebar }) => {
                 </div>
 
                 <hr className="my-4" />
-
-              
               </div>
 
               <div className="modal-footer border-0">

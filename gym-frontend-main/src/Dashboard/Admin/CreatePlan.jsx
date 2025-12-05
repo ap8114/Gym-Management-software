@@ -50,7 +50,7 @@ useEffect(() => {
   const fetchBranches = async () => {
     setBranchesLoading(true); // optional: define this state if you want loading UI
     try {
-      const response = await fetch(`${BaseUrl}branches/${adminId}`);
+      const response = await fetch(`${BaseUrl}branches/by-admin/${adminId}`);
       if (!response.ok) throw new Error('Failed to fetch branches');
       const result = await response.json();
 

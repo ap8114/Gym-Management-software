@@ -40,10 +40,16 @@ const SessionBookingPage = () => {
       setError('Admin ID not found. Please log in.');
       return;
     }
-    fetchSessions();
     fetchBranches();
-    // fetchTrainers(); 
+    fetchTrainers();
   }, [adminId]);
+
+  // Re-fetch sessions when branches or trainers load
+  useEffect(() => {
+    if (branches.length > 0 || trainers.length > 0) {
+      fetchSessions();
+    }
+  }, [branches, trainers]);
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -72,17 +78,14 @@ const SessionBookingPage = () => {
     }
   };
 
+  // ✅ FIX: Fetch Branches with the correct URL
   const fetchBranches = async () => {
     try {
-      const res = await axiosInstance.get(`${BaseUrl}branches/${adminId}`);
+      const res = await axiosInstance.get(`${BaseUrl}branches/by-admin/${adminId}`);
       let branchList = [];
       if (res.data.success) {
-        if (res.data.branch && res.data.branch.id) {
-          branchList = [res.data.branch];
-        } else if (Array.isArray(res.data.branches)) {
+        if (res.data.branches && Array.isArray(res.data.branches)) {
           branchList = res.data.branches;
-        } else if (Array.isArray(res.data)) {
-          branchList = res.data;
         }
       }
       setBranches(branchList);
@@ -110,13 +113,6 @@ const SessionBookingPage = () => {
       setTrainers([]);
     }
   };
-
-  // Re-fetch sessions when branches or trainers load
-  useEffect(() => {
-    if (branches.length > 0 || trainers.length > 0) {
-      fetchSessions();
-    }
-  }, [branches, trainers]);
 
   const filteredSessions = sessions.filter(session => {
     const matchesStatus = statusFilter === 'All' || session.status === statusFilter;
