@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios"; // Import axios
 import {
   LineChart,
   Line,
@@ -10,41 +11,75 @@ import {
   Legend,
 } from "recharts";
 import { FaArrowUp, FaArrowDown } from "react-icons/fa";
+import BaseUrl from "../../Api/BaseUrl";
+
 
 export default function DashboardHomePage() {
-  // ----------- UPDATED KPIs (4 Only) -----------
+  // State for API data, loading, and errors
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // useEffect to fetch data on component mount
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const response = await axios.get(`${BaseUrl}/dashboard/dashboard`);
+        if (response.data && response.data.success) {
+          setDashboardData(response.data.data);
+        } else {
+          setError("Failed to load dashboard data.");
+        }
+      } catch (err) {
+        setError("An error occurred while fetching data.");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []); // Empty dependency array means this runs once on mount
+
+  // --- Conditional Rendering for Loading and Error States ---
+  if (loading) {
+    return <div>Loading dashboard...</div>; // Or a spinner component
+  }
+
+  if (error) {
+    return <div className="alert alert-danger">{error}</div>;
+  }
+
+  // --- Data Transformation ---
+  // If data is not loaded yet, return null to prevent errors
+  if (!dashboardData) {
+    return null;
+  }
+
+  // ----------- KPIs (Mapped from API) -----------
+  // NOTE: The API does not provide 'delta', so we are using placeholder values.
   const kpis = [
-    { title: "Total Revenue", value: 3500000, delta: +12 },
-
-    // NEW KPI → Monthly Revenue
-    { title: "Monthly Revenue", value: 420000, delta: +9 },
-
-    { title: "New Admins", value: 12, delta: +8 },
-
-    // CHANGED: Total Branches → Total Admins
-    { title: "Total Admins", value: 48, delta: +3 },
+    { title: "Total Revenue", value: dashboardData.totalRevenue, delta: +12 },
+    { title: "Monthly Revenue", value: dashboardData.monthlyRevenue, delta: +9 },
+    { title: "New Admins", value: dashboardData.newAdmins, delta: +8 },
+    { title: "Total Admins", value: dashboardData.totalAdmins, delta: +3 },
   ];
 
-  // ----------- Revenue Chart -----------
-  const revenueData = [
-    { d: "01", revenue: 120000, target: 100000 },
-    { d: "05", revenue: 160000, target: 120000 },
-    { d: "10", revenue: 210000, target: 180000 },
-    { d: "15", revenue: 190000, target: 200000 },
-    { d: "20", revenue: 260000, target: 230000 },
-    { d: "25", revenue: 300000, target: 260000 },
-    { d: "30", revenue: 350000, target: 300000 },
-  ];
+  // ----------- Revenue Chart (Mapped from API) -----------
+  const revenueData = dashboardData.revenueVsTarget.days.map((day, index) => ({
+    d: day,
+    revenue: dashboardData.revenueVsTarget.revenue[index],
+    target: dashboardData.revenueVsTarget.target[index],
+  }));
 
-  // ----------- Branch Leaderboard -----------
-  const leaderboard = [
-    { branch: "Andheri", revenue: 1550000, newMembers: 85 },
-    { branch: "Bandra", revenue: 1320000, newMembers: 64 },
-    { branch: "Thane", revenue: 980000, newMembers: 51 },
-    { branch: "Pune", revenue: 760000, newMembers: 43 },
-  ];
+  // ----------- Branch Leaderboard (Mapped from API) -----------
+  const leaderboard = dashboardData.branchLeaderboard.map((branch) => ({
+    branch: branch.branchName,
+    revenue: branch.revenue,
+    newMembers: branch.newMembers,
+  }));
 
-  // ----------- Alerts -----------
+  // ----------- Alerts (Static, as not provided by API) -----------
   const alerts = [
     { type: "danger", text: "12 invoices overdue (₹87,990)" },
     { type: "success", text: "Razorpay webhook verified" },
@@ -60,21 +95,20 @@ export default function DashboardHomePage() {
         <div className="text-muted">Super Admin Overview</div>
       </div>
 
-      {/* KPI ROW (3 Cards Only Now) */}
+      {/* KPI ROW */}
       <div className="row g-3 mb-4">
         {kpis.map((k, i) => (
           <div className="col-6 col-md-4" key={i}>
             <div className="card shadow-sm border-0 h-100">
               <div className="card-body">
                 <div className="text-muted small">{k.title}</div>
-
                 <div className="fs-5 fw-semibold mt-1">
                   {k.title.includes("Revenue") ? fmtINR(k.value) : k.value}
                 </div>
-
                 <div
-                  className={`small mt-1 d-inline-flex align-items-center ${k.delta >= 0 ? "text-success" : "text-danger"
-                    }`}
+                  className={`small mt-1 d-inline-flex align-items-center ${
+                    k.delta >= 0 ? "text-success" : "text-danger"
+                  }`}
                 >
                   {k.delta >= 0 ? (
                     <FaArrowUp className="me-1" />
@@ -111,6 +145,7 @@ export default function DashboardHomePage() {
                     stroke="#0d6efd"
                     strokeWidth={2}
                     dot={false}
+                    name="Actual Revenue"
                   />
                   <Line
                     type="monotone"
@@ -118,6 +153,7 @@ export default function DashboardHomePage() {
                     stroke="#6c757d"
                     strokeWidth={2}
                     dot={false}
+                    name="Target Revenue"
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -131,9 +167,9 @@ export default function DashboardHomePage() {
             <div className="card-header bg-white border-0 fw-semibold">
               Branch Leaderboard
             </div>
-            <div className="table-responsive">
+            <div className="table-responsive" style={{maxHeight: '340px', overflowY: 'auto'}}>
               <table className="table table-hover align-middle mb-0">
-                <thead className="bg-light">
+                <thead className="bg-light sticky-top">
                   <tr>
                     <th>Branch</th>
                     <th>Revenue</th>
@@ -168,7 +204,9 @@ export default function DashboardHomePage() {
                   key={i}
                   className="list-group-item d-flex align-items-center"
                 >
-                  <span className={`badge rounded-pill me-3 ${badgeTone(a.type)}`}>
+                  <span
+                    className={`badge rounded-pill me-3 ${badgeTone(a.type)}`}
+                  >
                     {a.type.toUpperCase()}
                   </span>
                   {a.text}
@@ -184,6 +222,10 @@ export default function DashboardHomePage() {
 
 // -------- Helpers --------
 function fmtINR(n) {
+  // Handle null or undefined values from the API
+  if (n === null || n === undefined) {
+    return "₹ 0";
+  }
   return "₹ " + n.toLocaleString("en-IN");
 }
 
