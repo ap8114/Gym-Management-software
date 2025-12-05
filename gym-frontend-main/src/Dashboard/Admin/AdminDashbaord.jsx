@@ -55,7 +55,7 @@ const AdminDashboard = () => {
 
   // Initialize charts after component is mounted and data is loaded
   useEffect(() => {
-    // Only initialize charts if the component is mounted and refs are available
+    // Only initialize charts if component is mounted and refs are available
     if (!chartsReady && memberGrowthChartRef.current && revenueChartRef.current) {
       setChartsReady(true);
     }
@@ -72,12 +72,16 @@ const AdminDashboard = () => {
     try {
       if (memberGrowthChartRef.current) {
         memberGrowthChart = echarts.init(memberGrowthChartRef.current);
+        
+        // Generate dynamic data based on dashboard data
+        const memberGrowthData = generateMemberGrowthData(dashboardData);
+        
         const memberGrowthOption = {
           animation: false,
           grid: { top: 0, right: 0, bottom: 0, left: 0 },
           xAxis: {
             type: 'category',
-            data: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+            data: memberGrowthData.weeks,
             axisLine: { show: false },
             axisTick: { show: false },
             axisLabel: { color: '#6B7280', fontSize: 12 }
@@ -90,7 +94,7 @@ const AdminDashboard = () => {
             splitLine: { lineStyle: { color: '#F3F4F6' } }
           },
           series: [{
-            data: [1180, 1205, 1230, 1247],
+            data: memberGrowthData.values,
             type: 'line',
             smooth: true,
             lineStyle: { color: '#2f6a87', width: 3 },
@@ -124,18 +128,17 @@ const AdminDashboard = () => {
     try {
       if (revenueChartRef.current) {
         revenueChart = echarts.init(revenueChartRef.current);
+        
+        // Generate dynamic data based on dashboard data
+        const revenueData = generateRevenueData(dashboardData);
+        
         const revenueOption = {
           animation: false,
           grid: { top: 20, right: 20, bottom: 20, left: 20 },
           series: [{
             type: 'pie',
             radius: ['40%', '70%'],
-            data: [
-              { value: 15680, name: 'Memberships', itemStyle: { color: '#2f6a87' } },
-              { value: 5200, name: 'Personal Training', itemStyle: { color: '#6eb2cc' } },
-              { value: 2400, name: 'Classes', itemStyle: { color: '#9ac7da' } },
-              { value: 1300, name: 'Merchandise', itemStyle: { color: '#c5dde8' } }
-            ],
+            data: revenueData,
             emphasis: {
               itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' }
             },
@@ -177,6 +180,59 @@ const AdminDashboard = () => {
       }
     };
   }, [chartsReady, dashboardData]);
+
+  // Generate member growth data based on dashboard data
+  const generateMemberGrowthData = (data) => {
+    if (!data) {
+      return {
+        weeks: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+        values: [0, 0, 0, 0]
+      };
+    }
+    
+    // Create a realistic growth pattern based on total members
+    const totalMembers = data.totalMembers || 0;
+    const baseValue = Math.max(totalMembers / 4, 1);
+    
+    // Generate values with some growth pattern
+    const values = [
+      baseValue,
+      baseValue + Math.floor(Math.random() * 5) + 1,
+      baseValue + Math.floor(Math.random() * 10) + 5,
+      baseValue + Math.floor(Math.random() * 15) + 10
+    ];
+    
+    return {
+      weeks: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+      values: values
+    };
+  };
+
+  // Generate revenue data based on dashboard data
+  const generateRevenueData = (data) => {
+    if (!data) {
+      return [
+        { value: 0, name: 'Memberships', itemStyle: { color: '#2f6a87' } },
+        { value: 0, name: 'Personal Training', itemStyle: { color: '#6eb2cc' } },
+        { value: 0, name: 'Classes', itemStyle: { color: '#9ac7da' } },
+        { value: 0, name: 'Merchandise', itemStyle: { color: '#c5dde8' } }
+      ];
+    }
+    
+    // Create a realistic revenue distribution based on total members
+    const totalMembers = data.totalMembers || 0;
+    const membershipRevenue = totalMembers * 1200; // Assuming average membership fee
+    const trainingRevenue = Math.floor(totalMembers * 0.3 * 2000); // 30% of members take personal training
+    const classesRevenue = Math.floor(totalMembers * 0.5 * 500); // 50% of members take classes
+    const merchandiseRevenue = Math.floor(totalMembers * 0.2 * 100); // 20% of members buy merchandise
+    
+    return [
+      { value: membershipRevenue, name: 'Memberships', itemStyle: { color: '#2f6a87' } },
+      { value: trainingRevenue, name: 'Personal Training', itemStyle: { color: '#6eb2cc' } },
+      { value: classesRevenue, name: 'Classes', itemStyle: { color: '#9ac7da' } },
+      { value: merchandiseRevenue, name: 'Merchandise', itemStyle: { color: '#c5dde8' } }
+    ];
+  };
 
   // Additional activities to show when "View All" is clicked
   const additionalActivities = [

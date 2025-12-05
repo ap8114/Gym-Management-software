@@ -1,3 +1,4 @@
+
 // src/pages/Login.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -42,6 +43,7 @@ const Login = () => {
       localStorage.setItem("userRole", normalizedRole);
       localStorage.setItem("userEmail", user.email);
       localStorage.setItem("userId", user.id);
+      localStorage.setItem("user", JSON.stringify(user));
 
       // Redirect based on role
       const redirectPath = roleRedirectMap[normalizedRole] || "/";

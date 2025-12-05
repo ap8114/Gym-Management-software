@@ -69,6 +69,8 @@ import HouseKeepingQrCheckin from "./Dashboard/HouseKeeping/HouseKeepingQrChecki
 // import HouseKeepingDutyRosters from "./Dashboard/HouseKeeping/HouseKeepingQDutyRoster";
 import ReceptionistWalkinMember from "./Dashboard/Receptionist/ReceptionistWalkinMember"
 import ReceptionistMembershipSignups from "./Dashboard/Receptionist/ReceptionistMembershipSignups";
+import HousekeepingShiftView from "./Dashboard/HouseKeeping/HousekeepingShiftView";
+import HousekeepingTask from "./Dashboard/HouseKeeping/HousekeepingTask";
 
 import ReceptionistQrCheckin from "./Dashboard/Receptionist/ReceptionistQrCheckin";
 import ReceptionistQRCode from "./Dashboard/Receptionist/ReceptionistQRCode";
@@ -115,6 +117,8 @@ import PersonalTraining from "./Dashboard/Admin/Bookings/PersonalTraining";
 import QrCheckin from "./Dashboard/Admin/qrcheckin";
 import Setting from "./Dashboard/SuperAdmin/Setting";
 import DashboardHomePage from "./Dashboard/SuperAdmin/SuperAdminDashbaord";
+import ShiftManagement from "./Dashboard/Admin/ShiftMangamenet";
+import AdminTaskManagement from "./Dashboard/Admin/AdminTaskManagement";
 
 
 
@@ -273,7 +277,8 @@ function App() {
                 <Route path="/admin/staff/attendance" element={<StaffAttendance />} />
                 <Route path="/admin/staff/duty-roster" element={<DutyRoster />} />
                 <Route path="/admin/staff/salary-calculator" element={<SalaryCalculator />} />
-
+                <Route path="/admin/shift-managment" element={<ShiftManagement/>} />
+                <Route path="/admin/task-managment" element={<AdminTaskManagement/>} />
                 {/* setting routes */}
                 <Route path="/admin/settings/BranchManagement" element={< BranchManagement />} />
                 <Route path="/admin/settings/RoleManagement" element={< RoleManagement />} />
@@ -340,9 +345,9 @@ function App() {
 
                 <Route path="/housekeeping/dashboard" element={<HouseKeepingDashboard />} />
                 <Route path="/housekeeping/qrcheckin" element={<HouseKeepingQrCheckin />} />
-                <Route path="//housekeeping/members" element={<HouseKeepingDutyRoster />} />
+                <Route path="//housekeeping/members" element={<HousekeepingShiftView />} />
                 <Route path="/housekeeping/membership-plan" element={<HouseKeepingAttendance />} />
-                <Route path="/housekeeping/duty-roster" element={<HouseKeepingTaskChecklist />} />
+                <Route path="/housekeeping/duty-roster" element={<HousekeepingTask/>} />
                 <Route path="/housekeeping/class-schedule" element={<HouseKeepingNotifications />} />
 
               </Routes>

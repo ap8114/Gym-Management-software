@@ -1,7 +1,9 @@
 // src/components/SettingsPage.js
 import React, { useState, useEffect } from 'react';
 import { FaUser, FaLock, FaSave, FaTimes } from 'react-icons/fa';
-import axiosInstance from '../../Api/axiosInstance'; // Adjust the path based on your project structure
+import axiosInstance from '../../Api/axiosInstance';
+import axios from 'axios';
+import BaseUrl from '../../Api/BaseUrl';
 
 const AdminSettings = () => {
   // State for profile photo URL
@@ -13,10 +15,10 @@ const AdminSettings = () => {
     fullName: '',
     email: '',
     phone: '',
-    profilePhoto: null, // For file upload
+    profilePhoto: null,
 
     // Password Section
-    currentPassword: '',
+    oldPassword: '',
     newPassword: '',
     confirmNewPassword: '',
   });
@@ -49,8 +51,6 @@ const AdminSettings = () => {
         }));
         
         // If there's a profile photo URL in the user data, use it
-        // Note: Based on the API response you provided, there doesn't seem to be a profile photo URL
-        // You might need to adjust this if your API provides one
         if (userData.profilePhoto) {
           setProfilePhotoUrl(userData.profilePhoto);
         }
@@ -93,63 +93,102 @@ const AdminSettings = () => {
   };
 
   // Handler for form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Validate password fields if any of them is filled
-    if (settingsData.currentPassword || settingsData.newPassword || settingsData.confirmNewPassword) {
-      if (!settingsData.currentPassword) {
-        alert('Please enter your current password');
-        return;
-      }
-      if (!settingsData.newPassword) {
-        alert('Please enter a new password');
-        return;
-      }
-      if (settingsData.newPassword !== settingsData.confirmNewPassword) {
-        alert('New passwords do not match');
-        return;
-      }
-    }
-    
-    try {
-      const userId = localStorage.getItem('userId');
-      
-      // Create payload object for the PUT request with only the fields you want to update
-      const payload = {
-        fullName: settingsData.fullName,
-        email: settingsData.email,
-        phone: settingsData.phone,
-      };
-      
-      // Only include password fields if they're filled
-      if (settingsData.currentPassword && settingsData.newPassword) {
-        payload.currentPassword = settingsData.currentPassword;
-        payload.newPassword = settingsData.newPassword;
-      }
-      
-      // Send data to backend API
-      const response = await axiosInstance.put(`/auth/user/${userId}`, payload);
-      
-      console.log('Settings saved:', response.data);
-      
-      // Show a success message
-      setShowSaveMessage(true);
-      setTimeout(() => setShowSaveMessage(false), 3000); // Hide after 3 seconds
-      
-      // Clear password fields after successful save
-      setSettingsData(prev => ({
-        ...prev,
-        currentPassword: '',
-        newPassword: '',
-        confirmNewPassword: ''
-      }));
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      alert('Error saving settings. Please try again.');
-    }
-  };
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
+  const userId = localStorage.getItem('userId');
+  if (!userId) {
+    alert('User not logged in. Please log in again.');
+    return;
+  }
+
+  try {
+    const requests = [];
+
+    // 📌 1. Profile update (if any field changed from initial/fetched values)
+    // But since you always overwrite from form state (even if unchanged), safer to compare with what backend had.
+    // For simplicity, assume: if user typed something, send it (trim empty to null/keep existing).
+    const profilePayload = {
+      fullName: settingsData.fullName.trim() || '',
+      email: settingsData.email.trim() || '',
+      phone: (settingsData.phone || '').trim(),
+    };
+
+    // Only send profile update if *something* changed (non-empty or different from current)
+    // To be precise, you’d compare with original values — but for now, just send if valid
+    if (profilePayload.fullName || profilePayload.email || profilePayload.phone) {
+      requests.push(
+        axiosInstance.put(`/auth/user/${userId}`, profilePayload)
+      );
+    }
+
+    // 📌 2. Password change (only if ALL 3 fields are non-empty after trim)
+    const oldP = settingsData.oldPassword.trim();
+    const newP = settingsData.newPassword.trim();
+    const confirmP = settingsData.confirmNewPassword.trim();
+
+    if (oldP && newP && confirmP) {
+  if (newP !== confirmP) {
+    alert('New passwords do not match.');
+    return;
+  }
+
+  const passwordPromise = axios.put(`${BaseUrl}/auth/changepassword`, {
+    id: userId,          // 🔑 CRITICAL — add user ID
+    oldPassword: oldP,
+    newPassword: newP
+  });
+  requests.push(passwordPromise);
+}
+     else if (oldP || newP || confirmP) {
+      // ⚠ Partial input
+      alert('To change password, please fill all three password fields.');
+      return;
+    }
+
+    // 🚀 Fire all required API calls
+    if (requests.length === 0) {
+      // Nothing to update
+      alert('No changes to save.');
+      return;
+    }
+
+    // Wait for all to complete
+    await Promise.all(requests);
+
+    // ✅ Success!
+    setShowSaveMessage(true);
+    setTimeout(() => setShowSaveMessage(false), 3000);
+
+    // Reset password fields only
+    setSettingsData(prev => ({
+      ...prev,
+      oldPassword: '',
+      newPassword: '',
+      confirmNewPassword: '',
+    }));
+
+  } catch (error) {
+    console.error('Error saving settings:', error);
+
+    let message = 'Failed to save settings. Please try again.';
+    if (error.response) {
+      const res = error.response;
+      message = res.data?.message || res.data?.error || res.statusText || message;
+      if (res.status === 401) {
+        message = 'Session expired. Please log in again.';
+        // Optional: auto-logout
+        // localStorage.clear(); window.location.href = '/login';
+      } else if (res.status === 400 && res.config.url.includes('changepassword')) {
+        message = 'Incorrect current password.';
+      }
+    } else if (error.request) {
+      message = 'Network error. Please check your internet connection.';
+    }
+
+    alert(message);
+  }
+};
   if (loading) {
     return (
       <div className="container-fluid p-3 p-md-4">
@@ -257,13 +296,13 @@ const AdminSettings = () => {
               <div className="card-body">
                 <div className="row g-3" style={{ maxWidth: '600px' }}>
                   <div className="col-12">
-                    <label htmlFor="currentPassword" className="form-label">Current Password</label>
+                    <label htmlFor="oldPassword" className="form-label">Current Password</label>
                     <input
                       type="password"
                       className="form-control"
-                      id="currentPassword"
-                      name="currentPassword"
-                      value={settingsData.currentPassword}
+                      id="oldPassword"
+                      name="oldPassword"
+                      value={settingsData.oldPassword}
                       onChange={handleInputChange}
                     />
                   </div>
@@ -309,4 +348,4 @@ const AdminSettings = () => {
   );
 };
 
-export default  AdminSettings;
+export default AdminSettings;

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaEye, FaEdit, FaTrashAlt, FaUserPlus } from 'react-icons/fa';
+import axios from 'axios';
 
 const ReceptionistWalkinMember = () => {
   // Modal States
@@ -10,39 +11,203 @@ const ReceptionistWalkinMember = () => {
   // Search Term State
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Mock Member Data
-  const [membersData, setMembersData] = useState([
-    {
-      id: 201,
-      name: "Rahul Sharma",
-      phone: "+91 98765 43210",
-      email: "rahul@example.com",
-      membership_plan: "Premium Annual",
-      start_date: "2025-01-01",
-      expiry_date: "2026-01-01",
-      status: "Active"
-    },
-    {
-      id: 202,
-      name: "Priya Patel",
-      phone: "+91 91234 56789",
-      email: "priya@example.com",
-      membership_plan: "Basic Monthly",
-      start_date: "2025-03-01",
-      expiry_date: "2025-04-01",
-      status: "Active"
-    },
-    {
-      id: 203,
-      name: "Ankit Mehta",
-      phone: "+91 88888 11111",
-      email: "ankit@example.com",
-      membership_plan: "Student Plan",
-      start_date: "2024-12-01",
-      expiry_date: "2025-01-01",
-      status: "Expired"
+  // Loading and error states
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Member Data from API
+  const [membersData, setMembersData] = useState([]);
+  
+  // API base URL
+  const API_BASE_URL = 'https://gymnew-backend-5-dec-production.up.railway.app/api';
+  const ADMIN_ID = 11; // Hardcoded admin ID as shown in the API example
+
+  // Fetch members from API
+  const fetchMembers = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/members/admin/${ADMIN_ID}`);
+      if (response.data.success) {
+        // Transform API data to match component structure
+        const transformedData = response.data.data.map(member => ({
+          id: member.id,
+          name: member.fullName,
+          phone: member.phone,
+          email: member.email,
+          membership_plan: getPlanName(member.planId), // Helper function to get plan name
+          start_date: formatDate(member.membershipFrom),
+          expiry_date: formatDate(member.membershipTo),
+          status: member.status,
+          interested_in: member.interestedIn,
+          preferred_time: member.membershipFrom,
+          notes: member.address, // Using address as notes since API doesn't have notes field
+          // Additional fields from API that might be needed
+          adminId: member.adminId,
+          gender: member.gender,
+          address: member.address,
+          branchId: member.branchId,
+          planId: member.planId,
+          paymentMode: member.paymentMode,
+          amountPaid: member.amountPaid,
+          dateOfBirth: member.dateOfBirth
+        }));
+        setMembersData(transformedData);
+      } else {
+        setError('Failed to fetch members');
+      }
+    } catch (err) {
+      setError('Error fetching members: ' + err.message);
+      console.error('Error fetching members:', err);
+    } finally {
+      setIsLoading(false);
     }
-  ]);
+  };
+
+  // Helper function to get plan name from planId
+  const getPlanName = (planId) => {
+    // This is a placeholder - you might want to fetch plan names from API or have a mapping
+    const plans = {
+      1: "Basic Monthly",
+      2: "Premium Annual",
+      3: "Student Plan",
+      4: "Weekend Warrior",
+      5: "Corporate Package",
+      6: "Premium Annual" // Based on the example payload
+    };
+    return plans[planId] || "Unknown Plan";
+  };
+
+  // Helper function to format date
+  const formatDate = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+  };
+
+  // Create a new member
+  const createMember = async (memberData) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // Transform component data to API format
+      const apiData = {
+        adminId: ADMIN_ID,
+        fullName: memberData.name,
+        email: memberData.email,
+        password: memberData.password || "defaultPassword123", // Default password if not provided
+        phone: memberData.phone,
+        gender: memberData.gender || "Not Specified",
+        address: memberData.notes || "",
+        branchId: 23, // Default branch ID from example
+        planId: getPlanId(memberData.membership_plan), // Helper function to get plan ID
+        membershipFrom: memberData.preferred_time || new Date().toISOString(),
+        membershipTo: null, // API example shows null
+        paymentMode: memberData.paymentMode || "Cash",
+        interestedIn: memberData.interested_in || "Not Specified",
+        amountPaid: memberData.amountPaid || 12000, // Default from example
+        dateOfBirth: memberData.dateOfBirth || null,
+        status: "Active"
+      };
+
+      const response = await axios.post(`${API_BASE_URL}/members/create`, apiData);
+      if (response.data.success) {
+        await fetchMembers(); // Refresh the members list
+        return { success: true };
+      } else {
+        setError('Failed to create member');
+        return { success: false, error: 'Failed to create member' };
+      }
+    } catch (err) {
+      setError('Error creating member: ' + err.message);
+      console.error('Error creating member:', err);
+      return { success: false, error: err.message };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Helper function to get plan ID from plan name
+  const getPlanId = (planName) => {
+    // This is a placeholder - you might want to have a mapping or fetch from API
+    const plans = {
+      "Basic Monthly": 1,
+      "Premium Annual": 2,
+      "Student Plan": 3,
+      "Weekend Warrior": 4,
+      "Corporate Package": 5,
+      "Premium Annual": 6 // Based on the example payload
+    };
+    return plans[planName] || 1; // Default to Basic Monthly if not found
+  };
+
+  // Update a member
+  const updateMember = async (id, memberData) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // Transform component data to API format
+      const apiData = {
+        adminId: ADMIN_ID,
+        fullName: memberData.name,
+        email: memberData.email,
+        phone: memberData.phone,
+        gender: memberData.gender || "Not Specified",
+        address: memberData.notes || "",
+        branchId: memberData.branchId || 23,
+        planId: getPlanId(memberData.membership_plan),
+        membershipFrom: memberData.preferred_time || new Date().toISOString(),
+        membershipTo: memberData.expiry_date ? new Date(memberData.expiry_date).toISOString() : null,
+        paymentMode: memberData.paymentMode || "Cash",
+        interestedIn: memberData.interested_in || "Not Specified",
+        amountPaid: memberData.amountPaid || 12000,
+        dateOfBirth: memberData.dateOfBirth || null,
+        status: memberData.status || "Active"
+      };
+
+      const response = await axios.put(`${API_BASE_URL}/members/update/${id}`, apiData);
+      if (response.data.success) {
+        await fetchMembers(); // Refresh the members list
+        return { success: true };
+      } else {
+        setError('Failed to update member');
+        return { success: false, error: 'Failed to update member' };
+      }
+    } catch (err) {
+      setError('Error updating member: ' + err.message);
+      console.error('Error updating member:', err);
+      return { success: false, error: err.message };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Delete a member
+  const deleteMember = async (id) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/members/delete/${id}`);
+      if (response.data.success) {
+        await fetchMembers(); // Refresh the members list
+        return { success: true };
+      } else {
+        setError('Failed to delete member');
+        return { success: false, error: 'Failed to delete member' };
+      }
+    } catch (err) {
+      setError('Error deleting member: ' + err.message);
+      console.error('Error deleting member:', err);
+      return { success: false, error: err.message };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch members on component mount
+  useEffect(() => {
+    fetchMembers();
+  }, []);
 
   // Filtered data must be declared BEFORE it's used in pagination
   const filteredMembersData = membersData.filter(member =>
@@ -118,10 +283,14 @@ const ReceptionistWalkinMember = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedItem) {
-      setMembersData(prev => prev.filter(m => m.id !== selectedItem.id));
-      alert(`Member record for ${selectedItem.name} has been deleted.`);
+      const result = await deleteMember(selectedItem.id);
+      if (result.success) {
+        alert(`Member record for ${selectedItem.name} has been deleted.`);
+      } else {
+        alert(`Failed to delete member: ${result.error}`);
+      }
     }
     setIsDeleteModalOpen(false);
     setSelectedItem(null);
@@ -158,11 +327,7 @@ const ReceptionistWalkinMember = () => {
     }
   };
 
-  const getNextId = () => {
-    return membersData.length > 0 ? Math.max(...membersData.map(m => m.id)) + 1 : 1;
-  };
-
-  const handleSubmit = (actionType) => {
+  const handleSubmit = async (actionType) => {
     // Member form data collection
     const formData = {
       name: document.querySelector('input[placeholder="Enter full name"]')?.value || '',
@@ -184,36 +349,35 @@ const ReceptionistWalkinMember = () => {
     };
 
     if (modalType === 'add') {
-      const newItem = {
-        id: getNextId(),
-        name: formData.name,
-        phone: formData.phone,
-        email: formData.email,
-        membership_plan: formData.membership_plan,
-        start_date: memberFields.start_date,
-        expiry_date: memberFields.expiry_date,
-        status: memberFields.status,
-        interested_in: formData.interested_in,
-        preferred_time: formData.preferred_time,
-        notes: formData.notes
-      };
-      setMembersData(prev => [...prev, newItem]);
-      alert(`New member ${newItem.name} registered successfully!`);
+      const result = await createMember({
+        ...formData,
+        ...memberFields
+      });
+      
+      if (result.success) {
+        alert(`New member ${formData.name} registered successfully!`);
+        closeModal();
+      } else {
+        alert(`Failed to register member: ${result.error}`);
+      }
     } else if (modalType === 'edit' && selectedItem) {
-      const updatedItem = {
-        ...selectedItem,
-        name: formData.name,
-        phone: formData.phone,
-        email: formData.email,
-        membership_plan: formData.membership_plan || selectedItem.membership_plan,
-        interested_in: formData.interested_in || selectedItem.interested_in,
-        preferred_time: formData.preferred_time || selectedItem.preferred_time,
-        notes: formData.notes || selectedItem.notes
-      };
-      setMembersData(prev => prev.map(m => m.id === selectedItem.id ? updatedItem : m));
-      alert(`Member record for ${updatedItem.name} updated successfully!`);
+      const result = await updateMember(selectedItem.id, {
+        ...formData,
+        ...memberFields,
+        branchId: selectedItem.branchId,
+        planId: selectedItem.planId,
+        paymentMode: selectedItem.paymentMode,
+        amountPaid: selectedItem.amountPaid,
+        dateOfBirth: selectedItem.dateOfBirth
+      });
+      
+      if (result.success) {
+        alert(`Member record for ${formData.name} updated successfully!`);
+        closeModal();
+      } else {
+        alert(`Failed to update member: ${result.error}`);
+      }
     }
-    closeModal();
   };
 
   return (
@@ -242,6 +406,13 @@ const ReceptionistWalkinMember = () => {
           </button>
         </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      )}
 
       {/* Search & Actions */}
       <div className="row mb-4 g-3">
@@ -307,7 +478,15 @@ const ReceptionistWalkinMember = () => {
             </thead>
             <tbody>
               {/* Member Data — Filtered and Paginated */}
-              {currentData.length > 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan="8" className="text-center py-4">
+                    <div className="spinner-border text-primary" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : currentData.length > 0 ? (
                 currentData.map((member) => (
                   <tr key={member.id}>
                     <td>
@@ -325,7 +504,7 @@ const ReceptionistWalkinMember = () => {
                     <td className="d-none d-lg-table-cell">{member.email || <span className="text-muted">—</span>}</td>
                     <td className="d-none d-md-table-cell">{member.membership_plan}</td>
                     <td className="d-none d-lg-table-cell">{member.start_date}</td>
-                    <td className="d-none d-lg-table-cell">{member.expiry_date}</td>
+                    <td className="d-none d-lg-table-cell">{member.expiry_date || <span className="text-muted">—</span>}</td>
                     <td className="text-center d-none d-md-table-cell">
                       <span className={`badge ${member.status === 'Active' ? 'bg-success' : 'bg-danger'}`}>
                         {member.status}
