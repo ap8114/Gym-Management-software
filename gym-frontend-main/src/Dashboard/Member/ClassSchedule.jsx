@@ -1,17 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { FaClock, FaUser, FaCalendarAlt, FaRupeeSign } from 'react-icons/fa';
-import axiosInstance from '../../Api/axiosInstance'; // Import your axios instance
+import axiosInstance from '../../Api/axiosInstance';
 
 const ClassSchedule = () => {
-  // State for group classes
   const [groupClasses, setGroupClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingError, setBookingError] = useState(null);
 
-  // Fetch classes from API
+  // ✅ Get memberId from localStorage
+  const getMemberIdFromStorage = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        return user?.id || null;
+      }
+    } catch (err) {
+      console.error('Error parsing user from localStorage:', err);
+    }
+    return null;
+  };
+
+  const memberId = getMemberIdFromStorage();
+
+  // Fetch classes
   useEffect(() => {
     const fetchClasses = async () => {
       try {
@@ -19,32 +36,28 @@ const ClassSchedule = () => {
         const response = await axiosInstance.get('class/scheduled/all');
         
         if (response.data.success && response.data.data) {
-          // Transform API data to match component structure
           const transformedClasses = response.data.data.map(cls => {
-            // Extract start and end times from the time string
             const timeParts = cls.time.split(' - ');
             const startTime = timeParts[0] || '';
             const endTime = timeParts[1] || '';
             
-            // Generate a random price based on class type
             const generatePrice = (className) => {
               if (className.toLowerCase().includes('yoga')) return 350;
               if (className.toLowerCase().includes('pilates')) return 450;
               if (className.toLowerCase().includes('hiit') || className.toLowerCase().includes('hit')) return 400;
               if (className.toLowerCase().includes('zumba')) return 250;
-              return 300; // Default price
+              return 300;
             };
             
-            // Generate random capacity and booked seats
-            const capacity = Math.floor(Math.random() * 15) + 10; // Random between 10-25
+            const capacity = Math.floor(Math.random() * 15) + 10;
             const bookedSeats = Math.floor(Math.random() * capacity);
             
             return {
               id: cls.id,
               name: cls.className,
               trainer_name: cls.trainer,
-              trainer_id: 1, // Default trainer ID since API doesn't provide it
-              date: cls.date.split('T')[0], // Extract date part
+              trainer_id: 1,
+              date: cls.date.split('T')[0],
               start_time: startTime,
               end_time: endTime,
               day: cls.day,
@@ -73,7 +86,6 @@ const ClassSchedule = () => {
     fetchClasses();
   }, []);
 
-  // Mock data for trainers (since API doesn't provide trainer details)
   const trainers = [
     { id: 1, name: 'John Smith', specialty: 'Strength Training' },
     { id: 2, name: 'Sarah Johnson', specialty: 'Yoga & Pilates' },
@@ -81,7 +93,6 @@ const ClassSchedule = () => {
     { id: 4, name: 'Emily Davis', specialty: 'Weight Loss' },
   ];
 
-  // Helper functions
   const formatTime = (timeString) => {
     if (!timeString) return '';
     const [hours, minutes] = timeString.split(':');
@@ -109,18 +120,18 @@ const ClassSchedule = () => {
     return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
   };
 
-  // Modal handlers
   const openBookingModal = (cls) => {
     setSelectedClass(cls);
     setIsModalOpen(true);
+    setBookingError(null);
   };
 
   const closeBookingModal = () => {
     setIsModalOpen(false);
     setSelectedClass(null);
+    setBookingError(null);
   };
 
-  // Prevent background scroll when modal open
   useEffect(() => {
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
@@ -132,7 +143,44 @@ const ClassSchedule = () => {
     };
   }, [isModalOpen]);
 
-  // Loading state
+  // ✅ REAL BOOKING FUNCTION
+  const handleConfirmBooking = async () => {
+    if (!memberId || !selectedClass) {
+      alert('User not logged in or class not selected.');
+      return;
+    }
+
+    setBookingLoading(true);
+    setBookingError(null);
+
+    try {
+      const payload = {
+        memberId: memberId,
+        scheduleId: selectedClass.id // Use class.id as scheduleId
+      };
+
+      const response = await axiosInstance.post('class/book', payload);
+
+      if (response.data.success) {
+        // Show success message
+        alert(`✅ Successfully booked ${selectedClass.name}!`);
+        closeBookingModal();
+        
+        // Optional: Refresh class list to update availability
+        // (You can enhance this later)
+      } else {
+        throw new Error(response.data.message || 'Booking failed');
+      }
+    } catch (err) {
+      console.error('Booking error:', err);
+      const errorMsg = err.response?.data?.message || 'Failed to book class. Please try again.';
+      setBookingError(errorMsg);
+      alert(`❌ ${errorMsg}`);
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="mt-3" style={{ backgroundColor: '#f8f9fa' }}>
@@ -152,7 +200,6 @@ const ClassSchedule = () => {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="mt-3" style={{ backgroundColor: '#f8f9fa' }}>
@@ -179,7 +226,6 @@ const ClassSchedule = () => {
 
   return (
     <div className="mt-3" style={{ backgroundColor: '#f8f9fa' }}>
-      {/* Header */}
       <div className="row mb-3">
         <div className="col-12 text-center text-md-start">
           <h1 className="fw-bold">Weekly Class Schedule</h1>
@@ -187,7 +233,6 @@ const ClassSchedule = () => {
         </div>
       </div>
 
-      {/* Classes Grid */}
       <div className="row g-4">
         {groupClasses.map(cls => {
           const trainer = getTrainer(cls.trainer_id);
@@ -196,7 +241,6 @@ const ClassSchedule = () => {
           return (
             <div key={cls.id} className="col-12 col-md-6 col-lg-4">
               <div className="card shadow-sm border-0" style={{ borderRadius: '12px', overflow: 'hidden' }}>
-                {/* Card Header */}
                 <div 
                   className="p-4" 
                   style={{ 
@@ -207,8 +251,6 @@ const ClassSchedule = () => {
                   <h5 className="mb-0 fw-bold">{cls.name}</h5>
                   <small className="text-muted">{cls.branch}</small>
                 </div>
-
-                {/* Card Body */}
                 <div className="card-body p-4">
                   <div className="d-flex align-items-center mb-3">
                     <FaClock size={16} className="me-2 text-primary" />
@@ -353,9 +395,11 @@ const ClassSchedule = () => {
                       </div>
                     </div>
 
-                    <div className="alert alert-info mb-4">
-                      <strong>Booking Confirmation:</strong> You'll receive an email and SMS confirmation after booking.
-                    </div>
+                    {bookingError && (
+                      <div className="alert alert-danger mb-4">
+                        {bookingError}
+                      </div>
+                    )}
 
                     <div className="text-center">
                       <button
@@ -367,12 +411,17 @@ const ClassSchedule = () => {
                           border: 'none',
                           fontSize: '1.1rem'
                         }}
-                        onClick={() => {
-                          alert(`Successfully booked ${selectedClass.name} for ${formatPrice(selectedClass.price)}!`);
-                          closeBookingModal();
-                        }}
+                        onClick={handleConfirmBooking}
+                        disabled={bookingLoading}
                       >
-                        Confirm Booking
+                        {bookingLoading ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2"></span>
+                            Processing...
+                          </>
+                        ) : (
+                          'Confirm Booking'
+                        )}
                       </button>
                     </div>
                   </div>

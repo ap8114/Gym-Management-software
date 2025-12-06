@@ -19,7 +19,6 @@ const ViewPlans = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
 
-  // ✅ Get user from localStorage
   const getUserFromStorage = () => {
     try {
       const userStr = localStorage.getItem('user');
@@ -35,12 +34,14 @@ const ViewPlans = () => {
   const adminId = user?.adminId || null;
   const branchId = user?.branchId || null;
 
-  console.log("Admin Id", adminId);
-  console.log("Branch Id", branchId);
-
   // ✅ Fetch plans
   useEffect(() => {
     const fetchPlans = async () => {
+      if (!adminId) {
+        setLoadingPlans(false);
+        return;
+      }
+
       try {
         const response = await axiosInstance.get(`MemberPlan?adminId=${adminId}`);
         if (response.data.success && Array.isArray(response.data.plans)) {
@@ -53,8 +54,7 @@ const ViewPlans = () => {
           setAllPlans([]);
         }
       } catch (err) {
-        // console.error('Error fetching plans:', err);
-        // setError('Failed to load plans.');
+        console.error('Error fetching plans:', err);
         setAllPlans([]);
       } finally {
         setLoadingPlans(false);
@@ -64,7 +64,7 @@ const ViewPlans = () => {
     fetchPlans();
   }, [adminId]);
 
-  // ✅ Fetch bookings for this member
+  // ✅ Fetch bookings
   useEffect(() => {
     const fetchBookings = async () => {
       if (!memberId) {
@@ -75,7 +75,6 @@ const ViewPlans = () => {
       try {
         const response = await axiosInstance.get(`booking/requests`);
         if (response.data.success && Array.isArray(response.data.bookings)) {
-          // Map to UI format
           const mapped = response.data.bookings.map(b => ({
             id: b.id,
             planName: b.plan?.name || 'Unknown Plan',
@@ -84,7 +83,7 @@ const ViewPlans = () => {
             validity: b.plan?.validityDays || 0,
             totalSessions: b.plan?.sessions || 0,
             remainingSessions: b.leftSessions || 0,
-            status: b.status || 'pending', // 'pending', 'approved', 'rejected'
+            status: b.status || 'pending',
             planId: b.planId,
           }));
           setBookings(mapped);
@@ -126,17 +125,19 @@ const ViewPlans = () => {
     setBookingStatus('pending');
 
     try {
-      // Extract numeric price from "₹1,234" → 1234
       const numericPrice = parseInt(selectedPlan.price.replace(/[^0-9]/g, ''), 10);
 
+      // ✅ CORRECT PAYLOAD — do NOT include 'id'
       const payload = {
         memberId: memberId,
-        classId: selectedPlan.id, // plan ID used as classId
+        classId: selectedPlan.id,
         branchId: branchId,
         adminId: adminId,
         price: numericPrice,
         upiId: paymentDetails.upi.trim(),
       };
+
+      console.log('Booking payload:', payload); // 🔍 Debug
 
       const response = await axiosInstance.post('booking/create', payload);
 
@@ -164,12 +165,15 @@ const ViewPlans = () => {
 
         alert('✅ Booking request submitted! Awaiting admin approval.');
       } else {
-        throw new Error(response.data.message || 'Booking failed');
+        const errorMsg = response.data.message || 'Booking failed';
+        console.error('Booking API error:', errorMsg);
+        alert(`❌ ${errorMsg}`);
+        throw new Error(errorMsg);
       }
     } catch (err) {
-      console.error('Booking error:', err);
       setBookingStatus('error');
-      alert('❌ Failed to create booking. Please try again.');
+      // Do NOT show raw DB errors to user
+      alert('❌ Failed to create booking. Please try again or contact support.');
     }
   };
 
@@ -178,20 +182,11 @@ const ViewPlans = () => {
     setShowViewModal(true);
   };
 
-  // ✅ Loading UI
   if (loadingPlans) {
     return (
       <div className="d-flex justify-content-center align-items-center vh-50">
         <Spinner animation="border" variant="primary" />
       </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container className="mt-5">
-        <Alert variant="danger" className="text-center">{error}</Alert>
-      </Container>
     );
   }
 
@@ -215,7 +210,6 @@ const ViewPlans = () => {
               borderRadius: '12px',
               fontSize: 'clamp(0.9rem, 2vw, 1.1rem)',
               transition: 'all 0.3s ease',
-              boxShadow: activeTab === 'group' ? '0 4px 12px rgba(47, 106, 135, 0.25)' : '0 2px 6px rgba(0,0,0,0.1)'
             }}
           >
             <span>Group Classes</span>
@@ -231,7 +225,6 @@ const ViewPlans = () => {
               borderRadius: '12px',
               fontSize: 'clamp(0.9rem, 2vw, 1.1rem)',
               transition: 'all 0.3s ease',
-              boxShadow: activeTab === 'personal' ? '0 4px 12px rgba(47, 106, 135, 0.25)' : '0 2px 6px rgba(0,0,0,0.1)'
             }}
           >
             <span>Personal Training</span>
@@ -457,8 +450,6 @@ const ViewPlans = () => {
                       padding: '10px 20px',
                       maxWidth: '400px'
                     }}
-                    onMouseOver={(e) => e.target.style.backgroundColor = '#25556e'}
-                    onMouseOut={(e) => e.target.style.backgroundColor = '#2f6a87'}
                   >
                     Confirm Booking
                   </Button>
@@ -477,7 +468,6 @@ const ViewPlans = () => {
               border: 'none',
               minWidth: '300px',
               animation: 'fadeInUp 0.5s ease',
-              backdropFilter: 'blur(10px)'
             }}>
               <div className="d-flex align-items-center justify-content-center gap-2">
                 <FaCheckCircle size={24} />
@@ -490,10 +480,10 @@ const ViewPlans = () => {
           </div>
         )}
 
-        {/* Your Bookings Table */}
+        {/* Bookings Table */}
         {(loadingBookings || bookings.length > 0) && (
           <div className="mt-4 mt-md-5 pt-4 pt-md-5 border-top">
-            <h3 className="fw-bold mb-3 mb-md-4 text-dark" style={{ color: '#333', fontSize: 'clamp(1.3rem, 3vw, 1.6rem)' }}>
+            <h3 className="fw-bold mb-3 mb-md-4 text-dark" style={{ fontSize: 'clamp(1.3rem, 3vw, 1.6rem)' }}>
               {loadingBookings ? 'Loading Bookings...' : 'Your Bookings'}
             </h3>
             {loadingBookings ? (
@@ -517,9 +507,7 @@ const ViewPlans = () => {
                       </thead>
                       <tbody>
                         {bookings.map((booking, index) => (
-                          <tr key={booking.id} style={{ transition: 'background-color 0.2s ease' }}
-                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = ''}>
+                          <tr key={booking.id}>
                             <td className="py-2 py-md-3 fw-bold">{index + 1}</td>
                             <td className="py-2 py-md-3">
                               <strong style={{ color: '#333', fontSize: '1rem' }}>{booking.planName}</strong>
