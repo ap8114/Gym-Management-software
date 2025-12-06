@@ -98,7 +98,7 @@ const SessionBookingPage = () => {
   // ✅ Fetch Trainers
   const fetchTrainers = async () => {
     try {
-      const res = await axiosInstance.get(`${BaseUrl}trainers/${adminId}`);
+      const res = await axiosInstance.get(`${BaseUrl}class/trainers`);
       let trainerList = [];
       if (res.data.success) {
         if (res.data.trainers && Array.isArray(res.data.trainers)) {
@@ -521,7 +521,7 @@ const SessionBookingPage = () => {
                       >
                         <option value="">Select trainer</option>
                         {trainers.map(t => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
+                          <option key={t.id} value={t.id}>{t.fullName}</option>
                         ))}
                       </select>
                     </div>

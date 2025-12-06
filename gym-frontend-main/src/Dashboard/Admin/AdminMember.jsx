@@ -288,6 +288,7 @@ const AdminMember = () => {
     try {
       // ✅ FIX: Prepare the payload for the API to match the expected structure
       const payload = {
+        adminId: adminId, // ✅ Added adminId to the payload
         fullName: editMember.fullName,
         email: editMember.email,
         phone: editMember.phone,
