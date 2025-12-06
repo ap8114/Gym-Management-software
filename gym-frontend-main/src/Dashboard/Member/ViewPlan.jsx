@@ -42,7 +42,7 @@ const ViewPlans = () => {
   useEffect(() => {
     const fetchPlans = async () => {
       try {
-        const response = await axiosInstance.get(`MemberPlan?adminId=${adminId}`);
+        const response = await axiosInstance.get(`MemberPlan?adminId=${branchId}`);
         if (response.data.success && Array.isArray(response.data.plans)) {
           const formattedPlans = response.data.plans.map(plan => ({
             ...plan,
