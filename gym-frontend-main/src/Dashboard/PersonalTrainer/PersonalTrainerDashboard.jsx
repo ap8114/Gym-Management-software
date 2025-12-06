@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { FaHome, FaUsers, FaCalendarAlt, FaDumbbell, FaQrcode, FaDollarSign, FaComments, FaBell, FaUserFriends, FaCalendarCheck, FaMoneyBill, FaUserCog, FaChevronRight, FaArrowUp } from 'react-icons/fa';
+import { FaUserFriends, FaCalendarCheck, FaDollarSign, FaChevronRight } from 'react-icons/fa';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Line, Pie } from 'react-chartjs-2';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import GetAdminId from '../../Api/GetAdminId';
+import axiosInstance from '../../Api/axiosInstance';
 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement);
@@ -10,15 +12,56 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 const PersonalTrainerDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [notifications, setNotifications] = useState(3);
-  const [sidebarOpen, setSidebarOpen] = useState(false); // Track sidebar visibility
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
-  // Chart data
+  const adminId = GetAdminId();
+
+  // State for dashboard data
+  const [dashboardData, setDashboardData] = useState({
+    totalMembers: 0,
+    todaysCheckIns: 0,
+    earningsOverview: [],
+    sessionsOverview: null,
+    recentActivities: [],
+  });
+
+  // Fetch data on component mount
+  useEffect(() => {
+    if (!adminId) {
+      setError('Admin ID not available');
+      setLoading(false);
+      return;
+    }
+
+    const fetchDashboardData = async () => {
+      try {
+        const response = await axiosInstance.get(`personal-trainer-dashboard/trainer/${adminId}`);
+        if (response.data.success && response.data.data) {
+          setDashboardData(response.data.data);
+        } else {
+          setError('Failed to load dashboard data');
+        }
+      } catch (err) {
+        console.error('Error fetching dashboard:', err);
+        setError('An error occurred while fetching data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [adminId]);
+
+  // Format earnings data for chart (assuming it's an array of { day, amount })
+  // Example expected format: [{ day: "Mon", amount: 820 }, ...]
   const earningsData = {
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    labels: dashboardData.earningsOverview.map(item => item.day || ''),
     datasets: [
       {
         label: 'Earnings',
-        data: [820, 932, 901, 934, 1290, 1330, 1320],
+        data: dashboardData.earningsOverview.map(item => item.amount || 0),
         borderColor: '#6EB2CC',
         backgroundColor: 'rgba(110, 178, 204, 0.1)',
         tension: 0.4,
@@ -26,22 +69,23 @@ const PersonalTrainerDashboard = () => {
       },
     ],
   };
-  
-  // Updated sessions data with light colors from screenshot
+
+  // Sessions pie chart: expect sessionsOverview to be { completed, upcoming, cancelled }
+  const sessions = dashboardData.sessionsOverview || { completed: 0, upcoming: 0, cancelled: 0 };
   const sessionsData = {
     labels: ['Completed', 'Upcoming', 'Cancelled'],
     datasets: [
       {
-        data: [28, 12, 4],
-        backgroundColor: ['#A3D5E3', '#A7F3D0', '#FDE68A'], // Light blue, light green, light yellow
+        data: [sessions.completed, sessions.upcoming, sessions.cancelled],
+        backgroundColor: ['#A3D5E3', '#A7F3D0', '#FDE68A'],
         borderColor: '#ffffff',
         borderWidth: 3,
-        hoverOffset: 4
+        hoverOffset: 4,
       },
     ],
   };
-  
-  // Chart options
+
+  // Chart options (unchanged)
   const earningsOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -57,7 +101,7 @@ const PersonalTrainerDashboard = () => {
       },
     },
   };
-  
+
   const sessionsOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -65,19 +109,17 @@ const PersonalTrainerDashboard = () => {
     plugins: {
       legend: {
         position: 'bottom',
-        labels: { 
-          padding: 20, 
+        labels: {
+          padding: 20,
           font: { size: 12 },
           usePointStyle: true,
           pointStyle: 'circle',
-          // Generate labels with custom colors
-          generateLabels: function(chart) {
+          generateLabels: function (chart) {
             const data = chart.data;
             if (data.labels.length && data.datasets.length) {
               return data.labels.map((label, i) => {
                 const meta = chart.getDatasetMeta(0);
                 const style = meta.controller.getStyle(i);
-                
                 return {
                   text: label,
                   fillStyle: data.datasets[0].backgroundColor[i],
@@ -85,83 +127,97 @@ const PersonalTrainerDashboard = () => {
                   lineWidth: style.borderWidth,
                   pointStyle: 'circle',
                   hidden: !chart.getDataVisibility(i),
-                  index: i
+                  index: i,
                 };
               });
             }
             return [];
-          }
+          },
         },
       },
       tooltip: {
         callbacks: {
-          label: function(context) {
+          label: function (context) {
             return `${context.label}: ${context.raw} sessions`;
-          }
-        }
-      }
+          },
+        },
+      },
     },
   };
-  
-  // Recent activities data
-  const recentActivities = [
-    {
-      id: 1,
-      name: 'Sarah Johnson',
-      action: 'completed her training session',
-      time: '2 hours ago',
-      image: 'https://readdy.ai/api/search-image?query=professional%20headshot%20of%20a%20female%20fitness%20enthusiast%20with%20a%20bright%20smile%20against%20a%20clean%20studio%20background&width=40&height=40&seq=2&orientation=squarish',
-    },
-    {
-      id: 2,
-      name: 'Mike Thompson',
-      action: 'booked a new session',
-      time: '4 hours ago',
-      image: 'https://readdy.ai/api/search-image?query=professional%20headshot%20of%20a%20male%20fitness%20enthusiast%20with%20a%20confident%20expression%20against%20a%20clean%20studio%20background&width=40&height=40&seq=3&orientation=squarish',
-    },
-    {
-      id: 3,
-      name: 'Emily Parker',
-      action: 'joined your HIIT class',
-      time: '5 hours ago',
-      image: 'https://readdy.ai/api/search-image?query=professional%20headshot%20of%20a%20female%20fitness%20enthusiast%20with%20an%20energetic%20expression%20against%20a%20clean%20studio%20background&width=40&height=40&seq=4&orientation=squarish',
-    },
-  ];
-  
-  // Stats cards data
+
+  // Stats cards
   const statsCards = [
     {
       title: 'Total Members',
-      value: '1,247',
+      value: dashboardData.totalMembers.toLocaleString(),
       icon: <FaUserFriends style={{ color: '#6EB2CC' }} />,
     },
     {
       title: "Today's Check-ins",
-      value: '89',
+      value: dashboardData.todaysCheckIns.toLocaleString(),
       icon: <FaCalendarCheck style={{ color: '#6EB2CC' }} />,
     },
-   
-  
   ];
-  
-  // Toggle sidebar visibility
+
+  // Recent Activities (use as-is from API if available, else fallback)
+  const recentActivities = dashboardData.recentActivities.length
+    ? dashboardData.recentActivities
+    : [
+        {
+          id: 1,
+          name: 'No recent activity',
+          action: '',
+          time: '',
+          image: 'https://via.placeholder.com/40',
+        },
+      ];
+
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
-  
+
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center vh-100">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mt-5">
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`container-fluid bg-light min-vh-100  ${sidebarOpen ? 'ps-5' : ''}`}>
+    <div className={`container-fluid bg-light min-vh-100 ${sidebarOpen ? 'ps-5' : ''}`}>
       {/* Sidebar (toggleable) */}
-      <div className={`position-fixed top-0 start-0 vh-100 bg-dark p-3 ${sidebarOpen ? 'd-block' : 'd-none'}`} style={{ width: '64px' }}>
-        <button className="btn btn-light" onClick={toggleSidebar}>X</button>
+      <div
+        className={`position-fixed top-0 start-0 vh-100 bg-dark p-3 ${
+          sidebarOpen ? 'd-block' : 'd-none'
+        }`}
+        style={{ width: '64px' }}
+      >
+        <button className="btn btn-light" onClick={toggleSidebar}>
+          X
+        </button>
       </div>
-      
+
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4" style={{ paddingLeft: sidebarOpen ? '64px' : '0' }}>
-        <h1 className=" fw-bold">Dashboard</h1>
-      
+      <div
+        className="d-flex justify-content-between align-items-center mb-4"
+        style={{ paddingLeft: sidebarOpen ? '64px' : '0' }}
+      >
+        <h1 className="fw-bold">Dashboard</h1>
       </div>
-      
+
       {/* Stats Cards */}
       <div className="row g-4 mb-4">
         {statsCards.map((card, index) => (
@@ -173,21 +229,12 @@ const PersonalTrainerDashboard = () => {
                   <div className="fs-4">{card.icon}</div>
                 </div>
                 <h3 className="card-title fw-bold">{card.value}</h3>
-                {card.change && (
-                  <p className="card-text text-success small mb-0">
-                    <FaArrowUp className="me-1" />
-                    {card.change} {card.period}
-                  </p>
-                )}
-                {!card.change && (
-                  <p className="card-text text-muted small mb-0">{card.period}</p>
-                )}
               </div>
             </div>
           </div>
         ))}
       </div>
-      
+
       {/* Charts */}
       <div className="row g-4 mb-4">
         <div className="col-12 col-lg-6">
@@ -200,7 +247,7 @@ const PersonalTrainerDashboard = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="col-12 col-lg-6">
           <div className="card shadow-sm h-100">
             <div className="card-body">
@@ -212,18 +259,18 @@ const PersonalTrainerDashboard = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Recent Activities */}
       <div className="card shadow-sm">
         <div className="card-body">
           <h5 className="card-title fw-bold mb-4">Recent Activities</h5>
           <div className="list-group list-group-flush">
             {recentActivities.map((activity) => (
-              <div key={activity.id} className="list-group-item px-0 border-bottom">
+              <div key={activity.id || activity.name} className="list-group-item px-0 border-bottom">
                 <div className="d-flex justify-content-between align-items-center">
                   <div className="d-flex align-items-center">
                     <img
-                      src={activity.image}
+                      src={activity.image || 'https://via.placeholder.com/40'}
                       alt={activity.name}
                       className="rounded-circle me-3"
                       width="40"
@@ -233,7 +280,9 @@ const PersonalTrainerDashboard = () => {
                       <p className="mb-0 fw-medium">
                         {activity.name} {activity.action}
                       </p>
-                      <p className="mb-0 text-muted small">{activity.time}</p>
+                      {activity.time && (
+                        <p className="mb-0 text-muted small">{activity.time}</p>
+                      )}
                     </div>
                   </div>
                   <button className="btn btn-sm btn-link p-0" style={{ color: '#6EB2CC' }}>
