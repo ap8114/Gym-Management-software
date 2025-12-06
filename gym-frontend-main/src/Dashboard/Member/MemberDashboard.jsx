@@ -19,6 +19,23 @@ const MemberDashboard = () => {
   const workoutChartRef = useRef(null);
   const chartInstance = useRef(null);
 
+  const getUserFromStorage = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (err) {
+      console.error('Error parsing user from localStorage:', err);
+      return null;
+    }
+  };
+
+  const user = getUserFromStorage();
+  const memberId = user?.id || null;
+  const adminId = user?.adminId || null;
+  const branchId = user?.branchId || null;
+  const name = user?.fullName || '';
+
+
   // 🔄 Fetch dashboard data
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -139,7 +156,8 @@ const MemberDashboard = () => {
     <div className="container-fluid bg-light p-0 min-vh-100" style={{ fontFamily: 'Poppins, sans-serif' }}>
       <div className="p-3 p-md-4">
         <div className="mb-4">
-          <h1 className="display-6 fw-bold">Welcome, {member.fullName}!</h1>
+          {/* member.fullName */}
+          <h1 className="display-6 fw-bold">Welcome, {name}!</h1>
           <p className="text-muted">Your fitness journey at a glance</p>
         </div>
 
