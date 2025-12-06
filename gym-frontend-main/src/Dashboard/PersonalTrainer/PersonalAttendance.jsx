@@ -3,7 +3,7 @@ import { Form, Button, Table, Modal, Row, Col, Card, Spinner, Alert } from "reac
 import { FaEye, FaTrash, FaTimesCircle } from "react-icons/fa";
 import BaseUrl from '../../Api/BaseUrl';
 
-const Attendance = () => {
+const PersonalAttendance = () => {
   const [search, setSearch] = useState("");
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewMember, setViewMember] = useState(null);
@@ -514,4 +514,4 @@ const Attendance = () => {
   );
 };
 
-export default Attendance;
+export default PersonalAttendance;
