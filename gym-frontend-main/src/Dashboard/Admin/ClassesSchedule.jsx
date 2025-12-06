@@ -154,14 +154,58 @@ const ClassesSchedule = () => {
 
   const handleView = (gymClass) => {
     setModalType('view');
-    setSelectedClass({ ...gymClass, members: [] }); // API doesn't return members, so leave empty
+    // Parse the time string to get start and end times
+    const timeString = gymClass.time || '';
+    let startTime = '';
+    let endTime = '';
+    
+    if (timeString.includes(' - ')) {
+      const [start, end] = timeString.split(' - ');
+      startTime = start.trim();
+      endTime = end.trim();
+    }
+    
+    // Find trainer and branch IDs from names
+    const trainer = trainers.find(t => (t.fullName || t.name) === gymClass.trainer);
+    const branch = branches.find(b => b.name === gymClass.branch);
+    
+    setSelectedClass({ 
+      ...gymClass, 
+      members: [], // API doesn't return members, so leave empty
+      trainerId: trainer?.id || '',
+      branchId: branch?.id || '',
+      startTime,
+      endTime
+    });
     setMemberSearch('');
     setIsModalOpen(true);
   };
 
   const handleEdit = (gymClass) => {
     setModalType('edit');
-    setSelectedClass({ ...gymClass, members: [] }); // No member editing from list
+    // Parse the time string to get start and end times
+    const timeString = gymClass.time || '';
+    let startTime = '';
+    let endTime = '';
+    
+    if (timeString.includes(' - ')) {
+      const [start, end] = timeString.split(' - ');
+      startTime = start.trim();
+      endTime = end.trim();
+    }
+    
+    // Find trainer and branch IDs from names
+    const trainer = trainers.find(t => (t.fullName || t.name) === gymClass.trainer);
+    const branch = branches.find(b => b.name === gymClass.branch);
+    
+    setSelectedClass({ 
+      ...gymClass, 
+      members: [], // No member editing from list
+      trainerId: trainer?.id || '',
+      branchId: branch?.id || '',
+      startTime,
+      endTime
+    });
     setMemberSearch('');
     setIsModalOpen(true);
   };
@@ -299,11 +343,11 @@ const ClassesSchedule = () => {
         </div>
         <div className="row mb-2">
           <div className="col-6">
-            <p className="mb-1"><strong>Trainer:</strong> {getTrainerName(gymClass.trainerId)}</p>
-            <p className="mb-1"><strong>Branch:</strong> {getBranchName(gymClass.branchId)}</p>
+            <p className="mb-1"><strong>Trainer:</strong> {gymClass.trainer}</p>
+            <p className="mb-1"><strong>Branch:</strong> {gymClass.branch}</p>
           </div>
           <div className="col-6">
-            <p className="mb-1"><strong>Date:</strong> {gymClass.date}</p>
+            <p className="mb-1"><strong>Date:</strong> {gymClass.date ? gymClass.date.split('T')[0] : ''}</p>
             <p className="mb-1"><strong>Time:</strong> {gymClass.time}</p>
           </div>
         </div>
@@ -313,7 +357,7 @@ const ClassesSchedule = () => {
             <span><strong>Status:</strong> {getStatusBadge(gymClass.status)}</span>
           </div>
           <div>
-            {gymClass.membersCount > 0 ? (
+            {gymClass.membersCount !== undefined && gymClass.membersCount > 0 ? (
               <span className="badge bg-light text-dark">
                 {gymClass.membersCount} {gymClass.membersCount === 1 ? 'Member' : 'Members'}
               </span>
@@ -375,7 +419,7 @@ const ClassesSchedule = () => {
                       <th>TIME</th>
                       <th>DAY</th>
                       <th>STATUS</th>
-                      <th>MEMBERS</th>
+                      {/* <th>MEMBERS</th> */}
                       <th className="text-center">ACTIONS</th>
                     </tr>
                   </thead>
@@ -385,19 +429,19 @@ const ClassesSchedule = () => {
                         <td>{c.className}</td>
                         <td>{c.trainer}</td>
                         <td><span className="badge bg-primary-subtle text-primary-emphasis px-3 py-1">{c.branch}</span></td>
-                        <td>{c.date.split('T')[0]}</td>
+                        <td>{c.date ? c.date.split('T')[0] : ''}</td>
                         <td>{c.time}</td>
                         <td>{c.day}</td>
                         <td>{getStatusBadge(c.status)}</td>
-                        <td>
-                          {c.membersCount > 0 ? (
+                        {/* <td>
+                          {c.membersCount !== undefined && c.membersCount > 0 ? (
                             <span className="badge bg-light text-dark">
                               {c.membersCount} {c.membersCount === 1 ? 'Member' : 'Members'}
                             </span>
                           ) : (
                             <span className="text-muted">No members</span>
                           )}
-                        </td>
+                        </td> */}
                         <td className="text-center">
                           <div className="d-flex justify-content-center gap-1">
                             <button className="btn btn-sm btn-outline-secondary" title="View" onClick={() => handleView(c)}>
@@ -439,7 +483,7 @@ const ClassesSchedule = () => {
             <div className="modal-content">
               <div className="modal-header border-0 pb-0" style={{ backgroundColor: '#6EB2CC', color: 'white' }}>
                 <h5 className="modal-title fw-bold">
-                  {modalType === 'add' ? 'Add New Class' : 'Edit Class'}
+                  {modalType === 'add' ? 'Add New Class' : modalType === 'view' ? 'Class Details' : 'Edit Class'}
                 </h5>
                 <button type="button" className="btn-close btn-close-white" onClick={closeModal}></button>
               </div>
@@ -467,33 +511,49 @@ const ClassesSchedule = () => {
                   </div>
                   <div className="col-md-6 mb-3">
                     <label className="form-label fw-semibold">Trainer <span className="text-danger">*</span></label>
-                    <select
-                      className="form-select rounded-3"
-                      value={selectedClass.trainerId || ''}
-                      onChange={e => setSelectedClass({ ...selectedClass, trainerId: e.target.value })}
-                      disabled={modalType === 'view' || trainers.length === 0}
-                    >
-                      <option value="">Select trainer</option>
-                      {trainers.map(t => (
-                        <option key={t.id} value={t.id}>{t.fullName || t.name}</option>
-                      ))}
-                    </select>
+                    {modalType === 'view' ? (
+                      <input
+                        className="form-control rounded-3"
+                        value={selectedClass.trainer || ''}
+                        readOnly
+                      />
+                    ) : (
+                      <select
+                        className="form-select rounded-3"
+                        value={selectedClass.trainerId || ''}
+                        onChange={e => setSelectedClass({ ...selectedClass, trainerId: e.target.value })}
+                        disabled={modalType === 'view' || trainers.length === 0}
+                      >
+                        <option value="">Select trainer</option>
+                        {trainers.map(t => (
+                          <option key={t.id} value={t.id}>{t.fullName || t.name}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
                 <div className="row mb-3">
                   <div className="col-md-6 mb-3">
                     <label className="form-label fw-semibold">Branch <span className="text-danger">*</span></label>
-                    <select
-                      className="form-select rounded-3"
-                      value={selectedClass.branchId || ''}
-                      onChange={e => setSelectedClass({ ...selectedClass, branchId: e.target.value })}
-                      disabled={modalType === 'view' || branches.length === 0}
-                    >
-                      <option value="">Select branch</option>
-                      {branches.map(b => (
-                        <option key={b.id} value={b.id}>{b.name}</option>
-                      ))}
-                    </select>
+                    {modalType === 'view' ? (
+                      <input
+                        className="form-control rounded-3"
+                        value={selectedClass.branch || ''}
+                        readOnly
+                      />
+                    ) : (
+                      <select
+                        className="form-select rounded-3"
+                        value={selectedClass.branchId || ''}
+                        onChange={e => setSelectedClass({ ...selectedClass, branchId: e.target.value })}
+                        disabled={modalType === 'view' || branches.length === 0}
+                      >
+                        <option value="">Select branch</option>
+                        {branches.map(b => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <div className="col-md-6 mb-3">
                     <label className="form-label fw-semibold">Date <span className="text-danger">*</span></label>
@@ -559,7 +619,7 @@ const ClassesSchedule = () => {
                   </div>
                 </div>
                 <div className="row mb-3">
-                  <div className="col-md-6 mb-3">
+                  <div className={modalType === 'view' ? "col-md-6 mb-3" : "col-md-12 mb-3"}>
                     <label className="form-label fw-semibold">Status</label>
                     <select
                       className="form-select rounded-3"
@@ -571,6 +631,17 @@ const ClassesSchedule = () => {
                       <option value="Inactive">Inactive</option>
                     </select>
                   </div>
+                  {modalType === 'view' && (
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label fw-semibold">Members Count</label>
+                      <input
+                        type="text"
+                        className="form-control rounded-3"
+                        value={selectedClass.membersCount !== undefined ? selectedClass.membersCount : 0}
+                        readOnly
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Members section */}

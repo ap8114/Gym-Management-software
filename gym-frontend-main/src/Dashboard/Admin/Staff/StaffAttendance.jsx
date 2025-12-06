@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTrashAlt, FaEdit, FaEye, FaSearch, FaFileExport, FaExclamationTriangle, FaFilter } from 'react-icons/fa';
 import GetAdminId from '../../../Api/GetAdminId';
 import axiosInstance from '../../../Api/axiosInstance';
+import BaseUrl from '../../../Api/BaseUrl';
 
 const StaffAttendance = () => {
   const adminId = GetAdminId();
@@ -14,93 +15,158 @@ const StaffAttendance = () => {
   const [statusFilter, setStatusFilter] = useState('All');
   const [branchFilter, setBranchFilter] = useState('All');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  
+  // Add state for branches and staff members
+  const [branches, setBranches] = useState([]);
+  const [staffMembers, setStaffMembers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Custom color for all blue elements
   const customColor = "#6EB2CC";
 
-  // Updated Sample Data with ROLE and BRANCH FIELD
-  const [records, setRecords] = useState([
-    {
-      attendance_id: 1,
-      staff_id: 101,
-      staff_name: "Alex Johnson",
-      role: "Personal Trainer",
-      branch: "Downtown",
-      date: "2025-04-05",
-      checkin_time: "2025-04-05T06:15:00",
-      checkout_time: "2025-04-05T07:45:00",
-      mode: "QR",
-      shift_id: "SH001",
-      shift_name: "Morning Shift",
-      status: "Present",
-      notes: ""
-    },
-    {
-      attendance_id: 2,
-      staff_id: 102,
-      staff_name: "Braidy Con",
-      role: "Receptionist",
-      branch: "Uptown",
-      date: "2025-04-05",
-      checkin_time: "2025-04-05T09:30:00",
-      checkout_time: "2025-04-05T10:45:00",
-      mode: "QR",
-      shift_id: "SH002",
-      shift_name: "Day Shift",
-      status: "Late",
-      notes: "Traffic delay"
-    },
-    {
-      attendance_id: 3,
-      staff_id: 103,
-      staff_name: "Sarah Kim",
-      role: "Housekeeping",
-      branch: "Brooklyn",
-      date: "2025-04-05",
-      checkin_time: null,
-      checkout_time: null,
-      mode: "QR",
-      shift_id: "SH003",
-      shift_name: "Evening Shift",
-      status: "Absent",
-      notes: "Sick leave"
-    },
-    {
-      attendance_id: 4,
-      staff_id: 104,
-      staff_name: "Michael Brown",
-      role: "General Trainer",
-      branch: "Queens",
-      date: "2025-04-04",
-      checkin_time: "2025-04-04T05:55:00",
-      checkout_time: "2025-04-04T07:30:00",
-      mode: "QR",
-      shift_id: "SH001",
-      shift_name: "Morning Shift",
-      status: "Overtime",
-      notes: "Stayed back to complete inventory"
-    }
-  ]);
+  // Fetch branches and staff data on component mount
+  useEffect(() => {
+    fetchBranches();
+    fetchStaffMembers();
+    fetchAttendanceRecords();
+  }, []);
 
-  // Updated Staff Members with Role and Branch
-  const staffMembers = [
-    { id: 101, name: "Alex Johnson", role: "Personal Trainer", branch: "Downtown" },
-    { id: 102, name: "Braidy Con", role: "Receptionist", branch: "Uptown" },
-    { id: 103, name: "Sarah Kim", role: "Housekeeping", branch: "Brooklyn" },
-    { id: 104, name: "Michael Brown", role: "General Trainer", branch: "Queens" },
-    { id: 105, name: "Emily Davis", role: "Receptionist", branch: "Downtown" }
-  ];
+  const fetchBranches = async () => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.get(`${BaseUrl}branches/by-admin/${adminId}`);
+      console.log('Branches API response:', response.data);
+      
+      if (response.data.success) {
+        setBranches(response.data.branches);
+      } else {
+        setError('Failed to load branches');
+      }
+    } catch (err) {
+      console.error('Error fetching branches:', err);
+      setError('Failed to load branches');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStaffMembers = async () => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.get(`${BaseUrl}staff/all`);
+      console.log('Staff API response:', response.data);
+      
+      if (response.data.success) {
+        // Transform the API response to match the component's expected format
+        const transformedStaff = response.data.staff.map(staff => ({
+          id: staff.staffId,
+          staffId: staff.staffId,
+          name: staff.fullName,
+          role: getRoleName(staff.roleId),
+          branch: getBranchName(staff.branchId),
+          email: staff.email,
+          phone: staff.phone,
+          branchId: staff.branchId,
+          roleId: staff.roleId
+        }));
+        setStaffMembers(transformedStaff);
+      } else {
+        setError('Failed to load staff data');
+      }
+    } catch (err) {
+      console.error('Error fetching staff:', err);
+      setError('Failed to load staff data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch attendance records from API
+  const fetchAttendanceRecords = async () => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.get(`${BaseUrl}admin-staff-attendance`);
+      console.log('Attendance API response:', response.data);
+      
+      if (response.data.success) {
+        // Transform the API response to match the component's expected format
+        const transformedRecords = response.data.map(record => ({
+          attendance_id: record.id,
+          staff_id: record.staffId,
+          staff_name: record.staffName,
+          role: getRoleNameFromStaff(record.staffId),
+          branch: record.branchName,
+          date: record.date,
+          checkin_time: record.checkInTime,
+          checkout_time: record.checkOutTime,
+          mode: record.mode,
+          shift_id: record.shiftId,
+          shift_name: getShiftName(record.shiftId),
+          status: record.status,
+          notes: record.notes
+        }));
+        setRecords(transformedRecords);
+      } else {
+        setError('Failed to load attendance records');
+      }
+    } catch (err) {
+      console.error('Error fetching attendance records:', err);
+      setError('Failed to load attendance records');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper function to get role name from roleId
+  const getRoleName = (roleId) => {
+    const roles = {
+      1: 'Admin',
+      2: 'Manager',
+      3: 'Trainer',
+      4: 'Receptionist',
+      5: 'Accountant',
+      6: 'Other'
+    };
+    return roles[roleId] || 'Unknown';
+  };
+
+  // Helper function to get role name from staff ID
+  const getRoleNameFromStaff = (staffId) => {
+    const staff = staffMembers.find(s => s.staffId === staffId);
+    return staff ? staff.role : 'Unknown';
+  };
+
+  // Helper function to get branch name from branchId
+  const getBranchName = (branchId) => {
+    const branch = branches.find(b => b.id === branchId);
+    return branch ? branch.name : 'Unknown';
+  };
+
+  // Helper function to get shift name from shiftId
+  const getShiftName = (shiftId) => {
+    const shifts = [
+      { id: 1, name: "Morning Shift" },
+      { id: 2, name: "Day Shift" },
+      { id: 3, name: "Evening Shift" }
+    ];
+    const shift = shifts.find(s => s.id === shiftId);
+    return shift ? shift.name : 'Unknown';
+  };
+
+  // Set records state
+  const [records, setRecords] = useState([]);
 
   const shifts = [
-    { id: "SH001", name: "Morning Shift" },
-    { id: "SH002", name: "Day Shift" },
-    { id: "SH003", name: "Evening Shift" }
+    { id: 1, name: "Morning Shift" },
+    { id: 2, name: "Day Shift" },
+    { id: 3, name: "Evening Shift" }
   ];
 
   // Get unique options for dropdowns
   const allRoles = ['All', ...new Set(staffMembers.map(s => s.role))];
   const allStatuses = ['All', 'Present', 'Late', 'Absent', 'Overtime'];
-  const allBranches = ['All', ...new Set(staffMembers.map(s => s.branch))];
+  const allBranches = ['All', ...new Set(branches.map(b => b.name))];
 
   // Filter records based on search term AND filters
   const filteredRecords = records.filter(record =>
@@ -136,10 +202,19 @@ const StaffAttendance = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedRecord) {
-      setRecords(prev => prev.filter(r => r.attendance_id !== selectedRecord.attendance_id));
-      alert(`Deleted attendance record for ${selectedRecord.staff_name} (${selectedRecord.role}).`);
+      try {
+        // Call the delete API
+        await axiosInstance.delete(`${BaseUrl}admin-staff-attendance/${selectedRecord.attendance_id}`);
+        
+        // Update the local state
+        setRecords(prev => prev.filter(r => r.attendance_id !== selectedRecord.attendance_id));
+        alert(`Deleted attendance record for ${selectedRecord.staff_name} (${selectedRecord.role}).`);
+      } catch (err) {
+        console.error('Error deleting attendance record:', err);
+        alert('Failed to delete attendance record');
+      }
     }
     setIsDeleteModalOpen(false);
     setSelectedRecord(null);
@@ -228,64 +303,96 @@ const StaffAttendance = () => {
     return records.length > 0 ? Math.max(...records.map(r => r.attendance_id)) + 1 : 1;
   };
 
-  const handleFormSubmit = (e) => {
+  // Handle form submission with API integration
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     
     if (modalType === 'add') {
-      const staffId = parseInt(formData.get('staff_id'));
-      const staffData = staffMembers.find(s => s.id === staffId);
-      if (!staffData) return alert("Invalid staff selection");
+      try {
+        const staffId = parseInt(formData.get('staff_id'));
+        const staffData = staffMembers.find(s => s.id === staffId);
+        if (!staffData) return alert("Invalid staff selection");
 
-      const shiftId = formData.get('shift_id');
-      const shiftName = shifts.find(s => s.id === shiftId)?.name || '';
+        const branchId = parseInt(formData.get('branch_id'));
+        const branchData = branches.find(b => b.id === branchId);
+        const branchName = branchData ? branchData.name : '';
 
-      const newRecord = {
-        attendance_id: getNextId(),
-        staff_id: staffId,
-        staff_name: staffData.name,
-        role: staffData.role,
-        branch: staffData.branch,
-        date: formData.get('date') || new Date().toISOString().split('T')[0],
-        checkin_time: formData.get('checkin_time') || null,
-        checkout_time: formData.get('checkout_time') || null,
-        mode: formData.get('mode') || 'Manual',
-        shift_id: shiftId,
-        shift_name: shiftName,
-        status: formData.get('status') || 'Present',
-        notes: formData.get('notes') || ''
-      };
-      setRecords(prev => [...prev, newRecord]);
-      alert('New staff attendance record added successfully!');
+        const shiftId = formData.get('shift_id');
+        const shiftName = shifts.find(s => s.id === shiftId)?.name || '';
+
+        // Create the payload for the API
+        const payload = {
+          staffId: staffId,
+          branchId: branchId,
+          mode: formData.get('mode') || 'QR',
+          shiftId: shiftId,
+          date: formData.get('date') || new Date().toISOString().split('T')[0],
+          checkInTime: formData.get('checkin_time') || null,
+          checkOutTime: formData.get('checkout_time') || null,
+          status: formData.get('status') || 'Present',
+          notes: formData.get('notes') || ''
+        };
+        
+        // Call the API to create attendance record
+        const response = await axiosInstance.post(`${BaseUrl}admin-staff-attendance`, payload);
+        console.log('Create attendance response:', response.data);
+        
+        if (response.data.success) {
+          // Refresh the attendance records
+          fetchAttendanceRecords();
+          closeModal();
+          alert('New staff attendance record added successfully!');
+        } else {
+          throw new Error(response.data.message || 'Failed to create attendance record');
+        }
+      } catch (err) {
+        console.error('Error creating attendance record:', err);
+        alert('Error creating attendance record: ' + err.message);
+      }
     } else if (modalType === 'edit') {
-      const staffId = parseInt(formData.get('staff_id'));
-      const staffData = staffMembers.find(s => s.id === staffId);
-      if (!staffData) return alert("Invalid staff selection");
+      try {
+        const staffId = parseInt(formData.get('staff_id'));
+        const staffData = staffMembers.find(s => s.id === staffId);
+        if (!staffData) return alert("Invalid staff selection");
 
-      const shiftId = formData.get('shift_id');
-      const shiftName = shifts.find(s => s.id === shiftId)?.name || '';
+        const branchId = parseInt(formData.get('branch_id'));
+        const branchData = branches.find(b => b.id === branchId);
+        const branchName = branchData ? branchData.name : selectedRecord.branch;
 
-      const updatedRecord = {
-        ...selectedRecord,
-        staff_id: staffId,
-        staff_name: staffData.name,
-        role: staffData.role,
-        branch: staffData.branch,
-        date: formData.get('date') || selectedRecord.date,
-        checkin_time: formData.get('checkin_time') || selectedRecord.checkin_time,
-        checkout_time: formData.get('checkout_time') || selectedRecord.checkout_time,
-        mode: formData.get('mode') || selectedRecord.mode,
-        shift_id: shiftId,
-        shift_name: shiftName,
-        status: formData.get('status') || selectedRecord.status,
-        notes: formData.get('notes') || selectedRecord.notes
-      };
-      setRecords(prev =>
-        prev.map(r => r.attendance_id === selectedRecord.attendance_id ? updatedRecord : r)
-      );
-      alert('Staff attendance record updated successfully!');
+        const shiftId = formData.get('shift_id');
+        const shiftName = shifts.find(s => s.id === shiftId)?.name || '';
+
+        // Create the payload for the API
+        const payload = {
+          staffId: staffId,
+          branchId: branchId,
+          mode: formData.get('mode') || selectedRecord.mode,
+          shiftId: shiftId,
+          date: formData.get('date') || selectedRecord.date,
+          checkInTime: formData.get('checkin_time') || selectedRecord.checkin_time,
+          checkOutTime: formData.get('checkout_time') || selectedRecord.checkout_time,
+          status: formData.get('status') || selectedRecord.status,
+          notes: formData.get('notes') || selectedRecord.notes
+        };
+        
+        // Call the API to update attendance record
+        const response = await axiosInstance.put(`${BaseUrl}admin-staff-attendance/${selectedRecord.attendance_id}`, payload);
+        console.log('Update attendance response:', response.data);
+        
+        if (response.data.success) {
+          // Refresh the attendance records
+          fetchAttendanceRecords();
+          closeModal();
+          alert('Staff attendance record updated successfully!');
+        } else {
+          throw new Error(response.data.message || 'Failed to update attendance record');
+        }
+      } catch (err) {
+        console.error('Error updating attendance record:', err);
+        alert('Error updating attendance record: ' + err.message);
+      }
     }
-    closeModal();
   };
 
   // Export CSV with Role and Branch
@@ -645,6 +752,7 @@ const StaffAttendance = () => {
                 ></button>
               </div>
               <div className="modal-body p-3" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                {error && <div className="alert alert-danger">{error}</div>}
                 <form onSubmit={handleFormSubmit}>
                   <div className="row g-2">
                     {/* Staff & Role */}
@@ -669,13 +777,18 @@ const StaffAttendance = () => {
                     {/* Branch & Date */}
                     <div className="col-6">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Branch</label>
-                      <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        defaultValue={selectedRecord?.branch || ''}
-                        readOnly
-                        style={{ backgroundColor: '#f8f9fa' }}
-                      />
+                      <select
+                        name="branch_id"
+                        className="form-select form-select-sm"
+                        defaultValue={selectedRecord ? branches.find(b => b.name === selectedRecord.branch)?.id || '' : ''}
+                        disabled={modalType === 'view'}
+                        required
+                      >
+                        <option value="">Select Branch</option>
+                        {branches.map(branch => (
+                          <option key={branch.id} value={branch.id}>{branch.name}</option>
+                        ))}
+                      </select>
                     </div>
                     <div className="col-6">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Date</label>

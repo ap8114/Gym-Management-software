@@ -51,25 +51,36 @@ const SessionBookingPage = () => {
     }
   }, [branches, trainers]);
 
+  // ✅ FIX: Fetch Sessions using branchId instead of adminId
   const fetchSessions = async () => {
     setLoading(true);
     try {
-      const res = await axiosInstance.get(`${BaseUrl}sessions/${adminId}`);
-      if (res.data.success) {
-        // Enrich with branchName and trainerName
-        const enrichedSessions = (res.data.sessions || []).map(sess => {
-          const branch = branches.find(b => b.id === sess.branchId);
-          const trainer = trainers.find(t => t.id === sess.trainerId);
-          return {
-            ...sess,
-            branchName: branch?.name || '—',
-            trainerName: trainer?.name || '—'
-          };
-        });
-        setSessions(enrichedSessions);
-      } else {
-        setError('Failed to load sessions');
+      let allSessions = [];
+      
+      // Fetch sessions for each branch
+      for (const branch of branches) {
+        try {
+          const res = await axiosInstance.get(`${BaseUrl}sessions/${branch.id}`);
+          if (res.data.success && res.data.sessions) {
+            allSessions = [...allSessions, ...res.data.sessions];
+          }
+        } catch (err) {
+          console.error(`Error fetching sessions for branch ${branch.id}:`, err);
+        }
       }
+      
+      // Enrich with branchName and trainerName
+      const enrichedSessions = allSessions.map(sess => {
+        const branch = branches.find(b => b.id === sess.branchId);
+        const trainer = trainers.find(t => t.id === sess.trainerId);
+        return {
+          ...sess,
+          branchName: branch?.name || '—',
+          trainerName: trainer?.fullName || '—' // ✅ Fixed: Use fullName instead of name
+        };
+      });
+      
+      setSessions(enrichedSessions);
     } catch (err) {
       console.error('Error fetching sessions:', err);
       setError('Unable to load sessions');
@@ -95,10 +106,10 @@ const SessionBookingPage = () => {
     }
   };
 
-  // ✅ Fetch Trainers
+  // ✅ FIX: Fetch Trainers with correct URL (removed extra slash)
   const fetchTrainers = async () => {
     try {
-      const res = await axiosInstance.get(`${BaseUrl}trainers/${adminId}`);
+      const res = await axiosInstance.get(`${BaseUrl}class/trainers`); // ✅ Fixed: Removed extra slash
       let trainerList = [];
       if (res.data.success) {
         if (res.data.trainers && Array.isArray(res.data.trainers)) {
@@ -108,6 +119,7 @@ const SessionBookingPage = () => {
         }
       }
       setTrainers(trainerList);
+      console.log('Trainers loaded:', trainerList); // ✅ Added for debugging
     } catch (err) {
       console.error('Error fetching trainers:', err);
       setTrainers([]);
@@ -521,7 +533,7 @@ const SessionBookingPage = () => {
                       >
                         <option value="">Select trainer</option>
                         {trainers.map(t => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
+                          <option key={t.id} value={t.id}>{t.fullName}</option>
                         ))}
                       </select>
                     </div>

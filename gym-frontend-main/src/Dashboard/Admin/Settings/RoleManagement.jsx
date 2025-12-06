@@ -21,6 +21,9 @@ const SettingsPage = () => {
     confirmNewPassword: '',
   });
 
+  // State for user role
+  const [userRole, setUserRole] = useState('');
+
   // State for loading
   const [loading, setLoading] = useState(true);
   
@@ -40,6 +43,9 @@ const SettingsPage = () => {
         const response = await axiosInstance.get(`/auth/user/${userId}`);
         const userData = response.data.user;
         
+        // Log the entire user data to debug
+        console.log('User data:', userData);
+        
         // Update form data with fetched user data
         setSettingsData(prev => ({
           ...prev,
@@ -47,6 +53,11 @@ const SettingsPage = () => {
           email: userData.email,
           phone: userData.phone || '',
         }));
+        
+        // Store the user role - check multiple possible properties
+        const role = userData.role || userData.userRole || userData.roleName || '';
+        console.log('User role:', role);
+        setUserRole(role);
         
         // If there's a profile photo URL in the user data, use it
         // Note: Based on the API response you provided, there doesn't seem to be a profile photo URL
@@ -126,7 +137,20 @@ const SettingsPage = () => {
       if (settingsData.currentPassword && settingsData.newPassword) {
         payload.currentPassword = settingsData.currentPassword;
         payload.newPassword = settingsData.newPassword;
+        
+        // Add roleId=2 if userRole is ADMIN (case-insensitive check)
+        console.log('Checking user role:', userRole);
+        if (userRole && userRole.toLowerCase() === 'admin') {
+          console.log('Adding roleId: 2 to payload');
+          payload.roleId = 2;
+        } else {
+          // For debugging, let's add it anyway to see if it works
+          console.log('Adding roleId: 2 to payload for testing');
+          payload.roleId = 2;
+        }
       }
+      
+      console.log('Payload being sent:', payload);
       
       // Send data to backend API
       const response = await axiosInstance.put(`/auth/user/${userId}`, payload);
@@ -289,6 +313,11 @@ const SettingsPage = () => {
                       onChange={handleInputChange}
                     />
                   </div>
+                  {/* <div className="col-12">
+                    <div className="alert alert-info">
+                      <small>Note: Your role ID will be set to 2 when updating your password.</small>
+                    </div>
+                  </div> */}
                 </div>
               </div>
             </div>

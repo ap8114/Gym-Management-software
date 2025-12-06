@@ -1,12 +1,16 @@
 // src/components/SalaryCalculator.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTrashAlt, FaEdit, FaEye } from 'react-icons/fa';
+import axiosInstance from '../../../Api/axiosInstance';
+import BaseUrl from '../../../Api/BaseUrl';
 
 const SalaryCalculator = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add', 'edit', 'view'
   const [selectedSalary, setSelectedSalary] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   // Add state for form data
   const [formData, setFormData] = useState({
@@ -25,45 +29,95 @@ const SalaryCalculator = () => {
     paid_at: ''
   });
 
-  // Sample data — in real app, fetch from API
-  const staffList = [
-    { id: 101, staff_id: "STAFF001", first_name: "Alex", last_name: "Martinez", role: "Manager", fixed_salary: 60000, hourly_rate: null, commission_rate_percent: 0 },
-    { id: 102, staff_id: "STAFF002", first_name: "Sarah", last_name: "Kim", role: "Trainer", fixed_salary: null, hourly_rate: 35, commission_rate_percent: 15 },
-    { id: 103, staff_id: "STAFF003", first_name: "Raj", last_name: "Patel", role: "Receptionist", fixed_salary: 35000, hourly_rate: null, commission_rate_percent: 0 }
-  ];
+  // State for bonus and deduction inputs
+  const [bonusInput, setBonusInput] = useState({ label: '', amount: '' });
+  const [deductionInput, setDeductionInput] = useState({ label: '', amount: '' });
 
-  const [salaries, setSalaries] = useState([
-    {
-      salary_id: "SAL001",
-      staff_id: "STAFF002",
-      period_start: "2025-04-01",
-      period_end: "2025-04-30",
-      hours_worked: 160,
-      hourly_total: 5600,
-      fixed_salary: null,
-      commission_total: 1200,
-      bonuses: [{ label: "Performance Bonus", amount: 500 }],
-      deductions: [{ label: "Late Penalty", amount: 100 }],
-      net_pay: 7200,
-      status: "Paid",
-      paid_at: "2025-05-02T10:30:00Z"
-    },
-    {
-      salary_id: "SAL002",
-      staff_id: "STAFF001",
-      period_start: "2025-04-01",
-      period_end: "2025-04-30",
-      hours_worked: null,
-      hourly_total: null,
-      fixed_salary: 5000,
-      commission_total: 0,
-      bonuses: [],
-      deductions: [{ label: "Tax", amount: 800 }],
-      net_pay: 4200,
-      status: "Approved",
-      paid_at: null
+  // Sample data — in real app, fetch from API
+  const [staffList, setStaffList] = useState([]);
+  const [salaries, setSalaries] = useState([]);
+
+  // Fetch staff data on component mount
+  useEffect(() => {
+    fetchStaffList();
+    fetchSalaries();
+  }, []);
+
+  const fetchStaffList = async () => {
+    try {
+      // Fixed API endpoint
+      const response = await axiosInstance.get(`${BaseUrl}staff/all`);
+      console.log('Staff API response:', response.data); // Debug log
+      if (response.data.success) {
+        // Transform the API response to match the component's expected format
+        const transformedStaff = response.data.staff.map(staff => ({
+          id: staff.staffId,
+          staff_id: staff.staffId,
+          first_name: staff.fullName,
+          last_name: '',
+          role: getRoleName(staff.roleId),
+          hourly_rate: staff.hourlyRate || 0,
+          commission_rate_percent: staff.commissionRate || 0,
+          fixed_salary: staff.fixedSalary || 0,
+          email: staff.email,
+          phone: staff.phone,
+          branchId: staff.branchId
+        }));
+        setStaffList(transformedStaff);
+      }
+    } catch (err) {
+      console.error('Error fetching staff:', err);
+      setError('Failed to load staff data');
     }
-  ]);
+  };
+
+  // Helper function to get role name from roleId
+  const getRoleName = (roleId) => {
+    const roles = {
+      1: 'Admin',
+      2: 'Manager',
+      3: 'Trainer',
+      4: 'Receptionist',
+      5: 'Accountant',
+      6: 'Other'
+    };
+    return roles[roleId] || 'Unknown';
+  };
+
+  const fetchSalaries = async () => {
+    try {
+      // Fixed API endpoint
+      const response = await axiosInstance.get(`${BaseUrl}salaries`);
+      console.log('Salaries API response:', response.data); // Debug log
+      if (response.data.success) {
+        // Transform the API response to match the component's expected format
+        const transformedSalaries = response.data.data.map(salary => ({
+          salary_id: salary.salaryId,
+          staff_id: salary.staffId,
+          role: salary.role,
+          period_start: salary.periodStart,
+          period_end: salary.periodEnd,
+          hours_worked: salary.hoursWorked,
+          hourly_rate: salary.hourlyRate,
+          hourly_total: salary.hourlyTotal,
+          fixed_salary: salary.fixedSalary,
+          commission_total: salary.commissionTotal,
+          bonuses: salary.bonuses ? JSON.parse(salary.bonuses) : [],
+          deductions: salary.deductions ? JSON.parse(salary.deductions) : [],
+          net_pay: salary.netPay,
+          status: salary.status,
+          paid_at: salary.paidAt,
+          staff_name: salary.staffName,
+          staff_email: salary.staffEmail,
+          staff_phone: salary.staffPhone
+        }));
+        setSalaries(transformedSalaries);
+      }
+    } catch (err) {
+      console.error('Error fetching salaries:', err);
+      setError('Failed to load salary data');
+    }
+  };
 
   // ===== HANDLERS =====
   const handleAddNew = () => {
@@ -85,6 +139,9 @@ const SalaryCalculator = () => {
       status: 'Generated',
       paid_at: ''
     });
+    setBonusInput({ label: '', amount: '' });
+    setDeductionInput({ label: '', amount: '' });
+    setError(null);
     setIsModalOpen(true);
   };
 
@@ -107,6 +164,7 @@ const SalaryCalculator = () => {
       status: salary.status,
       paid_at: salary.paid_at ? new Date(salary.paid_at).toISOString().slice(0,16) : ''
     });
+    setError(null);
     setIsModalOpen(true);
   };
 
@@ -129,6 +187,7 @@ const SalaryCalculator = () => {
       status: salary.status,
       paid_at: salary.paid_at ? new Date(salary.paid_at).toISOString().slice(0,16) : ''
     });
+    setError(null);
     setIsModalOpen(true);
   };
 
@@ -137,10 +196,20 @@ const SalaryCalculator = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedSalary) {
-      setSalaries(prev => prev.filter(s => s.salary_id !== selectedSalary.salary_id));
-      alert(`Salary record ${selectedSalary.salary_id} deleted.`);
+      try {
+        const response = await axiosInstance.delete(`${BaseUrl}salaries/${selectedSalary.salary_id}`);
+        if (response.data.success) {
+          setSalaries(prev => prev.filter(s => s.salary_id !== selectedSalary.salary_id));
+          alert(`Salary record ${selectedSalary.salary_id} deleted.`);
+        } else {
+          setError('Failed to delete salary record');
+        }
+      } catch (err) {
+        console.error('Delete error:', err);
+        setError('Failed to delete salary record');
+      }
     }
     setIsDeleteModalOpen(false);
     setSelectedSalary(null);
@@ -149,6 +218,7 @@ const SalaryCalculator = () => {
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedSalary(null);
+    setError(null);
   };
 
   const closeDeleteModal = () => {
@@ -166,7 +236,7 @@ const SalaryCalculator = () => {
     
     // Auto-calculate values when relevant fields change
     if (name === 'hours_worked' || name === 'fixed_salary' || name === 'commission_total') {
-      const staff = staffList.find(s => s.staff_id === formData.staff_id);
+      const staff = staffList.find(s => s.id === parseInt(formData.staff_id));
       if (staff) {
         let hourlyTotal = formData.hourly_total;
         if (name === 'hours_worked') {
@@ -218,25 +288,272 @@ const SalaryCalculator = () => {
     }
   };
 
-  // Handle form submission
-  const handleSubmit = () => {
-    if (modalType === 'add') {
-      // Add new salary
-      const newSalary = { ...formData };
-      setSalaries(prev => [...prev, newSalary]);
-      alert('Salary record added successfully!');
-    } else if (modalType === 'edit') {
-      // Update existing salary
-      setSalaries(prev => prev.map(s => 
-        s.salary_id === formData.salary_id ? { ...formData } : s
-      ));
-      alert('Salary record updated successfully!');
+  // Handle adding a bonus
+  const handleAddBonus = () => {
+    if (bonusInput.label && bonusInput.amount) {
+      const newBonus = {
+        label: bonusInput.label,
+        amount: parseFloat(bonusInput.amount)
+      };
+      
+      const updatedBonuses = [...formData.bonuses, newBonus];
+      
+      setFormData(prev => ({
+        ...prev,
+        bonuses: updatedBonuses
+      }));
+      
+      // Recalculate net pay
+      const netPay = calculateNetPay(
+        parseFloat(formData.hourly_total) || 0,
+        parseFloat(formData.fixed_salary) || 0,
+        parseFloat(formData.commission_total) || 0,
+        updatedBonuses,
+        formData.deductions
+      );
+      
+      setFormData(prev => ({
+        ...prev,
+        net_pay: netPay
+      }));
+      
+      // Reset bonus input
+      setBonusInput({ label: '', amount: '' });
     }
-    closeModal();
   };
 
+  // Handle removing a bonus
+  const handleRemoveBonus = (index) => {
+    const updatedBonuses = formData.bonuses.filter((_, i) => i !== index);
+    
+    setFormData(prev => ({
+      ...prev,
+      bonuses: updatedBonuses
+    }));
+    
+    // Recalculate net pay
+    const netPay = calculateNetPay(
+      parseFloat(formData.hourly_total) || 0,
+      parseFloat(formData.fixed_salary) || 0,
+      parseFloat(formData.commission_total) || 0,
+      updatedBonuses,
+      formData.deductions
+    );
+    
+    setFormData(prev => ({
+      ...prev,
+      net_pay: netPay
+    }));
+  };
+
+  // Handle adding a deduction
+  const handleAddDeduction = () => {
+    if (deductionInput.label && deductionInput.amount) {
+      const newDeduction = {
+        label: deductionInput.label,
+        amount: parseFloat(deductionInput.amount)
+      };
+      
+      const updatedDeductions = [...formData.deductions, newDeduction];
+      
+      setFormData(prev => ({
+        ...prev,
+        deductions: updatedDeductions
+      }));
+      
+      // Recalculate net pay
+      const netPay = calculateNetPay(
+        parseFloat(formData.hourly_total) || 0,
+        parseFloat(formData.fixed_salary) || 0,
+        parseFloat(formData.commission_total) || 0,
+        formData.bonuses,
+        updatedDeductions
+      );
+      
+      setFormData(prev => ({
+        ...prev,
+        net_pay: netPay
+      }));
+      
+      // Reset deduction input
+      setDeductionInput({ label: '', amount: '' });
+    }
+  };
+
+  // Handle removing a deduction
+  const handleRemoveDeduction = (index) => {
+    const updatedDeductions = formData.deductions.filter((_, i) => i !== index);
+    
+    setFormData(prev => ({
+      ...prev,
+      deductions: updatedDeductions
+    }));
+    
+    // Recalculate net pay
+    const netPay = calculateNetPay(
+      parseFloat(formData.hourly_total) || 0,
+      parseFloat(formData.fixed_salary) || 0,
+      parseFloat(formData.commission_total) || 0,
+      formData.bonuses,
+      updatedDeductions
+    );
+    
+    setFormData(prev => ({
+      ...prev,
+      net_pay: netPay
+    }));
+  };
+
+  // Handle form submission with API integration
+// Handle form submission with API integration
+const handleSubmit = async () => {
+  if (modalType === 'add') {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Get staff information to include role in payload
+      const staffInfo = getStaffInfo(formData.staff_id);
+      
+      // Prepare payload matching API response format
+      const payload = {
+        salaryId: formData.salary_id,
+        staffId: parseInt(formData.staff_id),
+        role: staffInfo.role, // Added role field
+        periodStart: formData.period_start,
+        periodEnd: formData.period_end,
+        hoursWorked: formData.hours_worked ? parseFloat(formData.hours_worked) : null,
+        hourlyRate: formData.staff_id ? getStaffInfo(formData.staff_id)?.hourly_rate || 0 : 0,
+        fixedSalary: formData.fixed_salary ? parseFloat(formData.fixed_salary) : null,
+        commissionTotal: formData.commission_total ? parseFloat(formData.commission_total) : 0,
+        bonuses: formData.bonuses,
+        deductions: formData.deductions,
+        status: formData.status
+      };
+      
+      // Rest of the function remains the same...
+      // Call API to create salary
+      const response = await axiosInstance.post(`${BaseUrl}salaries/create`, payload);
+      
+      if (response.data.success) {
+        // Add new salary to list with response data
+        const newSalary = {
+          salary_id: response.data.salaryId,
+          staff_id: response.data.staffId,
+          role: response.data.role,
+          period_start: response.data.periodStart,
+          period_end: response.data.periodEnd,
+          hours_worked: response.data.hoursWorked,
+          hourly_rate: response.data.hourlyRate,
+          hourly_total: response.data.hoursWorked * response.data.hourlyRate,
+          fixed_salary: response.data.fixedSalary,
+          commission_total: response.data.commissionTotal,
+          bonuses: response.data.bonuses ? JSON.parse(response.data.bonuses) : [],
+          deductions: response.data.deductions ? JSON.parse(response.data.deductions) : [],
+          net_pay: calculateNetPay(
+            response.data.hoursWorked * response.data.hourlyRate,
+            response.data.fixedSalary || 0,
+            response.data.commissionTotal,
+            response.data.bonuses ? JSON.parse(response.data.bonuses) : [],
+            response.data.deductions ? JSON.parse(response.data.deductions) : []
+          ),
+          status: response.data.status,
+          paid_at: null,
+          staff_name: response.data.staffName,
+          staff_email: response.data.staffEmail,
+          staff_phone: response.data.staffPhone
+        };
+        
+        setSalaries(prev => [...prev, newSalary]);
+        closeModal();
+        alert('Salary record added successfully!');
+      } else {
+        setError(response.data.message || 'Failed to create salary record');
+      }
+    } catch (err) {
+      console.error('Create error:', err);
+      setError(err.response?.data?.message || 'Failed to create salary record');
+    } finally {
+      setLoading(false);
+    }
+  } else if (modalType === 'edit') {
+    // Similar implementation for edit
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Get staff information to include role in payload
+      const staffInfo = getStaffInfo(formData.staff_id);
+      
+      // Prepare payload matching API response format
+      const payload = {
+        salaryId: formData.salary_id,
+        staffId: parseInt(formData.staff_id),
+        role: staffInfo.role, // Added role field
+        periodStart: formData.period_start,
+        periodEnd: formData.period_end,
+        hoursWorked: formData.hours_worked ? parseFloat(formData.hours_worked) : null,
+        hourlyRate: formData.staff_id ? getStaffInfo(formData.staff_id)?.hourly_rate || 0 : 0,
+        fixedSalary: formData.fixed_salary ? parseFloat(formData.fixed_salary) : null,
+        commissionTotal: formData.commission_total ? parseFloat(formData.commission_total) : 0,
+        bonuses: formData.bonuses,
+        deductions: formData.deductions,
+        status: formData.status,
+        paidAt: formData.paid_at ? new Date(formData.paid_at).toISOString() : null
+      };
+      
+      // Rest of the function remains the same...
+      // Call API to update salary
+      const response = await axiosInstance.put(`${BaseUrl}salaries/${formData.salary_id}`, payload);
+      
+      if (response.data.success) {
+        // Update salary in list with response data
+        const updatedSalary = {
+          salary_id: response.data.salaryId,
+          staff_id: response.data.staffId,
+          role: response.data.role,
+          period_start: response.data.periodStart,
+          period_end: response.data.periodEnd,
+          hours_worked: response.data.hoursWorked,
+          hourly_rate: response.data.hourlyRate,
+          hourly_total: response.data.hoursWorked * response.data.hourlyRate,
+          fixed_salary: response.data.fixedSalary,
+          commission_total: response.data.commissionTotal,
+          bonuses: response.data.bonuses ? JSON.parse(response.data.bonuses) : [],
+          deductions: response.data.deductions ? JSON.parse(response.data.deductions) : [],
+          net_pay: calculateNetPay(
+            response.data.hoursWorked * response.data.hourlyRate,
+            response.data.fixedSalary || 0,
+            response.data.commissionTotal,
+            response.data.bonuses ? JSON.parse(response.data.bonuses) : [],
+            response.data.deductions ? JSON.parse(response.data.deductions) : []
+          ),
+          status: response.data.status,
+          paid_at: response.data.paidAt,
+          staff_name: response.data.staffName,
+          staff_email: response.data.staffEmail,
+          staff_phone: response.data.staffPhone
+        };
+        
+        setSalaries(prev => prev.map(s => 
+          s.salary_id === formData.salary_id ? updatedSalary : s
+        ));
+        closeModal();
+        alert('Salary record updated successfully!');
+      } else {
+        setError(response.data.message || 'Failed to update salary record');
+      }
+    } catch (err) {
+      console.error('Update error:', err);
+      setError(err.response?.data?.message || 'Failed to update salary record');
+    } finally {
+      setLoading(false);
+    }
+  }
+};
+
   // Prevent background scroll
-  React.useEffect(() => {
+  useEffect(() => {
     if (isModalOpen || isDeleteModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -262,7 +579,7 @@ const SalaryCalculator = () => {
   };
 
   const getStaffInfo = (staffId) => {
-    const staff = staffList.find(s => s.staff_id === staffId);
+    const staff = staffList.find(s => s.id === parseInt(staffId));
     return staff || { first_name: 'Unknown', last_name: '', role: 'Unknown' };
   };
 
@@ -292,14 +609,14 @@ const SalaryCalculator = () => {
 
   // Auto-calculate hourly total based on hours and staff's hourly rate
   const calculateHourlyTotal = (hoursWorked, staffId) => {
-    const staff = staffList.find(s => s.staff_id === staffId);
+    const staff = staffList.find(s => s.id === parseInt(staffId));
     if (!hoursWorked || !staff?.hourly_rate) return 0;
     return hoursWorked * staff.hourly_rate;
   };
 
   // Auto-calculate commission total based on fixed/hourly earnings and commission rate
   const calculateCommissionTotal = (hourlyTotal, fixedSalary, staffId) => {
-    const staff = staffList.find(s => s.staff_id === staffId);
+    const staff = staffList.find(s => s.id === parseInt(staffId));
     if (!staff?.commission_rate_percent || staff.commission_rate_percent === 0) return 0;
 
     const baseAmount = (hourlyTotal || 0) + (fixedSalary || 0);
@@ -308,8 +625,8 @@ const SalaryCalculator = () => {
 
   // Auto-calculate net pay
   const calculateNetPay = (hourlyTotal, fixedSalary, commissionTotal, bonuses, deductions) => {
-    const bonusSum = (bonuses || []).reduce((sum, b) => sum + b.amount, 0);
-    const deductionSum = (deductions || []).reduce((sum, d) => sum + d.amount, 0);
+    const bonusSum = (bonuses || []).reduce((sum, b) => sum + (b.amount || 0), 0);
+    const deductionSum = (deductions || []).reduce((sum, d) => sum + (d.amount || 0), 0);
     return (hourlyTotal || 0) + (fixedSalary || 0) + commissionTotal + bonusSum - deductionSum;
   };
 
@@ -398,15 +715,15 @@ const SalaryCalculator = () => {
                     <td>
                       <div className="d-flex align-items-center">
                         <div className="ms-2">
-                          <div className="fw-bold">{staff.first_name} {staff.last_name}</div>
-                          <div className="text-muted small d-md-none">{staff.role}</div>
+                          <div className="fw-bold">{salary.staff_name}</div>
+                          <div className="text-muted small d-md-none">{salary.role}</div>
                           <div className="text-muted small d-md-none">{salary.salary_id}</div>
                           <div className="text-muted small d-md-none">{formatDate(salary.period_start)} - {formatDate(salary.period_end)}</div>
                           <div className="d-lg-none mt-1">{getStatusBadge(salary.status)}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="d-none d-lg-table-cell"><span className="badge bg-primary">{staff.role}</span></td>
+                    <td className="d-none d-lg-table-cell"><span className="badge bg-primary">{salary.role}</span></td>
                     <td className="d-none d-md-table-cell">
                       {formatDate(salary.period_start)}<br/>
                       <small className="text-muted">to {formatDate(salary.period_end)}</small>
@@ -467,6 +784,8 @@ const SalaryCalculator = () => {
                 <button type="button" className="btn-close" onClick={closeModal}></button>
               </div>
               <div className="modal-body p-3 p-md-4">
+                {error && <div className="alert alert-danger">{error}</div>}
+                
                 {/* Warning for editing paid salary */}
                 {modalType === 'edit' && selectedSalary?.status === 'Paid' && (
                   <div className="alert alert-warning d-flex align-items-center mb-3" role="alert">
@@ -503,7 +822,7 @@ const SalaryCalculator = () => {
                       >
                         <option value="">Select Staff</option>
                         {staffList.map(staff => (
-                          <option key={staff.staff_id} value={staff.staff_id}>
+                          <option key={staff.id} value={staff.id}>
                             {staff.first_name} {staff.last_name} ({staff.role})
                           </option>
                         ))}
@@ -609,7 +928,7 @@ const SalaryCalculator = () => {
                     </div>
                   </div>
 
-                  {/* SECTION 3: Bonuses & Deductions */}
+                  {/* SECTION 3: Bonuses */}
                   <h6 className="fw-bold mb-3 fs-6">Bonuses</h6>
                   <div className="mb-3">
                     <div className="row g-2 mb-2">
@@ -618,6 +937,8 @@ const SalaryCalculator = () => {
                           type="text"
                           className="form-control form-control-sm"
                           placeholder="Bonus label (e.g., Performance Bonus)"
+                          value={bonusInput.label}
+                          onChange={(e) => setBonusInput({ ...bonusInput, label: e.target.value })}
                           disabled={modalType === 'view'}
                         />
                       </div>
@@ -626,6 +947,8 @@ const SalaryCalculator = () => {
                           type="number"
                           className="form-control form-control-sm"
                           placeholder="Amount"
+                          value={bonusInput.amount}
+                          onChange={(e) => setBonusInput({ ...bonusInput, amount: e.target.value })}
                           disabled={modalType === 'view'}
                           min="0"
                         />
@@ -634,7 +957,8 @@ const SalaryCalculator = () => {
                         <button
                           type="button"
                           className="btn btn-outline-success btn-sm w-100"
-                          disabled={modalType === 'view'}
+                          onClick={handleAddBonus}
+                          disabled={modalType === 'view' || !bonusInput.label || !bonusInput.amount}
                         >
                           <FaPlus size={12} />
                         </button>
@@ -646,7 +970,18 @@ const SalaryCalculator = () => {
                           {formData.bonuses.map((bonus, i) => (
                             <li key={i} className="d-flex justify-content-between">
                               <span>{bonus.label}</span>
-                              <span>{formatCurrency(bonus.amount)}</span>
+                              <div>
+                                <span>{formatCurrency(bonus.amount)}</span>
+                                {modalType !== 'view' && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-danger ms-2"
+                                    onClick={() => handleRemoveBonus(i)}
+                                  >
+                                    <FaTrashAlt size={10} />
+                                  </button>
+                                )}
+                              </div>
                             </li>
                           ))}
                         </ul>
@@ -656,6 +991,7 @@ const SalaryCalculator = () => {
                     </div>
                   </div>
 
+                  {/* SECTION 4: Deductions */}
                   <h6 className="fw-bold mb-3 fs-6">Deductions</h6>
                   <div className="mb-3">
                     <div className="row g-2 mb-2">
@@ -664,6 +1000,8 @@ const SalaryCalculator = () => {
                           type="text"
                           className="form-control form-control-sm"
                           placeholder="Deduction label (e.g., Tax)"
+                          value={deductionInput.label}
+                          onChange={(e) => setDeductionInput({ ...deductionInput, label: e.target.value })}
                           disabled={modalType === 'view'}
                         />
                       </div>
@@ -672,6 +1010,8 @@ const SalaryCalculator = () => {
                           type="number"
                           className="form-control form-control-sm"
                           placeholder="Amount"
+                          value={deductionInput.amount}
+                          onChange={(e) => setDeductionInput({ ...deductionInput, amount: e.target.value })}
                           disabled={modalType === 'view'}
                           min="0"
                         />
@@ -680,7 +1020,8 @@ const SalaryCalculator = () => {
                         <button
                           type="button"
                           className="btn btn-outline-danger btn-sm w-100"
-                          disabled={modalType === 'view'}
+                          onClick={handleAddDeduction}
+                          disabled={modalType === 'view' || !deductionInput.label || !deductionInput.amount}
                         >
                           <FaPlus size={12} />
                         </button>
@@ -692,7 +1033,18 @@ const SalaryCalculator = () => {
                           {formData.deductions.map((deduction, i) => (
                             <li key={i} className="d-flex justify-content-between">
                               <span>{deduction.label}</span>
-                              <span>{formatCurrency(deduction.amount)}</span>
+                              <div>
+                                <span>{formatCurrency(deduction.amount)}</span>
+                                {modalType !== 'view' && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-danger ms-2"
+                                    onClick={() => handleRemoveDeduction(i)}
+                                  >
+                                    <FaTrashAlt size={10} />
+                                  </button>
+                                )}
+                              </div>
                             </li>
                           ))}
                         </ul>
@@ -702,7 +1054,7 @@ const SalaryCalculator = () => {
                     </div>
                   </div>
 
-                  {/* SECTION 4: Summary & Status */}
+                  {/* SECTION 5: Summary & Status */}
                   <h6 className="fw-bold mb-3 fs-6">Summary</h6>
                   <div className="row g-2 g-md-3 mb-3">
                     <div className="col-12 col-md-6">
@@ -765,8 +1117,9 @@ const SalaryCalculator = () => {
                           fontWeight: '500',
                         }}
                         onClick={handleSubmit}
+                        disabled={loading}
                       >
-                        {modalType === 'add' ? 'Generate Salary' : 'Update Record'}
+                        {loading ? 'Processing...' : (modalType === 'add' ? 'Generate Salary' : 'Update Record')}
                       </button>
                     )}
                   </div>
