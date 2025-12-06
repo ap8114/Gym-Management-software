@@ -45,19 +45,34 @@ const Attendance = () => {
       
       if (data.success && data.attendance) {
         // Transform API response to match expected format
-        const transformedAttendance = data.attendance.map(entry => ({
-          attendance_id: entry.id,
-          member_id: entry.memberId,
-          name: entry.fullName || `Member ID: ${entry.memberId}`,
-          status: entry.computedStatus === 'Active' ? 'Present' : 
-                  entry.computedStatus === 'Completed' ? 'Present' : 'Absent',
-          checkin_time: entry.checkIn ? new Date(entry.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "",
-          checkout_time: entry.checkOut ? new Date(entry.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "",
-          mode: entry.mode,
-          notes: entry.notes,
-          computedStatus: entry.computedStatus,
-          checkedOut: entry.checkOut ? true : false // Add checkedOut status
-        }));
+        const transformedAttendance = data.attendance.map(entry => {
+          // Calculate work hours
+          const checkInTime = entry.checkIn ? new Date(entry.checkIn) : null;
+          const checkOutTime = entry.checkOut ? new Date(entry.checkOut) : null;
+          let workHours = "--";
+          
+          if (checkInTime && checkOutTime) {
+            const diffMs = checkOutTime - checkInTime;
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            workHours = `${diffHours}h ${diffMinutes}m`;
+          }
+          
+          return {
+            attendance_id: entry.id,
+            member_id: entry.memberId,
+            name: entry.fullName || `Member ID: ${entry.memberId}`,
+            status: entry.computedStatus === 'Active' ? 'Present' : 
+                    entry.computedStatus === 'Completed' ? 'Present' : 'Absent',
+            checkin_time: entry.checkIn ? new Date(entry.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "",
+            checkout_time: entry.checkOut ? new Date(entry.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "",
+            mode: entry.mode,
+            notes: entry.notes,
+            computedStatus: entry.computedStatus,
+            checkedOut: entry.checkOut ? true : false,
+            workHours: workHours
+          };
+        });
         
         setAttendance(transformedAttendance);
       } else {
@@ -139,7 +154,7 @@ const Attendance = () => {
       const data = await response.json();
       
       if (data.success) {
-        // Update the specific member to show checked out status
+        // Update specific member to show checked out status
         setAttendance(attendance.map(member => 
           member.attendance_id === id 
             ? { 
@@ -242,10 +257,9 @@ const Attendance = () => {
               <thead style={{ backgroundColor: "#f8f9fa" }}>
                 <tr>
                   <th>Attendance ID</th>
-                  <th>Member ID</th>
-                  <th>Member Name</th>
                   <th>Check-in</th>
                   <th>Check-out</th>
+                  <th>Work Hours</th>
                   <th>Mode</th>
                   <th>Notes</th>
                   <th>Actions</th>
@@ -254,16 +268,15 @@ const Attendance = () => {
               <tbody>
                 {filteredAttendance.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="text-center text-muted">No attendance records found</td>
+                    <td colSpan="9" className="text-center text-muted">No attendance records found</td>
                   </tr>
                 ) : (
                   filteredAttendance.map((member) => (
                     <tr key={member.attendance_id}>
                       <td>{member.attendance_id}</td>
-                      <td>{member.member_id}</td>
-                      <td>{member.name}</td>
                       <td>{member.checkin_time || "--"}</td>
                       <td>{member.checkout_time || "--"}</td>
+                      <td>{member.workHours}</td>
                       <td>
                         <Form.Select
                           size="sm"
@@ -384,7 +397,11 @@ const Attendance = () => {
                     </Row>
                     
                     <Row className="mb-2">
-                      <Col xs={12}>
+                      <Col xs={6}>
+                        <small className="text-muted">Work Hours:</small>
+                        <div>{member.workHours}</div>
+                      </Col>
+                      <Col xs={6}>
                         <small className="text-muted">Mode:</small>
                         <Form.Select
                           size="sm"
@@ -504,6 +521,7 @@ const Attendance = () => {
               <p><b>Name:</b> {viewMember.name}</p>
               <p><b>Check-in:</b> {viewMember.checkin_time || "--"}</p>
               <p><b>Check-out:</b> {viewMember.checkout_time || "--"}</p>
+              <p><b>Work Hours:</b> {viewMember.workHours || "--"}</p>
               <p><b>Mode:</b> {viewMember.mode || "--"}</p>
               <p><b>Notes:</b> {viewMember.notes || "--"}</p>
             </>

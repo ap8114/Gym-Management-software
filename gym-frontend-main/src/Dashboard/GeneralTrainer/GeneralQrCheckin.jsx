@@ -236,7 +236,7 @@ const fetchCheckinHistory = async () => {
                 <thead>
                   <tr>
                     <th>Attendance ID</th>
-                       <th>Member ID</th>
+                    <th>Member ID</th>
                     <th>Check In</th>
                     <th>Check Out</th>
                     <th>Mode</th>
@@ -270,7 +270,6 @@ const fetchCheckinHistory = async () => {
                   )}
                 </tbody>
               </table>
-         
             </div>
           )}
         </div>
