@@ -235,11 +235,12 @@ const fetchCheckinHistory = async () => {
               <table className="table table-sm">
                 <thead>
                   <tr>
+                    <th>Attendance ID</th>
                     <th>Member ID</th>
                     <th>Check In</th>
                     <th>Check Out</th>
                     <th>Mode</th>
-                    <th>Status</th>
+                    <th>Notes</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -250,7 +251,8 @@ const fetchCheckinHistory = async () => {
                   ) : (
                     history.map((entry) => (
                       <tr key={entry.id}>
-                        <td>{entry.memberId}</td>
+                        <td>{entry.id}</td>
+                          <td>{entry.memberId}</td>
                         <td>{format(entry.checkIn, 'MMM dd, yyyy HH:mm:ss')}</td>
                         <td>
                           {entry.checkOut 
@@ -260,26 +262,14 @@ const fetchCheckinHistory = async () => {
                         <td>
                           <Badge bg="info">{entry.mode}</Badge>
                         </td>
-                        <td>
-                          {getStatusBadge(entry.computedStatus)}
+                          <td>
+                          <Badge bg="info">{entry.notes}</Badge>
                         </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
-              {history.length > 0 && (
-                <div className="mt-3">
-                  <h6 className="fw-bold mb-2">Notes</h6>
-                  {history.map((entry) => (
-                    <div key={entry.id} className="mb-2">
-                      <small className="text-muted">
-                        Member ID: {entry.memberId} - {format(entry.checkIn, 'HH:mm')} - {entry.notes || 'No notes'}
-                      </small>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
         </div>

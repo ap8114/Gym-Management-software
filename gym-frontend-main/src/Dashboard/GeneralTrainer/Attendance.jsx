@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Form, Button, Table, Badge, Modal, Row, Col, Card, Spinner, Alert } from "react-bootstrap";
-import { FaEye, FaTrash, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
+import { Form, Button, Table, Modal, Row, Col, Card, Spinner, Alert } from "react-bootstrap";
+import { FaEye, FaTrash, FaTimesCircle } from "react-icons/fa";
 import BaseUrl from '../../Api/BaseUrl';
 
 const Attendance = () => {
@@ -10,7 +10,6 @@ const Attendance = () => {
   const [filters, setFilters] = useState({
     memberId: "",
     memberName: "",
-    status: "",
   });
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -46,18 +45,34 @@ const Attendance = () => {
       
       if (data.success && data.attendance) {
         // Transform API response to match expected format
-        const transformedAttendance = data.attendance.map(entry => ({
-          attendance_id: entry.id,
-          member_id: entry.memberId,
-          name: entry.fullName || `Member ID: ${entry.memberId}`,
-          status: entry.computedStatus === 'Active' ? 'Present' : 
-                  entry.computedStatus === 'Completed' ? 'Present' : 'Absent',
-          checkin_time: entry.checkIn ? new Date(entry.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "",
-          checkout_time: entry.checkOut ? new Date(entry.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "",
-          mode: entry.mode,
-          notes: entry.notes,
-          computedStatus: entry.computedStatus
-        }));
+        const transformedAttendance = data.attendance.map(entry => {
+          // Calculate work hours
+          const checkInTime = entry.checkIn ? new Date(entry.checkIn) : null;
+          const checkOutTime = entry.checkOut ? new Date(entry.checkOut) : null;
+          let workHours = "--";
+          
+          if (checkInTime && checkOutTime) {
+            const diffMs = checkOutTime - checkInTime;
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            workHours = `${diffHours}h ${diffMinutes}m`;
+          }
+          
+          return {
+            attendance_id: entry.id,
+            member_id: entry.memberId,
+            name: entry.fullName || `Member ID: ${entry.memberId}`,
+            status: entry.computedStatus === 'Active' ? 'Present' : 
+                    entry.computedStatus === 'Completed' ? 'Present' : 'Absent',
+            checkin_time: entry.checkIn ? new Date(entry.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "",
+            checkout_time: entry.checkOut ? new Date(entry.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "",
+            mode: entry.mode,
+            notes: entry.notes,
+            computedStatus: entry.computedStatus,
+            checkedOut: entry.checkOut ? true : false,
+            workHours: workHours
+          };
+        });
         
         setAttendance(transformedAttendance);
       } else {
@@ -73,40 +88,50 @@ const Attendance = () => {
     }
   };
 
-  // Delete member
-  const handleDelete = (id) => {
+  // Delete member via API
+  const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this record?")) {
-      setAttendance(attendance.filter((m) => m.attendance_id !== id));
-    }
-  };
+      try {
+        // Show loading state for specific member
+        setAttendance(attendance.map(member => 
+          member.attendance_id === id 
+            ? { ...member, deleting: true }
+            : member
+        ));
 
-  // Handle status change with dynamic logic
-  const handleStatusChange = (id, newStatus) => {
-    setAttendance(attendance.map((member) => {
-      if (member.attendance_id === id) {
-        let updatedMember = { ...member, status: newStatus };
-
-        if (newStatus === "Present") {
-          if (!member.checkin_time) {
-            const now = new Date();
-            updatedMember.checkin_time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const response = await fetch(`${BaseUrl}memberattendence/delete/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
           }
-        } else if (newStatus === "Absent") {
-          updatedMember.checkin_time = "";
-          updatedMember.checkout_time = "";
-          updatedMember.mode = "";
-        } else if (newStatus === "Late") {
-          if (!member.checkin_time) {
-            const now = new Date();
-            updatedMember.checkin_time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          }
-          updatedMember.checkout_time = "";
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Refresh attendance data after successful deletion
+          fetchAttendanceData();
+          alert('Record deleted successfully!');
+        } else {
+          alert(data.message || 'Delete failed');
+          // Remove loading state
+          setAttendance(attendance.map(member => 
+            member.attendance_id === id 
+              ? { ...member, deleting: false }
+              : member
+          ));
         }
-
-        return updatedMember;
+      } catch (err) {
+        console.error('Error during deletion:', err);
+        alert(`Error during deletion: ${err.message}`);
+        // Remove loading state
+        setAttendance(attendance.map(member => 
+          member.attendance_id === id 
+            ? { ...member, deleting: false }
+            : member
+        ));
       }
-      return member;
-    }));
+    }
   };
 
   // Check out member via API
@@ -119,7 +144,7 @@ const Attendance = () => {
           : member
       ));
 
-      const response = await fetch(`https://84kmwvvs-4000.inc1.devtunnels.ms/api/memberattendence/checkout/${id}`, {
+      const response = await fetch(`${BaseUrl}memberattendence/checkout/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -129,8 +154,17 @@ const Attendance = () => {
       const data = await response.json();
       
       if (data.success) {
-        // Refresh attendance data after successful checkout
-        fetchAttendanceData();
+        // Update specific member to show checked out status
+        setAttendance(attendance.map(member => 
+          member.attendance_id === id 
+            ? { 
+                ...member, 
+                checkingOut: false,
+                checkedOut: true,
+                checkout_time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            : member
+        ));
         alert('Check-out successful!');
       } else {
         alert(data.message || 'Check-out failed');
@@ -149,7 +183,7 @@ const Attendance = () => {
         member.attendance_id === id 
           ? { ...member, checkingOut: false }
           : member
-        ));
+      ));
     }
   };
 
@@ -162,7 +196,6 @@ const Attendance = () => {
       (filters.memberName
         ? m.name.toLowerCase().includes(filters.memberName.toLowerCase())
         : true) &&
-      (filters.status ? m.status === filters.status : true) &&
       (search ? m.name.toLowerCase().includes(search.toLowerCase()) : true)
     );
   });
@@ -192,7 +225,7 @@ const Attendance = () => {
         <>
           {/* Filters Row */}
           <Row className="mb-4 g-2 g-md-3">
-            <Col xs={12} sm={6} md={3}>
+            <Col xs={12} sm={6} md={4}>
               <Form.Control
                 type="text"
                 placeholder="Filter by Member ID"
@@ -202,7 +235,7 @@ const Attendance = () => {
                 }
               />
             </Col>
-            <Col xs={12} sm={6} md={3}>
+            <Col xs={12} sm={6} md={4}>
               <Form.Control
                 type="text"
                 placeholder="Filter by Member Name"
@@ -212,18 +245,7 @@ const Attendance = () => {
                 }
               />
             </Col>
-            <Col xs={12} sm={6} md={3}>
-              <Form.Select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              >
-                <option value="">Filter by Status</option>
-                <option value="Present">Present</option>
-                <option value="Absent">Absent</option>
-                <option value="Late">Late</option>
-              </Form.Select>
-            </Col>
-            <Col xs={12} sm={6} md={3} className="d-flex justify-content-start justify-content-md-end">
+            <Col xs={12} sm={6} md={4} className="d-flex justify-content-start justify-content-md-end">
               <Button variant="outline-secondary me-2">Filter</Button>
               <Button variant="outline-secondary">Export</Button>
             </Col>
@@ -235,11 +257,9 @@ const Attendance = () => {
               <thead style={{ backgroundColor: "#f8f9fa" }}>
                 <tr>
                   <th>Attendance ID</th>
-                  <th>Member ID</th>
-                  <th>Member Name</th>
-                  <th>Status</th>
                   <th>Check-in</th>
                   <th>Check-out</th>
+                  <th>Work Hours</th>
                   <th>Mode</th>
                   <th>Notes</th>
                   <th>Actions</th>
@@ -248,73 +268,46 @@ const Attendance = () => {
               <tbody>
                 {filteredAttendance.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="text-center text-muted">No attendance records found</td>
+                    <td colSpan="9" className="text-center text-muted">No attendance records found</td>
                   </tr>
                 ) : (
                   filteredAttendance.map((member) => (
                     <tr key={member.attendance_id}>
                       <td>{member.attendance_id}</td>
-                      <td>{member.member_id}</td>
-                      <td>{member.name}</td>
+                      <td>{member.checkin_time || "--"}</td>
+                      <td>{member.checkout_time || "--"}</td>
+                      <td>{member.workHours}</td>
                       <td>
                         <Form.Select
                           size="sm"
-                          value={member.status}
-                          onChange={(e) => handleStatusChange(member.attendance_id, e.target.value)}
-                          style={{ 
-                            width: '100px',
-                            backgroundColor: 
-                              member.status === "Present" ? "#d4edda" : 
-                              member.status === "Absent" ? "#f8d7da" : 
-                              member.status === "Late" ? "#fff3cd" : "#e2e3e5"
+                          value={member.mode || ""}
+                          onChange={(e) => {
+                            setAttendance(attendance.map(m =>
+                              m.attendance_id === member.attendance_id
+                                ? { ...m, mode: e.target.value }
+                                : m
+                            ));
                           }}
                         >
-                          <option value="Present">Present</option>
-                          <option value="Absent">Absent</option>
-                          <option value="Late">Late</option>
+                          <option value="">-------Select-------</option>
+                          <option value="QR">QR</option>
+                          <option value="Manual">Manual</option>
+                          <option value="App">App</option>
                         </Form.Select>
                       </td>
-                      <td>{member.checkin_time || "--"}</td>
-                      <td>{member.checkout_time || "--"}</td>
                       <td>
-                        {(member.status === "Present" || member.status === "Late") ? (
-                          <Form.Select
-                            size="sm"
-                            value={member.mode || ""}
-                            onChange={(e) => {
-                              setAttendance(attendance.map(m =>
-                                m.attendance_id === member.attendance_id
-                                  ? { ...m, mode: e.target.value }
-                                  : m
-                              ));
-                            }}
-                          >
-                            <option value="">-------Select-------</option>
-                            <option value="QR">QR</option>
-                            <option value="Manual">Manual</option>
-                            <option value="App">App</option>
-                          </Form.Select>
-                        ) : (
-                          member.mode || "--"
-                        )}
-                      </td>
-                      <td>
-                        {member.status === "Late" ? (
-                          <Form.Control
-                            type="text"
-                            size="sm"
-                            value={member.notes}
-                            onChange={(e) => {
-                              setAttendance(attendance.map(m => 
-                                m.attendance_id === member.attendance_id 
-                                  ? { ...m, notes: e.target.value } 
-                                  : m
-                              ));
-                            }}
-                          />
-                        ) : (
-                          member.notes || "--"
-                        )}
+                        <Form.Control
+                          type="text"
+                          size="sm"
+                          value={member.notes || ""}
+                          onChange={(e) => {
+                            setAttendance(attendance.map(m => 
+                              m.attendance_id === member.attendance_id 
+                                ? { ...m, notes: e.target.value } 
+                                : m
+                            ));
+                          }}
+                        />
                       </td>
                       <td>
                         <div className="d-flex gap-2">
@@ -328,8 +321,8 @@ const Attendance = () => {
                           >
                             <FaEye />
                           </Button>
-                          {/* Checkout button - only show for Present or Late status */}
-                          {(member.status === "Present" || member.status === "Late") ? (
+                          {/* Checkout button - show only if not checked out */}
+                          {!member.checkedOut ? (
                             <Button
                               variant="outline-success"
                               size="sm"
@@ -348,13 +341,26 @@ const Attendance = () => {
                                 </>
                               )}
                             </Button>
-                          ) : null}
+                          ) : (
+                            <Button
+                              variant="outline-secondary"
+                              size="sm"
+                              disabled
+                            >
+                              <span className="ms-1">Checked Out</span>
+                            </Button>
+                          )}
                           <Button
                             variant="outline-danger"
                             size="sm"
                             onClick={() => handleDelete(member.attendance_id)}
+                            disabled={member.deleting}
                           >
-                            <FaTrash />
+                            {member.deleting ? (
+                              <Spinner as="span" animation="border" size="sm" />
+                            ) : (
+                              <FaTrash />
+                            )}
                           </Button>
                         </div>
                       </td>
@@ -377,17 +383,6 @@ const Attendance = () => {
                       <strong>{member.name}</strong>
                       <div className="text-muted small">ID: {member.member_id}</div>
                     </div>
-                    <div>
-                      <Badge 
-                        bg={
-                          member.status === "Present" ? "success" : 
-                          member.status === "Absent" ? "danger" : 
-                          member.status === "Late" ? "warning" : "secondary"
-                        }
-                      >
-                        {member.status}
-                      </Badge>
-                    </div>
                   </Card.Header>
                   <Card.Body>
                     <Row className="mb-2">
@@ -402,66 +397,50 @@ const Attendance = () => {
                     </Row>
                     
                     <Row className="mb-2">
-                      <Col xs={12}>
-                        <small className="text-muted">Status:</small>
+                      <Col xs={6}>
+                        <small className="text-muted">Work Hours:</small>
+                        <div>{member.workHours}</div>
+                      </Col>
+                      <Col xs={6}>
+                        <small className="text-muted">Mode:</small>
                         <Form.Select
                           size="sm"
-                          value={member.status}
-                          onChange={(e) => handleStatusChange(member.attendance_id, e.target.value)}
+                          value={member.mode || ""}
+                          onChange={(e) => {
+                            setAttendance(attendance.map(m =>
+                              m.attendance_id === member.attendance_id
+                                ? { ...m, mode: e.target.value }
+                                : m
+                            ));
+                          }}
                           className="mt-1"
                         >
-                          <option value="Present">Present</option>
-                          <option value="Absent">Absent</option>
-                          <option value="Late">Late</option>
+                          <option value="">--Select--</option>
+                          <option value="QR">QR</option>
+                          <option value="Manual">Manual</option>
+                          <option value="App">App</option>
                         </Form.Select>
                       </Col>
                     </Row>
                     
-                    {(member.status === "Present" || member.status === "Late") && (
-                      <Row className="mb-2">
-                        <Col xs={12}>
-                          <small className="text-muted">Mode:</small>
-                          <Form.Select
-                            size="sm"
-                            value={member.mode || ""}
-                            onChange={(e) => {
-                              setAttendance(attendance.map(m =>
-                                m.attendance_id === member.attendance_id
-                                  ? { ...m, mode: e.target.value }
-                                  : m
-                              ));
-                            }}
-                            className="mt-1"
-                          >
-                            <option value="">--Select--</option>
-                            <option value="QR">QR</option>
-                            <option value="Manual">Manual</option>
-                            <option value="App">App</option>
-                          </Form.Select>
-                        </Col>
-                      </Row>
-                    )}
-                    
-                    {member.status === "Late" && (
-                      <Row className="mb-2">
-                        <Col xs={12}>
-                          <small className="text-muted">Notes:</small>
-                          <Form.Control
-                            type="text"
-                            size="sm"
-                            value={member.notes}
-                            onChange={(e) => {
-                              setAttendance(attendance.map(m => 
-                                m.attendance_id === member.attendance_id 
-                                  ? { ...m, notes: e.target.value } 
-                                  : m
-                              ));
-                            }}
-                            className="mt-1"
-                          />
-                        </Col>
-                      </Row>
-                    )}
+                    <Row className="mb-2">
+                      <Col xs={12}>
+                        <small className="text-muted">Notes:</small>
+                        <Form.Control
+                          type="text"
+                          size="sm"
+                          value={member.notes || ""}
+                          onChange={(e) => {
+                            setAttendance(attendance.map(m => 
+                              m.attendance_id === member.attendance_id 
+                                ? { ...m, notes: e.target.value } 
+                                : m
+                            ));
+                          }}
+                          className="mt-1"
+                        />
+                      </Col>
+                    </Row>
                     
                     <div className="d-flex gap-2 mt-3">
                       <Button
@@ -474,8 +453,8 @@ const Attendance = () => {
                       >
                         <FaEye />
                       </Button>
-                      {/* Checkout button - only show for Present or Late status */}
-                      {(member.status === "Present" || member.status === "Late") ? (
+                      {/* Checkout button - show only if not checked out */}
+                      {!member.checkedOut ? (
                         <Button
                           variant="outline-success"
                           size="sm"
@@ -494,13 +473,26 @@ const Attendance = () => {
                             </>
                           )}
                         </Button>
-                      ) : null}
+                      ) : (
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          disabled
+                        >
+                          <span className="ms-1">Checked Out</span>
+                        </Button>
+                      )}
                       <Button
                         variant="outline-danger"
                         size="sm"
                         onClick={() => handleDelete(member.attendance_id)}
+                        disabled={member.deleting}
                       >
-                        <FaTrash />
+                        {member.deleting ? (
+                          <Spinner as="span" animation="border" size="sm" />
+                        ) : (
+                          <FaTrash />
+                        )}
                       </Button>
                     </div>
                   </Card.Body>
@@ -527,15 +519,9 @@ const Attendance = () => {
               <p><b>Attendance ID:</b> {viewMember.attendance_id}</p>
               <p><b>Member ID:</b> {viewMember.member_id}</p>
               <p><b>Name:</b> {viewMember.name}</p>
-              <p>
-                <b>Status:</b> 
-                {viewMember.status === "Present" && <Badge bg="success ms-2">Present</Badge>}
-                {viewMember.status === "Absent" && <Badge bg="danger ms-2">Absent</Badge>}
-                {viewMember.status === "Late" && <Badge bg="warning" text="dark" className="ms-2">Late</Badge>}
-                {!viewMember.status && <Badge bg="secondary ms-2">Not Marked</Badge>}
-              </p>
               <p><b>Check-in:</b> {viewMember.checkin_time || "--"}</p>
               <p><b>Check-out:</b> {viewMember.checkout_time || "--"}</p>
+              <p><b>Work Hours:</b> {viewMember.workHours || "--"}</p>
               <p><b>Mode:</b> {viewMember.mode || "--"}</p>
               <p><b>Notes:</b> {viewMember.notes || "--"}</p>
             </>

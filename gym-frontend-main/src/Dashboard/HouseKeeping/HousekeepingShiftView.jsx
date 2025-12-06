@@ -1,15 +1,43 @@
-import React from 'react';
+import axios from 'axios';
+import React, { useEffect } from 'react';
+import BaseUrl from '../../Api/BaseUrl';
 
 const HousekeepingShiftView = () => {
-  const shifts = [
-    { id: 1, staffId: 1, date: "2023-10-15", startTime: "09:00", endTime: "17:00", type: "Morning", branch: "Main Branch", status: "Approved" },
-    { id: 2, staffId: 2, date: "2023-10-15", startTime: "12:00", endTime: "20:00", type: "Evening", branch: "Downtown Branch", status: "Pending" },
-    { id: 3, staffId: 3, date: "2023-10-16", startTime: "14:00", endTime: "22:00", type: "Evening", branch: "Main Branch", status: "Approved" },
-    { id: 4, staffId: 4, date: "2023-10-16", startTime: "22:00", endTime: "06:00", type: "Night", branch: "West Branch", status: "Approved" },
-    { id: 5, staffId: 5, date: "2023-10-17", startTime: "06:00", endTime: "14:00", type: "Morning", branch: "Downtown Branch", status: "Pending" }
-  ];
 
-  const currentUserId = 4; // Sarah Wilson (Housekeeping)
+  const [shifts, setShifts] = React.useState([]);
+  // const shifts = [
+  //   { id: 1, staffId: 1, date: "2023-10-15", startTime: "09:00", endTime: "17:00", type: "Morning", branch: "Main Branch", status: "Approved" },
+  //   { id: 2, staffId: 2, date: "2023-10-15", startTime: "12:00", endTime: "20:00", type: "Evening", branch: "Downtown Branch", status: "Pending" },
+  //   { id: 3, staffId: 3, date: "2023-10-16", startTime: "14:00", endTime: "22:00", type: "Evening", branch: "Main Branch", status: "Approved" },
+  //   { id: 4, staffId: 4, date: "2023-10-16", startTime: "22:00", endTime: "06:00", type: "Night", branch: "West Branch", status: "Approved" },
+  //   { id: 5, staffId: 5, date: "2023-10-17", startTime: "06:00", endTime: "14:00", type: "Morning", branch: "Downtown Branch", status: "Pending" }
+  // ];
+
+
+  const shiftId = localStorage.getItem('userId');
+ useEffect(() => {
+  const fetchShifts = async () => {
+    const res = await axios.get(`${BaseUrl}shift/${shiftId}`);
+
+    console.log("API RESPONSE ===>", res.data); // DEBUG
+
+    let apiData = res.data;
+
+    if (Array.isArray(apiData)) {
+      setShifts(apiData);
+    } else if (apiData.data && Array.isArray(apiData.data)) {
+      setShifts(apiData.data);
+    } else if (apiData.shifts && Array.isArray(apiData.shifts)) {
+      setShifts(apiData.shifts);
+    } else {
+      setShifts([]);
+    }
+  };
+
+  fetchShifts();
+}, []);
+
+
 
   const getShiftColor = (type) => {
     switch (type) {
@@ -29,7 +57,8 @@ const HousekeepingShiftView = () => {
     }
   };
 
-  const myShifts = shifts.filter(s => s.staffId === currentUserId);
+
+
 
   return (
     <div className="container-fluid py-4">
@@ -50,8 +79,8 @@ const HousekeepingShiftView = () => {
             </tr>
           </thead>
           <tbody>
-            {myShifts.length > 0 ? (
-              myShifts.map(shift => (
+            {shifts.length > 0 ? (
+              shifts.map(shift => (
                 <tr key={shift.id}>
                   <td>{shift.date}</td>
                   <td>{shift.startTime}</td>

@@ -1,12 +1,28 @@
-import React from 'react';
+import axios from 'axios';
+import React, { useEffect } from 'react';
 import { ClipboardCheck, Clock, CheckCircle, PlayFill } from 'react-bootstrap-icons';
+import BaseUrl from '../../Api/BaseUrl';
 
 const HousekeepingTask = () => {
-  const tasks = [
-    { id: 1, area: "Gym Floor", task: "Mop & Disinfect", time: "08:00 - 09:00", status: "Pending" },
-    { id: 2, area: "Locker Room", task: "Restock Towels", time: "10:00 - 10:30", status: "Completed" },
-    { id: 3, area: "Reception", task: "Clean Counters", time: "14:00 - 14:30", status: "Pending" }
-  ];
+  const [tasks, setTasks] = React.useState([]);
+
+
+  const taskId = localStorage.getItem('userId');
+  useEffect(() => {
+    // Fetch tasks from API (mocked here)
+    const fetchTasks = async () => {
+      // Simulate API call
+      const fetchedTasks = await axios.get(`${BaseUrl}housekeepingtask/${taskId}`);
+      setTasks(fetchedTasks.data.data);
+    };
+
+    fetchTasks();
+  }, []);
+  // const tasks = [
+  //   { id: 1, area: "Gym Floor", task: "Mop & Disinfect", time: "08:00 - 09:00", status: "Pending" },
+  //   { id: 2, area: "Locker Room", task: "Restock Towels", time: "10:00 - 10:30", status: "Completed" },
+  //   { id: 3, area: "Reception", task: "Clean Counters", time: "14:00 - 14:30", status: "Pending" }
+  // ];
 
   const getStatusBadge = (status) => {
     switch (status) {
