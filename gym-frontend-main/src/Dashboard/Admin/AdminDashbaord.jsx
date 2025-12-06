@@ -405,7 +405,7 @@ const AdminDashboard = () => {
 
         {/* Charts Section */}
         <div className="row g-3 mb-4">
-          <div className="col-12 col-lg-6">
+          <div className="col-12 col-lg-12">
             <div className="card shadow-sm h-100" data-testid="member-growth-chart">
               <div className="card-header bg-white border-0 pt-4 pb-0">
                 <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
@@ -418,7 +418,7 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="col-12 col-lg-6">
+          {/* <div className="col-12 col-lg-6">
             <div className="card shadow-sm h-100" data-testid="revenue-distribution-chart">
               <div className="card-header bg-white border-0 pt-4 pb-0">
                 <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
@@ -429,7 +429,7 @@ const AdminDashboard = () => {
                 <div ref={revenueChartRef} style={{ height: '250px', width: '100%' }}></div>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Activities Section */}

@@ -242,7 +242,7 @@ const AdminMember = () => {
 
       // Make API call using axiosInstance and BaseUrl
       const response = await axiosInstance.post(
-        `${BaseUrl}/members/create`,
+        `${BaseUrl}members/create`,
         payload
       );
 
