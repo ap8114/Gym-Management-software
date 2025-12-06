@@ -18,7 +18,20 @@ const ManageStaff = () => {
   const [statusFilter, setStatusFilter] = useState('All');
   const [branchFilter, setBranchFilter] = useState('All');
   const fileInputRef = useRef(null);
- 
+  
+  // Form state for controlled inputs
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    password: '',
+    role: 'Receptionist',
+    branch: '',
+    gender: 'Male',
+    dateOfBirth: '',
+    joinDate: new Date().toISOString().split('T')[0],
+    exitDate: ''
+  });
   
   // State for status
   const [staffStatus, setStaffStatus] = useState('Active');
@@ -36,11 +49,11 @@ const ManageStaff = () => {
   
   // Role ID mappings - Updated to match API expectations
   const roleIds = {
-    'Admin': 1,
     'Manager': 2,
-    'Trainer': 3,
-    'Receptionist': 4,
-    'Housekeeping': 5
+    'generaltrainer': 6,
+    'personaltrainer': 5,
+    'Receptionist': 7,
+    'Housekeeping': 8
   };
 
   // Normalize server staff object to frontend model
@@ -165,6 +178,19 @@ const ManageStaff = () => {
     setModalType('add');
     setSelectedStaff(null);
     setStaffStatus('Active');
+    // Reset form data
+    setFormData({
+      fullName: '',
+      email: '',
+      phone: '',
+      password: '',
+      role: 'Receptionist',
+      branch: branches.length > 0 ? branches[0].id.toString() : '',
+      gender: 'Male',
+      dateOfBirth: '',
+      joinDate: new Date().toISOString().split('T')[0],
+      exitDate: ''
+    });
     setIsModalOpen(true);
   };
   
@@ -172,6 +198,19 @@ const ManageStaff = () => {
     setModalType('view');
     setSelectedStaff(staffMember);
     setStaffStatus(staffMember.status || 'Active');
+    // Populate form with staff data
+    setFormData({
+      fullName: staffMember.fullName || '',
+      email: staffMember.email || '',
+      phone: staffMember.phone || '',
+      password: '',
+      role: getRoleName(staffMember.roleId) || 'Receptionist',
+      branch: staffMember.branchId?.toString() || '',
+      gender: staffMember.gender || 'Male',
+      dateOfBirth: staffMember.dateOfBirth ? new Date(staffMember.dateOfBirth).toISOString().split('T')[0] : '',
+      joinDate: staffMember.joinDate ? new Date(staffMember.joinDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      exitDate: staffMember.exitDate ? new Date(staffMember.exitDate).toISOString().split('T')[0] : ''
+    });
     setIsModalOpen(true);
   };
   
@@ -179,6 +218,19 @@ const ManageStaff = () => {
     setModalType('edit');
     setSelectedStaff(staffMember);
     setStaffStatus(staffMember.status || 'Active');
+    // Populate form with staff data
+    setFormData({
+      fullName: staffMember.fullName || '',
+      email: staffMember.email || '',
+      phone: staffMember.phone || '',
+      password: '',
+      role: getRoleName(staffMember.roleId) || 'Receptionist',
+      branch: staffMember.branchId?.toString() || '',
+      gender: staffMember.gender || 'Male',
+      dateOfBirth: staffMember.dateOfBirth ? new Date(staffMember.dateOfBirth).toISOString().split('T')[0] : '',
+      joinDate: staffMember.joinDate ? new Date(staffMember.joinDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      exitDate: staffMember.exitDate ? new Date(staffMember.exitDate).toISOString().split('T')[0] : ''
+    });
     setIsModalOpen(true);
   };
   
@@ -266,15 +318,17 @@ const ManageStaff = () => {
   const getRoleBadge = (roleId) => {
     const roleName = getRoleName(roleId);
     const roleColors = {
-      Admin: "bg-primary-subtle text-primary-emphasis",
       Manager: "bg-info-subtle text-info-emphasis",
-      Trainer: "bg-warning-subtle text-warning-emphasis",
+      generaltrainer: "bg-warning-subtle text-warning-emphasis",
+      personaltrainer: "bg-primary-subtle text-primary-emphasis",
       Receptionist: "bg-secondary-subtle text-secondary-emphasis",
       Housekeeping: "bg-success-subtle text-success-emphasis"
     };
     return (
       <span className={`badge rounded-pill ${roleColors[roleName] || 'bg-light'} px-3 py-1`}>
-        {roleName}
+        {roleName === 'generaltrainer' ? 'General Trainer' : 
+         roleName === 'personaltrainer' ? 'Personal Trainer' : 
+         roleName}
       </span>
     );
   };
@@ -353,17 +407,17 @@ const ManageStaff = () => {
     try {
       // Create JSON payload instead of FormData
       const payload = {
-        fullName: document.getElementById('fullName').value,
-        email: document.getElementById('email').value,
-        phone: document.getElementById('phone').value,
-        password: document.getElementById('passwordField').value,
-        roleId: roleIds[document.getElementById('role').value],
-        branchId: parseInt(document.getElementById('branch').value),
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+        roleId: roleIds[formData.role],
+        branchId: parseInt(formData.branch),
         adminId: parseInt(adminId),
-        gender: document.getElementById('gender').value,
-        dateOfBirth: document.getElementById('dob').value,
-        joinDate: document.getElementById('joinDate').value,
-        exitDate: document.getElementById('exitDate').value || null,
+        gender: formData.gender,
+        dateOfBirth: formData.dateOfBirth,
+        joinDate: formData.joinDate,
+        exitDate: formData.exitDate || null,
         status: staffStatus,
         profilePhoto: "uploads/staff/default.png" // Default profile photo
       };
@@ -420,6 +474,15 @@ const ManageStaff = () => {
       console.error("Error in form submission:", error);
       alert(`Failed to ${modalType === 'add' ? 'add' : 'update'} staff member. Please try again.`);
     }
+  };
+  
+  // Handle form input changes
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
   
   return (
@@ -490,7 +553,9 @@ const ManageStaff = () => {
                     className={`dropdown-item ${roleFilter === role ? 'active' : ''}`} 
                     onClick={() => { setRoleFilter(role); setRoleFilterOpen(false); }}
                   >
-                    {role}
+                    {role === 'generaltrainer' ? 'General Trainer' : 
+                     role === 'personaltrainer' ? 'Personal Trainer' : 
+                     role}
                   </button>
                 ))}
               </div>
@@ -656,23 +721,63 @@ const ManageStaff = () => {
                   <div className="row mb-3 g-3">
                     <div className="col-12 col-md-6">
                       <label className="form-label">Full Name <span className="text-danger">*</span></label>
-                      <input type="text" className="form-control rounded-3" id="fullName" defaultValue={selectedStaff?.fullName || ''} disabled={modalType === 'view'} required />
+                      <input 
+                        type="text" 
+                        className="form-control rounded-3" 
+                        name="fullName"
+                        value={formData.fullName} 
+                        onChange={handleInputChange}
+                        disabled={modalType === 'view'} 
+                        required 
+                      />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Email <span className="text-danger">*</span></label>
-                      <input type="email" className="form-control rounded-3" id="email" defaultValue={selectedStaff?.email || ''} disabled={modalType === 'view'} required />
+                      <input 
+                        type="email" 
+                        className="form-control rounded-3" 
+                        name="email"
+                        value={formData.email} 
+                        onChange={handleInputChange}
+                        disabled={modalType === 'view'} 
+                        required 
+                      />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Phone <span className="text-danger">*</span></label>
-                      <input type="tel" className="form-control rounded-3" id="phone" defaultValue={selectedStaff?.phone || ''} disabled={modalType === 'view'} required />
+                      <input 
+                        type="tel" 
+                        className="form-control rounded-3" 
+                        name="phone"
+                        value={formData.phone} 
+                        onChange={handleInputChange}
+                        disabled={modalType === 'view'} 
+                        required 
+                      />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Password {modalType === 'add' && <span className="text-danger">*</span>}</label>
-                      <input type="password" className="form-control rounded-3" id="passwordField" placeholder={modalType === 'edit' ? "Leave blank to keep current password" : ""} disabled={modalType === 'view'} required={modalType === 'add'} />
+                      <input 
+                        type="password" 
+                        className="form-control rounded-3" 
+                        name="password"
+                        value={formData.password} 
+                        onChange={handleInputChange}
+                        placeholder={modalType === 'edit' ? "Leave blank to keep current password" : ""} 
+                        disabled={modalType === 'view'} 
+                        required={modalType === 'add'} 
+                      />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Gender <span className="text-danger">*</span></label>
-                      <select className="form-select rounded-3" id="gender" defaultValue={selectedStaff?.gender || 'Male'} disabled={modalType === 'view'} required>
+                      <select 
+                        className="form-select rounded-3" 
+                        name="gender"
+                        value={formData.gender} 
+                        onChange={handleInputChange}
+                        disabled={modalType === 'view'} 
+                        required
+                      >
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
                         <option value="Other">Other</option>
@@ -680,7 +785,15 @@ const ManageStaff = () => {
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Date of Birth <span className="text-danger">*</span></label>
-                      <input type="date" className="form-control rounded-3" id="dob" defaultValue={selectedStaff?.dateOfBirth ? new Date(selectedStaff.dateOfBirth).toISOString().split('T')[0] : ''} disabled={modalType === 'view'} required />
+                      <input 
+                        type="date" 
+                        className="form-control rounded-3" 
+                        name="dateOfBirth"
+                        value={formData.dateOfBirth} 
+                        onChange={handleInputChange}
+                        disabled={modalType === 'view'} 
+                        required 
+                      />
                     </div>
                     <div className="col-12">
                       <label className="form-label">Profile Photo</label>
@@ -700,9 +813,20 @@ const ManageStaff = () => {
                   <div className="row mb-3 g-3">
                     <div className="col-12 col-md-6">
                       <label className="form-label">Role <span className="text-danger">*</span></label>
-                      <select className="form-select rounded-3" id="role" defaultValue={getRoleName(selectedStaff?.roleId) || 'Receptionist'} disabled={modalType === 'view'} required>
+                      <select 
+                        className="form-select rounded-3" 
+                        name="role"
+                        value={formData.role} 
+                        onChange={handleInputChange}
+                        disabled={modalType === 'view'} 
+                        required
+                      >
                         {Object.keys(roleIds).map(role => (
-                          <option key={role} value={role}>{role}</option>
+                          <option key={role} value={role}>
+                            {role === 'generaltrainer' ? 'General Trainer' : 
+                             role === 'personaltrainer' ? 'Personal Trainer' : 
+                             role}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -712,8 +836,9 @@ const ManageStaff = () => {
                       <label className="form-label">Branch <span className="text-danger">*</span></label>
                       <select
                         className="form-select rounded-3"
-                        id="branch"
-                        value={selectedStaff?.branchId || (branches.length > 0 ? branches[0].id : '')}
+                        name="branch"
+                        value={formData.branch}
+                        onChange={handleInputChange}
                         disabled={modalType === 'view' || branchesLoading}
                         required
                       >
@@ -731,11 +856,26 @@ const ManageStaff = () => {
                     
                     <div className="col-12 col-md-6">
                       <label className="form-label">Join Date <span className="text-danger">*</span></label>
-                      <input type="date" className="form-control rounded-3" id="joinDate" defaultValue={selectedStaff?.joinDate ? new Date(selectedStaff.joinDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]} readOnly={modalType === 'view'} required />
+                      <input 
+                        type="date" 
+                        className="form-control rounded-3" 
+                        name="joinDate"
+                        value={formData.joinDate} 
+                        onChange={handleInputChange}
+                        disabled={modalType === 'view'} 
+                        required 
+                      />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Exit Date</label>
-                      <input type="date" className="form-control rounded-3" id="exitDate" defaultValue={selectedStaff?.exitDate ? new Date(selectedStaff.exitDate).toISOString().split('T')[0] : ''} readOnly={modalType === 'view'} />
+                      <input 
+                        type="date" 
+                        className="form-control rounded-3" 
+                        name="exitDate"
+                        value={formData.exitDate} 
+                        onChange={handleInputChange}
+                        disabled={modalType === 'view'} 
+                      />
                     </div>
                   </div>
                   

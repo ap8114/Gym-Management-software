@@ -1,85 +1,83 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Calendar, Plus, Check, X
 } from 'react-bootstrap-icons';
+import axios from 'axios';
+import BaseUrl from '../../Api/BaseUrl';
 
 const AdminTaskManagement = () => {
   const [showTaskModal, setShowTaskModal] = useState(false);
-
-  // Sample staff data (same)
-  const staffMembers = [
-    { id: 1, name: "John Doe", role: "Trainer", branch: "Main Branch" },
-    { id: 2, name: "Jane Smith", role: "Receptionist", branch: "Downtown Branch" },
-    { id: 3, name: "Mike Johnson", role: "Manager", branch: "Main Branch" },
-    { id: 4, name: "Sarah Wilson", role: "Cleaner", branch: "West Branch" },
-    { id: 5, name: "David Brown", role: "Trainer", branch: "Downtown Branch" }
-  ];
-
-  const branches = ["Main Branch", "Downtown Branch", "West Branch"];
-
-  // Renamed: shifts → tasks
-  const tasks = [
-    {
-      id: 1,
-      staffId: 1,
-      dueDate: "2025-12-10",
-      title: "Patient follow-up calls",
-      priority: "High",
-      branch: "Main Branch",
-      status: "Completed"
-    },
-    {
-      id: 2,
-      staffId: 2,
-      dueDate: "2025-12-10",
-      title: "Update appointment records",
-      priority: "Medium",
-      branch: "Downtown Branch",
-      status: "Pending"
-    },
-    {
-      id: 3,
-      staffId: 3,
-      dueDate: "2025-12-11",
-      title: "Inventory check",
-      priority: "Medium",
-      branch: "Main Branch",
-      status: "In Progress"
-    },
-    {
-      id: 4,
-      staffId: 4,
-      dueDate: "2025-12-11",
-      title: "Sanitization schedule",
-      priority: "Low",
-      branch: "West Branch",
-      status: "Rejected"
-    },
-    {
-      id: 5,
-      staffId: 5,
-      dueDate: "2025-12-12",
-      title: "Training session prep",
-      priority: "High",
-      branch: "Downtown Branch",
-      status: "Pending"
-    }
-  ];
-
+  const [staffMembers, setStaffMembers] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   const [taskForm, setTaskForm] = useState({
     staffId: '',
+    branchId: '',
+    taskTitle: '',
+    description: '',
     dueDate: '',
-    title: '',
-    priority: 'Medium',
-    branch: ''
+    priority: 'Medium'
   });
 
+  // Fetch staff, branches and tasks data on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch staff data
+        const staffResponse = await axios.get(`${BaseUrl}staff/all`);
+        setStaffMembers(staffResponse.data.staff);
+        
+        // Fetch branches data
+        const branchesResponse = await axios.get(`${BaseUrl}branches`);
+        setBranches(branchesResponse.data.branches);
+        
+        // Fetch tasks from API
+        const tasksResponse = await axios.get(`${BaseUrl}housekeepingtask/all`);
+        
+        if (tasksResponse.data.success) {
+          // Transform API data to match component expectations
+          const transformedTasks = tasksResponse.data.data.map(task => ({
+            id: task.id,
+            staffId: task.assignedTo, // Map assignedTo to staffId
+            branchId: task.branchId,
+            title: task.taskTitle, // Map taskTitle to title
+            description: task.description,
+            dueDate: task.dueDate,
+            priority: task.priority.charAt(0).toUpperCase() + task.priority.slice(1), // Capitalize first letter
+            status: task.status || 'Pending' // Default to 'Pending' if status is empty
+          }));
+          
+          setTasks(transformedTasks);
+        } else {
+          setError('Failed to fetch tasks. Please try again later.');
+        }
+        
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to fetch data. Please try again later.');
+        setLoading(false);
+        console.error('Error fetching data:', err);
+      }
+    };
+    
+    fetchData();
+  }, []);
+
   const getStaffName = (id) => {
-    const staff = staffMembers.find(s => s.id === id);
-    return staff ? staff.name : 'Unknown';
+    const staff = staffMembers.find(s => s.staffId === id);
+    return staff ? staff.fullName : 'Unknown';
   };
 
-  // Updated: shift type → task priority
+  const getBranchName = (id) => {
+    const branch = branches.find(b => b.id === id);
+    return branch ? branch.name : 'Unknown';
+  };
+
   const getPriorityColor = (priority) => {
     switch (priority) {
       case 'High': return 'danger';
@@ -104,12 +102,108 @@ const AdminTaskManagement = () => {
     setTaskForm({ ...taskForm, [name]: value });
   };
 
-  const handleApproveTask = (taskId) => {
-    console.log(`Marking task ${taskId} as Completed`);
+  const handleApproveTask = async (taskId) => {
+    try {
+      // Make API call to update task status to 'Completed'
+      const response = await axios.put(`${BaseUrl}housekeepingtask/status/${taskId}`, {
+        status: 'Approved'
+      });
+      
+      if (response.data.success) {
+        // Remove the task from the pending tasks list
+        setTasks(tasks.filter(task => task.id !== taskId));
+        alert('Task marked as completed!');
+      } else {
+        alert('Failed to update task. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error updating task:', err);
+      alert('An error occurred while updating the task. Please try again.');
+    }
   };
 
-  const handleRejectTask = (taskId) => {
-    console.log(`Rejecting task ${taskId}`);
+  const handleRejectTask = async (taskId) => {
+    console.log('Rejecting task with ID:', taskId);
+    try {
+      // Make API call to update task status to 'Rejected'
+      const response = await axios.put(`${BaseUrl}housekeepingtask/status/${taskId}`, {
+        status: 'Rejected'
+      });
+      
+      if (response.data.success) {
+        // Remove the task from the pending tasks list
+        setTasks(tasks.filter(task => task.id !== taskId));
+        alert('Task rejected!');
+      } else {
+        alert('Failed to update task. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error updating task:', err);
+      alert('An error occurred while updating the task. Please try again.');
+    }
+  };
+
+  const handleCreateTask = async () => {
+    try {
+      // Validate form
+      if (!taskForm.staffId || !taskForm.branchId || !taskForm.taskTitle || !taskForm.dueDate) {
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      // Get the current user ID (this should come from your auth context)
+      // For now, using a hardcoded value
+      const createdById = 4; // This should be replaced with the actual user ID
+      
+      // Prepare data for API
+      const taskData = {
+        assignedTo: parseInt(taskForm.staffId),
+        branchId: parseInt(taskForm.branchId),
+        taskTitle: taskForm.taskTitle,
+        description: taskForm.description,
+        dueDate: taskForm.dueDate,
+        priority: taskForm.priority.toLowerCase(),
+        status: "Pending",
+        createdById: createdById
+      };
+
+      // Make API call to create task
+      const response = await axios.post(`${BaseUrl}housekeepingtask/create`, taskData);
+      
+      if (response.data.success) {
+        // Add the new task to the tasks list
+        const newTask = {
+          id: response.data.data.id,
+          staffId: response.data.data.assignedTo,
+          branchId: response.data.data.branchId,
+          title: response.data.data.taskTitle,
+          description: response.data.data.description,
+          dueDate: response.data.data.dueDate,
+          priority: response.data.data.priority.charAt(0).toUpperCase() + response.data.data.priority.slice(1),
+          status: response.data.data.status
+        };
+        
+        setTasks([...tasks, newTask]);
+        
+        // Reset form and close modal
+        setTaskForm({
+          staffId: '',
+          branchId: '',
+          taskTitle: '',
+          description: '',
+          dueDate: '',
+          priority: 'Medium'
+        });
+        setShowTaskModal(false);
+        
+        alert('Task created successfully!');
+      } else {
+        alert('Failed to create task. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error creating task:', err);
+      alert('An error occurred while creating the task. Please try again.');
+    }
   };
 
   const renderTaskModal = () => {
@@ -141,8 +235,8 @@ const AdminTaskManagement = () => {
                       >
                         <option value="">Select Staff</option>
                         {staffMembers.map(staff => (
-                          <option key={staff.id} value={staff.id}>
-                            {staff.name} ({staff.role}) - {staff.branch}
+                          <option key={staff.staffId} value={staff.staffId}>
+                            {staff.fullName}
                           </option>
                         ))}
                       </select>
@@ -151,31 +245,50 @@ const AdminTaskManagement = () => {
                       <label className="form-label">Branch</label>
                       <select 
                         className="form-select"
-                        name="branch"
-                        value={taskForm.branch}
+                        name="branchId"
+                        value={taskForm.branchId}
                         onChange={handleTaskFormChange}
                       >
                         <option value="">Select Branch</option>
                         {branches.map(branch => (
-                          <option key={branch} value={branch}>{branch}</option>
+                          <option key={branch.id} value={branch.id}>
+                            {branch.name}
+                          </option>
                         ))}
                       </select>
                     </div>
                   </div>
 
                   <div className="row mb-3">
-                    <div className="col-md-8">
+                    <div className="col-md-12">
                       <label className="form-label">Task Title</label>
                       <input 
                         type="text" 
                         className="form-control"
-                        name="title"
-                        value={taskForm.title}
+                        name="taskTitle"
+                        value={taskForm.taskTitle}
                         onChange={handleTaskFormChange}
                         placeholder="e.g. Patient follow-up"
                       />
                     </div>
-                    <div className="col-md-4">
+                  </div>
+
+                  <div className="row mb-3">
+                    <div className="col-md-12">
+                      <label className="form-label">Description</label>
+                      <textarea 
+                        className="form-control"
+                        name="description"
+                        value={taskForm.description}
+                        onChange={handleTaskFormChange}
+                        rows="3"
+                        placeholder="Task description"
+                      ></textarea>
+                    </div>
+                  </div>
+
+                  <div className="row mb-3">
+                    <div className="col-md-6">
                       <label className="form-label">Due Date</label>
                       <input 
                         type="date" 
@@ -185,20 +298,19 @@ const AdminTaskManagement = () => {
                         onChange={handleTaskFormChange}
                       />
                     </div>
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label">Priority</label>
-                    <select 
-                      className="form-select"
-                      name="priority"
-                      value={taskForm.priority}
-                      onChange={handleTaskFormChange}
-                    >
-                      <option value="Low">Low</option>
-                      <option value="Medium">Medium</option>
-                      <option value="High">High</option>
-                    </select>
+                    <div className="col-md-6">
+                      <label className="form-label">Priority</label>
+                      <select 
+                        className="form-select"
+                        name="priority"
+                        value={taskForm.priority}
+                        onChange={handleTaskFormChange}
+                      >
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                      </select>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -212,10 +324,7 @@ const AdminTaskManagement = () => {
                 <button 
                   className="btn btn-outline-light" 
                   style={{ backgroundColor: '#2f6a87', color: '#fff' }} 
-                  onClick={() => {
-                    console.log("Creating task:", taskForm);
-                    setShowTaskModal(false);
-                  }}
+                  onClick={handleCreateTask}
                 >
                   Create Task
                 </button>
@@ -227,6 +336,14 @@ const AdminTaskManagement = () => {
       </>
     );
   };
+
+  if (loading) {
+    return <div className="container-fluid py-4">Loading data...</div>;
+  }
+
+  if (error) {
+    return <div className="container-fluid py-4">Error: {error}</div>;
+  }
 
   return (
     <div className="container-fluid py-4">
@@ -251,6 +368,7 @@ const AdminTaskManagement = () => {
               <th>Assigned To</th>
               <th>Task</th>
               <th>Due Date</th>
+              <th>Description</th>
               <th>Priority</th>
               <th>Branch</th>
               <th>Status</th>
@@ -261,13 +379,14 @@ const AdminTaskManagement = () => {
               <tr key={task.id}>
                 <td>{getStaffName(task.staffId)}</td>
                 <td>{task.title}</td>
-                <td>{task.dueDate}</td>
+                <td>{new Date(task.dueDate).toLocaleDateString()}</td>
+                <td>{task.description}</td>
                 <td>
                   <span className={`badge bg-${getPriorityColor(task.priority)}`}>
                     {task.priority}
                   </span>
                 </td>
-                <td>{task.branch}</td>
+                <td>{getBranchName(task.branchId)}</td>
                 <td>
                   <span className={`badge bg-${getStatusClass(task.status)}`}>
                     {task.status}
@@ -289,6 +408,7 @@ const AdminTaskManagement = () => {
                 <th>Assigned To</th>
                 <th>Task</th>
                 <th>Due Date</th>
+                <th>Description</th>
                 <th>Branch</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -301,8 +421,9 @@ const AdminTaskManagement = () => {
                   <tr key={task.id}>
                     <td>{getStaffName(task.staffId)}</td>
                     <td>{task.title}</td>
-                    <td>{task.dueDate}</td>
-                    <td>{task.branch}</td>
+                    <td>{new Date(task.dueDate).toLocaleDateString()}</td>
+                    <td>{task.description}</td>
+                    <td>{getBranchName(task.branchId)}</td>
                     <td>
                       <span className={`badge bg-${getStatusClass(task.status)}`}>
                         {task.status}

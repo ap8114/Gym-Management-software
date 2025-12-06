@@ -11,6 +11,7 @@ import {
 } from 'react-icons/ri';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import * as echarts from 'echarts';
+import axios from 'axios';
 
 const HouseKeepingDashboard = () => {
   const barChartRef = useRef(null);
@@ -21,7 +22,31 @@ const HouseKeepingDashboard = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all'); // all, completed, pending, upcoming
   const [currentWeekStart, setCurrentWeekStart] = useState(new Date());
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
+  // Fetch data from API
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get('https://84kmwvvs-4000.inc1.devtunnels.ms/api/housekeepingdashboard');
+        if (response.data.success) {
+          setDashboardData(response.data.housekeepingDashboard);
+        } else {
+          setError('Failed to fetch dashboard data');
+        }
+      } catch (err) {
+        setError('Error fetching dashboard data: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
   // Generate week days dynamically
   const generateWeekDays = () => {
     const days = [];
@@ -36,33 +61,80 @@ const HouseKeepingDashboard = () => {
       const dayOfMonth = currentDate.getDate();
       const month = currentDate.toLocaleDateString('en-US', { month: 'short' });
       
-      // Randomly assign status for demo (in real app, this would come from API)
-      const statuses = ['completed', 'in-progress', 'upcoming', 'overtime', 'off'];
-      const status = i === 0 ? 'in-progress' : i === 6 ? 'off' : statuses[Math.floor(Math.random() * (statuses.length - 1))];
-      
-      // Randomly assign areas for demo
-      const areas = ['Locker Area', 'Cardio Zone', 'Reception Area', 'Weight Room', 'Pool Area', 'Full Facility'];
-      const area = status === 'off' ? 'Day Off' : areas[Math.floor(Math.random() * areas.length)];
-      
-      // Randomly assign times for demo
-      const times = ['8:00 AM - 4:00 PM', '2:00 PM - 10:00 PM', '6:00 AM - 2:00 PM'];
-      const time = status === 'off' ? 'Day Off' : times[Math.floor(Math.random() * times.length)];
-      
-      days.push({
-        id: i,
-        dayName,
-        date: `${month} ${dayOfMonth}`,
-        status,
-        area,
-        time,
-        fullDate: currentDate
-      });
+      // If we have data from API, use it, otherwise generate random data
+      if (dashboardData && dashboardData.weeklyRoster && dashboardData.weeklyRoster.length > 0) {
+        // Try to match with API data
+        const apiData = dashboardData.weeklyRoster.find(item => {
+          const itemDate = new Date(item.date);
+          return itemDate.toDateString() === currentDate.toDateString();
+        });
+        
+        if (apiData) {
+          const status = apiData.status.toLowerCase().replace(' ', '-');
+          days.push({
+            id: i,
+            dayName,
+            date: `${month} ${dayOfMonth}`,
+            status,
+            area: apiData.location,
+            time: `${apiData.start} - ${apiData.end}`,
+            fullDate: currentDate
+          });
+        } else {
+          // Generate random data for days not in API
+          const statuses = ['completed', 'in-progress', 'upcoming', 'overtime', 'off'];
+          const status = i === 0 ? 'in-progress' : i === 6 ? 'off' : statuses[Math.floor(Math.random() * (statuses.length - 1))];
+          
+          const areas = ['Locker Area', 'Cardio Zone', 'Reception Area', 'Weight Room', 'Pool Area', 'Full Facility'];
+          const area = status === 'off' ? 'Day Off' : areas[Math.floor(Math.random() * areas.length)];
+          
+          const times = ['8:00 AM - 4:00 PM', '2:00 PM - 10:00 PM', '6:00 AM - 2:00 PM'];
+          const time = status === 'off' ? 'Day Off' : times[Math.floor(Math.random() * times.length)];
+          
+          days.push({
+            id: i,
+            dayName,
+            date: `${month} ${dayOfMonth}`,
+            status,
+            area,
+            time,
+            fullDate: currentDate
+          });
+        }
+      } else {
+        // Generate random data if no API data
+        const statuses = ['completed', 'in-progress', 'upcoming', 'overtime', 'off'];
+        const status = i === 0 ? 'in-progress' : i === 6 ? 'off' : statuses[Math.floor(Math.random() * (statuses.length - 1))];
+        
+        const areas = ['Locker Area', 'Cardio Zone', 'Reception Area', 'Weight Room', 'Pool Area', 'Full Facility'];
+        const area = status === 'off' ? 'Day Off' : areas[Math.floor(Math.random() * areas.length)];
+        
+        const times = ['8:00 AM - 4:00 PM', '2:00 PM - 10:00 PM', '6:00 AM - 2:00 PM'];
+        const time = status === 'off' ? 'Day Off' : times[Math.floor(Math.random() * times.length)];
+        
+        days.push({
+          id: i,
+          dayName,
+          date: `${month} ${dayOfMonth}`,
+          status,
+          area,
+          time,
+          fullDate: currentDate
+        });
+      }
     }
     
     return days;
   };
   
   const [weekDays, setWeekDays] = useState(generateWeekDays());
+  
+  // Update weekDays when dashboardData changes
+  useEffect(() => {
+    if (dashboardData) {
+      setWeekDays(generateWeekDays());
+    }
+  }, [dashboardData, currentWeekStart]);
   
   // Filter days based on selected status
   const filteredDays = filterStatus === 'all' 
@@ -142,8 +214,16 @@ const HouseKeepingDashboard = () => {
   };
 
   useEffect(() => {
+    if (!dashboardData) return;
+    
     // Initialize Bar Chart
     const barChart = echarts.init(barChartRef.current);
+    
+    // Use API data if available, otherwise use mock data
+    const taskGraphData = dashboardData.taskGraph && dashboardData.taskGraph.length > 0 
+      ? dashboardData.taskGraph 
+      : [12, 15, 18, 14, 16, 13, 11];
+    
     const barOption = {
       animation: false,
       grid: {
@@ -167,7 +247,7 @@ const HouseKeepingDashboard = () => {
         splitLine: { lineStyle: { color: '#f3f4f6' } }
       },
       series: [{
-        data: [12, 15, 18, 14, 16, 13, 11],
+        data: taskGraphData,
         type: 'bar',
         itemStyle: {
           color: '#2f6a87',
@@ -190,6 +270,11 @@ const HouseKeepingDashboard = () => {
     
     // Initialize Pie Chart
     const pieChart = echarts.init(pieChartRef.current);
+    
+    // Use API data if available, otherwise use mock data
+    const completed = dashboardData.maintenanceStats ? dashboardData.maintenanceStats.completed : 70;
+    const pending = dashboardData.maintenanceStats ? dashboardData.maintenanceStats.pending : 30;
+    
     const pieOption = {
       animation: false,
       grid: { top: 0, right: 0, bottom: 0, left: 0 },
@@ -198,8 +283,8 @@ const HouseKeepingDashboard = () => {
         radius: ['40%', '70%'],
         center: ['50%', '50%'],
         data: [
-          { value: 70, name: 'Completed', itemStyle: { color: '#10b981' } },
-          { value: 30, name: 'Pending', itemStyle: { color: '#f59e0b' } }
+          { value: completed, name: 'Completed', itemStyle: { color: '#10b981' } },
+          { value: pending, name: 'Pending', itemStyle: { color: '#f59e0b' } }
         ],
         itemStyle: {
           borderRadius: 4
@@ -232,7 +317,7 @@ const HouseKeepingDashboard = () => {
       barChart.dispose();
       pieChart.dispose();
     };
-  }, []);
+  }, [dashboardData]);
 
   // Use the dynamic weekDays instead of the hardcoded array
   const displayWeekDays = weekDays.map(day => ({
@@ -269,6 +354,36 @@ const HouseKeepingDashboard = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className='w-100 min-vh-100 bg-light d-flex justify-content-center align-items-center'>
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className='w-100 min-vh-100 bg-light d-flex justify-content-center align-items-center'>
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate percentage for tasks
+  const tasksPercentage = dashboardData && dashboardData.tasksTotal > 0 
+    ? Math.round((dashboardData.tasksCompleted / dashboardData.tasksTotal) * 100) 
+    : 0;
+
+  // Calculate percentage for attendance
+  const attendancePercentage = dashboardData && dashboardData.attendanceTotal > 0 
+    ? Math.round((dashboardData.attendancePresent / dashboardData.attendanceTotal) * 100) 
+    : 0;
+
   return (
     <div className='w-100 min-vh-100 bg-light p-0'>
       <div className="p-2 p-sm-3 p-md-4">
@@ -290,10 +405,17 @@ const HouseKeepingDashboard = () => {
                     <div className="bg-primary bg-opacity-10 p-2 rounded me-2">
                       <RiCalendarLine className="text-primary fs-4 fs-md-5" />
                     </div>
-                    <span className="h2 fw-bold text-gray-900">6</span>
+                    <span className="h2 fw-bold text-gray-900">
+                      {dashboardData ? dashboardData.todayShifts : 6}
+                    </span>
                   </div>
                   <h3 className="h6 fw-semibold mb-1">Shifts This Week</h3>
-                  <p className="text-muted small mb-0">Next: Today, 8:00 AM – 4:00 PM</p>
+                  <p className="text-muted small mb-0">
+                    {dashboardData && dashboardData.weeklyRoster && dashboardData.weeklyRoster.length > 0 
+                      ? `Next: Today, ${dashboardData.weeklyRoster[0].start} – ${dashboardData.weeklyRoster[0].end}`
+                      : 'Next: Today, 8:00 AM – 4:00 PM'
+                    }
+                  </p>
                 </div>
                 <div className="ms-2">
                   <button className="btn btn-sm btn-light rounded-circle p-1">
@@ -312,14 +434,16 @@ const HouseKeepingDashboard = () => {
                     <div className="bg-success bg-opacity-10 p-2 rounded me-2">
                       <RiTaskLine className="text-success fs-4 fs-md-5" />
                     </div>
-                    <span className="h2 fw-bold text-gray-900">18/25</span>
+                    <span className="h2 fw-bold text-gray-900">
+                      {dashboardData ? `${dashboardData.tasksCompleted}/${dashboardData.tasksTotal}` : '18/25'}
+                    </span>
                   </div>
                   <h3 className="h6 fw-semibold mb-1">Tasks Completed</h3>
                   <div className="d-flex align-items-center">
                     <div className="w-100 bg-gray-200 rounded-full h-2 me-2">
-                      <div className="bg-success h-2 rounded-full" style={{ width: '72%' }}></div>
+                      <div className="bg-success h-2 rounded-full" style={{ width: `${tasksPercentage}%` }}></div>
                     </div>
-                    <span className="text-success small fw-medium">72%</span>
+                    <span className="text-success small fw-medium">{tasksPercentage}%</span>
                   </div>
                 </div>
                 <div className="ms-2">
@@ -339,7 +463,9 @@ const HouseKeepingDashboard = () => {
                     <div className="bg-warning bg-opacity-10 p-2 rounded me-2">
                       <RiToolsLine className="text-warning fs-4 fs-md-5" />
                     </div>
-                    <span className="h2 fw-bold text-gray-900">2</span>
+                    <span className="h2 fw-bold text-gray-900">
+                      {dashboardData ? dashboardData.pendingMaintenance : 2}
+                    </span>
                   </div>
                   <h3 className="h6 fw-semibold mb-1">Pending Maintenance</h3>
                   <p className="text-muted small mb-0">Requires attention</p>
@@ -361,12 +487,16 @@ const HouseKeepingDashboard = () => {
                     <div className="bg-info bg-opacity-10 p-2 rounded me-2">
                       <RiUserLine className="text-info fs-4 fs-md-5" />
                     </div>
-                    <span className="h2 fw-bold text-gray-900">6/7</span>
+                    <span className="h2 fw-bold text-gray-900">
+                      {dashboardData ? `${dashboardData.attendancePresent}/${dashboardData.attendanceTotal}` : '6/7'}
+                    </span>
                   </div>
                   <h3 className="h6 fw-semibold mb-1">Attendance This Week</h3>
                   <div className="d-flex align-items-center">
                     <span className="text-success me-1">✅</span>
-                    <span className="text-muted small">Excellent record</span>
+                    <span className="text-muted small">
+                      {attendancePercentage >= 85 ? 'Excellent record' : 'Good record'}
+                    </span>
                   </div>
                 </div>
                 <div className="ms-2">
