@@ -1,40 +1,57 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Nav, Tab, Card, Table, Button, Modal, Spinner } from 'react-bootstrap';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Container, Row, Col, Nav, Card, Table, Button, Modal, Spinner } from 'react-bootstrap';
 import { FaEye, FaCalendar, FaClock, FaUser, FaRupeeSign, FaEnvelope, FaPhone } from 'react-icons/fa';
-import GetAdminId from '../../Api/GetAdminId';
 import axiosInstance from '../../Api/axiosInstance';
 
 const PersonalPlansBookings = () => {
   const [selectedPlanTab, setSelectedPlanTab] = useState(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [plans, setPlans] = useState([]);
-  const [planCustomers, setPlanCustomers] = useState({}); // { planId: [customers] }
+  const [allPlans, setAllPlans] = useState([]);
+  const [planCustomers, setPlanCustomers] = useState({});
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [error, setError] = useState(null);
 
-  const adminId = GetAdminId();
-
-  // Fetch all plans on mount
-  useEffect(() => {
-    const fetchPlans = async () => {
-      if (!adminId) {
-        setError('Admin ID not available');
-        setLoadingPlans(false);
-        return;
+  // ✅ Extract adminId once from localStorage
+  const getAdminIdFromStorage = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        return user?.adminId || null;
       }
+    } catch (err) {
+      console.error('Error parsing user from localStorage:', err);
+    }
+    return null;
+  };
+
+  const adminId = getAdminIdFromStorage(); // ✅ Now safely defined
+
+  // Optional: Log once after definition
+  // console.log('Fetching plans for adminId:', adminId);
+
+  // Fetch plans on mount
+  useEffect(() => {
+    if (!adminId) {
+      setError('Trainer ID not found. Please log in again.');
+      setLoadingPlans(false);
+      return;
+    }
+
+    const fetchPlans = async () => {
       try {
         const response = await axiosInstance.get(`personal-trainer-dashboard/admin/${adminId}/plans`);
         if (response.data.success && Array.isArray(response.data.plans)) {
-          setPlans(response.data.plans);
+          setAllPlans(response.data.plans);
         } else {
-          setPlans([]);
+          setAllPlans([]);
         }
       } catch (err) {
         console.error('Error fetching plans:', err);
-        setError('Failed to load training plans');
-        setPlans([]);
+        setError('Failed to load your training plans.');
+        setAllPlans([]);
       } finally {
         setLoadingPlans(false);
       }
@@ -43,27 +60,35 @@ const PersonalPlansBookings = () => {
     fetchPlans();
   }, [adminId]);
 
+  // ✅ Filter ONLY PERSONAL plans
+  const personalPlans = useMemo(() => {
+    return allPlans.filter(plan => plan.type === 'PERSONAL');
+  }, [allPlans]);
+
   // Fetch customers when a plan is selected
   useEffect(() => {
-    const fetchCustomers = async () => {
-      if (!selectedPlanTab || !adminId) return;
+    if (!selectedPlanTab || !adminId) return;
 
-      setLoadingCustomers(true);
+    setLoadingCustomers(true);
+    const fetchCustomers = async () => {
       try {
         const response = await axiosInstance.get(
           `personal-trainer-dashboard/admin/${adminId}/plan/${selectedPlanTab}/customers`
         );
         if (response.data.success && Array.isArray(response.data.customers)) {
-          // Map API customer to expected format
           const mappedCustomers = response.data.customers.map((cust) => ({
             id: cust.memberId,
             name: cust.customerName,
-            purchaseDate: cust.purchaseDate ? new Date(cust.purchaseDate).toISOString().split('T')[0] : 'N/A',
-            expiryDate: cust.expiryDate ? new Date(cust.expiryDate).toISOString().split('T')[0] : 'N/A',
+            purchaseDate: cust.purchaseDate
+              ? new Date(cust.purchaseDate).toISOString().split('T')[0]
+              : 'N/A',
+            expiryDate: cust.expiryDate
+              ? new Date(cust.expiryDate).toISOString().split('T')[0]
+              : 'N/A',
             sessionsBooked: cust.bookedSessions || 0,
             sessionsRemaining: cust.leftSessions || 0,
-            contact: cust.phone || 'N/A', // Assuming phone exists; adjust if needed
-            email: cust.email || 'N/A',   // Assuming email exists; adjust if needed
+            contact: cust.phone || 'N/A',
+            email: cust.email || 'N/A',
             status: cust.status || 'Unknown',
           }));
 
@@ -95,12 +120,14 @@ const PersonalPlansBookings = () => {
   };
 
   const getStatusIndicator = (sessionsRemaining, expiryDate) => {
-    const today = new Date();
-    const expiry = new Date(expiryDate);
-
     if (sessionsRemaining === 0) {
       return <span className="badge bg-secondary">Sessions Completed</span>;
     }
+    if (expiryDate === 'N/A') {
+      return <span className="badge bg-warning">No Expiry</span>;
+    }
+    const today = new Date();
+    const expiry = new Date(expiryDate);
     if (expiry < today) {
       return <span className="badge bg-danger">Expired</span>;
     }
@@ -112,6 +139,14 @@ const PersonalPlansBookings = () => {
       <div className="d-flex justify-content-center align-items-center vh-50">
         <Spinner animation="border" variant="primary" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container className="mt-5">
+        <div className="alert alert-danger text-center">{error}</div>
+      </Container>
     );
   }
 
@@ -128,15 +163,15 @@ const PersonalPlansBookings = () => {
           Personal Training Plans & Bookings
         </h1>
 
-        {/* Plans as Cards */}
+        {/* Plans Cards — ONLY PERSONAL */}
         <div className="mb-3">
           <Row className="g-2 g-md-4">
-            {plans.length === 0 ? (
+            {personalPlans.length === 0 ? (
               <Col>
-                <div className="text-center py-4 text-muted">No training plans available.</div>
+                <div className="text-center py-4 text-muted">No personal training plans available.</div>
               </Col>
             ) : (
-              plans.map((plan) => (
+              personalPlans.map((plan) => (
                 <Col xs={12} sm={6} md={4} lg={3} xl={3} key={plan.id}>
                   <Card
                     className="h-100 shadow-sm border-0"
@@ -185,7 +220,9 @@ const PersonalPlansBookings = () => {
                             <FaCalendar size={12} className="text-muted" />
                           </div>
                           <div>
-                            <div className="fw-bold" style={{ fontSize: '0.9rem' }}>Validity: {plan.validityDays || plan.validity || 'N/A'} Days</div>
+                            <div className="fw-bold" style={{ fontSize: '0.9rem' }}>
+                              Validity: {plan.validityDays || 'N/A'} Days
+                            </div>
                           </div>
                         </li>
                         <li className="mb-2 d-flex align-items-center gap-2">
@@ -204,7 +241,9 @@ const PersonalPlansBookings = () => {
                             <FaRupeeSign size={12} className="text-muted" />
                           </div>
                           <div>
-                            <div className="fw-bold" style={{ fontSize: '0.9rem' }}>Price: ₹{plan.price?.toLocaleString() || 'N/A'}</div>
+                            <div className="fw-bold" style={{ fontSize: '0.9rem' }}>
+                              Price: ₹{(plan.price || 0).toLocaleString()}
+                            </div>
                           </div>
                         </li>
                       </ul>
@@ -241,17 +280,17 @@ const PersonalPlansBookings = () => {
           </Row>
         </div>
 
-        {/* Customer Details Tabs */}
+        {/* Customer Section */}
         {selectedPlanTab && (
           <Card className="border-0 shadow-sm mb-4" style={{ borderRadius: '12px' }}>
             <Card.Header className="bg-white border-0 pb-0">
               <Nav variant="tabs" className="border-bottom">
                 <Nav.Item>
                   <Nav.Link
-                    className="fs-6 px-3 py-2 fw-600"
+                    className="fs-6 px-3 py-2 fw-bold"
                     style={{ color: '#2f6a87', borderColor: '#2f6a87' }}
                   >
-                    {plans.find((p) => p.id === selectedPlanTab)?.name} Customers
+                    {personalPlans.find((p) => p.id === selectedPlanTab)?.name} Customers
                   </Nav.Link>
                 </Nav.Item>
               </Nav>
@@ -260,20 +299,17 @@ const PersonalPlansBookings = () => {
             <Card.Body className="p-2 p-md-3">
               <div className="mb-3 p-2 p-md-3 bg-light rounded">
                 <h5 className="fw-bold mb-2" style={{ color: '#2f6a87', fontSize: '1rem' }}>
-                  {plans.find((p) => p.id === selectedPlanTab)?.name}
+                  {personalPlans.find((p) => p.id === selectedPlanTab)?.name}
                 </h5>
                 <div className="d-flex flex-wrap gap-3 text-muted" style={{ fontSize: '0.85rem' }}>
                   <div className="d-flex align-items-center gap-1">
                     <FaClock size={14} />
-                    <span>{plans.find((p) => p.id === selectedPlanTab)?.sessions} Total Sessions</span>
+                    <span>{personalPlans.find((p) => p.id === selectedPlanTab)?.sessions} Total Sessions</span>
                   </div>
                   <div className="d-flex align-items-center gap-1">
                     <FaCalendar size={14} />
                     <span>
-                      {plans.find((p) => p.id === selectedPlanTab)?.validityDays ||
-                        plans.find((p) => p.id === selectedPlanTab)?.validity ||
-                        'N/A'}{' '}
-                      Days Validity
+                      {personalPlans.find((p) => p.id === selectedPlanTab)?.validityDays || 'N/A'} Days Validity
                     </span>
                   </div>
                   <div className="d-flex align-items-center gap-1">
@@ -283,7 +319,6 @@ const PersonalPlansBookings = () => {
                 </div>
               </div>
 
-              {/* Customers Table */}
               <div className="table-responsive">
                 {loadingCustomers ? (
                   <div className="text-center py-3">
@@ -294,27 +329,13 @@ const PersonalPlansBookings = () => {
                   <Table hover responsive className="align-middle mb-0">
                     <thead className="bg-light">
                       <tr>
-                        <th className="py-2" style={{ backgroundColor: '#f8f9fa', color: '#2f6a87', fontSize: '0.85rem' }}>
-                          #
-                        </th>
-                        <th className="py-2 d-none d-md-table-cell" style={{ backgroundColor: '#f8f9fa', color: '#2f6a87', fontSize: '0.85rem' }}>
-                          Customer Name
-                        </th>
-                        <th className="py-2 d-none d-lg-table-cell" style={{ backgroundColor: '#f8f9fa', color: '#2f6a87', fontSize: '0.85rem' }}>
-                          Purchase Date
-                        </th>
-                        <th className="py-2 d-none d-lg-table-cell" style={{ backgroundColor: '#f8f9fa', color: '#2f6a87', fontSize: '0.85rem' }}>
-                          Expiry Date
-                        </th>
-                        <th className="py-2" style={{ backgroundColor: '#f8f9fa', color: '#2f6a87', fontSize: '0.85rem' }}>
-                          Sessions
-                        </th>
-                        <th className="py-2" style={{ backgroundColor: '#f8f9fa', color: '#2f6a87', fontSize: '0.85rem' }}>
-                          Status
-                        </th>
-                        <th className="py-2" style={{ backgroundColor: '#f8f9fa', color: '#2f6a87', fontSize: '0.85rem' }}>
-                          Action
-                        </th>
+                        <th className="py-2" style={{ backgroundColor: '#f8f9fa', color: '#2f6a87', fontSize: '0.85rem' }}>#</th>
+                        <th className="py-2 d-none d-md-table-cell" style={{ backgroundColor: '#f8f9fa', color: '#2f6a87', fontSize: '0.85rem' }}>Customer Name</th>
+                        <th className="py-2 d-none d-lg-table-cell" style={{ backgroundColor: '#f8f9fa', color: '#2f6a87', fontSize: '0.85rem' }}>Purchase Date</th>
+                        <th className="py-2 d-none d-lg-table-cell" style={{ backgroundColor: '#f8f9fa', color: '#2f6a87', fontSize: '0.85rem' }}>Expiry Date</th>
+                        <th className="py-2" style={{ backgroundColor: '#f8f9fa', color: '#2f6a87', fontSize: '0.85rem' }}>Sessions</th>
+                        <th className="py-2" style={{ backgroundColor: '#f8f9fa', color: '#2f6a87', fontSize: '0.85rem' }}>Status</th>
+                        <th className="py-2" style={{ backgroundColor: '#f8f9fa', color: '#2f6a87', fontSize: '0.85rem' }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -417,7 +438,7 @@ const PersonalPlansBookings = () => {
           </Card>
         )}
 
-        {/* Customer Details Modal */}
+        {/* Customer Modal */}
         <Modal show={showCustomerModal} onHide={() => setShowCustomerModal(false)} centered size="lg">
           <Modal.Header closeButton style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #2f6a87' }}>
             <Modal.Title style={{ color: '#333', fontWeight: '600', fontSize: '1.2rem' }}>Customer Details</Modal.Title>

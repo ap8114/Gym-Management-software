@@ -152,6 +152,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
     PERSONALTRAINER: [
       { name: "Dashboard", icon: faChartBar, path: "/personaltrainer/dashboard" },
       { name: "QR Check-in", icon: faGear, path: "/personaltrainer/qrcheckin" },
+      { name: "Attendance", icon: faGear, path: "/personaltrainer/personalattendance" },
       { name: "Plans & Bookings", icon: faBookAtlas, path: "/personaltrainer/PersonalPlansBookings" }
     ],
 

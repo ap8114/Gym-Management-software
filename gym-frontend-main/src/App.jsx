@@ -119,6 +119,7 @@ import Setting from "./Dashboard/SuperAdmin/Setting";
 import DashboardHomePage from "./Dashboard/SuperAdmin/SuperAdminDashbaord";
 import ShiftManagement from "./Dashboard/Admin/ShiftMangamenet";
 import AdminTaskManagement from "./Dashboard/Admin/AdminTaskManagement";
+import PersonalAttendance from "./Dashboard/PersonalTrainer/PersonalAttendance";
 
 
 
@@ -168,85 +169,24 @@ function App() {
               className={`right-side-content ${isSidebarCollapsed ? "collapsed" : ""
                 }`}
             >
-
-
-
-
-              <Routes>
-
-
-
-
-
-
-
-
-
+                <Routes>
 
                 <Route path="/superadmin/dashboard" element={<DashboardHomePage />} />
                 <Route path="/superadmin/Admin" element={<SuperAdminOwner />} />
-
                 <Route path="/superadmin/Plans&Pricing" element={<Plans />} />
-                {/* <Route path="/superadmin/marketing" element={<Marketing />} /> */}
-
-
-
-
-
-                {/* <Route path="superadmin/people/staff" element={<Staff />} />
-                <Route path="superadmin/people/members" element={<Members />} /> */}
-
-
-
-
-                {/* <Route path="superadmin/payments/invoices" element={<Invoices />} />
-                <Route path="superadmin/payments/RazorpayReports" element={<RazorpayReports />} /> */}
                 <Route path="superadmin/payments" element={<Payments />} />
-                {/* <Route path="superadmin/setting" element={<Setting />} /> */}
                 <Route path="/superadmin/setting" element={<Setting />} />
                 <Route path="/superadmin/request-plan" element={<Request />} />
-
-
-
-
-
-
-
-
-
-
-                {/* <Route path="/superadmin/reports/attendance" element={<AttendanceReports />} />
-
-
-                <Route path="/superadmin/reports/membership" element={<MembershipReports />} />
-                <Route path="/superadmin/reports/sales" element={<SalesReports />} />
-                <Route path="/superadmin/reports/members" element={<MembershipReports />} /> */}
-
-
-
-
-
-
-
-
-                {/* <Route path="okrs/departmentokrs" element={<DepartmentOKRs />} /> */}
                 <Route path="/admin/dashboard" element={<AdminDashbaord />} />
-
                 <Route path="admin/admindashboard" element={<AdminDashbaord />} />
-
                 <Route path="admin/group" element={<Groups />} />
                 <Route path="admin/CreatePlan" element={<CreatePlan />} />
-
-
-
-
-
-
 
                 {/* admin dahsboard */}
                 <Route path="admin/admin-dashboard" element={<AdminDashbaord />} />
                 <Route path="admin/qrcheckin" element={<QrCheckin />} />
                 <Route path="admin/AdminMember" element={<AdminMember />} />
+
                 {/* booking */}
                 <Route path="/admin/booking/attendance" element={<AttendanceReport />} />
                 <Route path="/admin/booking/personal-training" element={<PersonalTraining />} />
@@ -255,17 +195,16 @@ function App() {
                 <Route path="/admin/bookings" element={<PersonalTrainerSessionBookings />} />
 
                 {/* Marketibg */}
-
                 <Route path="marketing/campaigns" element={<Campaigns />} />
                 <Route path="marketing/email-sms" element={<EmailsSms />} />
+
                 {/* Members */}
                 <Route path="/admin/members/manage-members" element={<ManageMembers />} />
-
                 <Route path="/admin/members/qr-code-attendance" element={<QrCodeAttendance />} />
                 <Route path="/admin/members/walk-in-registration" element={<WalkInRegistration />} />
+
                 {/* Payments Routes */}
                 <Route path="/admin/payments/membership" element={<Membership />} />
-
 
                 {/* Reports  */}
                 <Route path="/admin/reports/sales" element={<SalesReport />} />
@@ -285,7 +224,6 @@ function App() {
 
                 {/* admin dahsboard end */}
 
-
                 {/* Manager Dashbaord */}
                 <Route path="/manager/dashboard" element={<Dashboard />} />
                 <Route path="/manager/members" element={<MemberManagement />} />
@@ -294,12 +232,7 @@ function App() {
                 <Route path="/manager/class-schedule" element={<ClassScheduling />} />
                 <Route path="/manager/reports" element={<Reports />} />
                 <Route path="/manager/communication" element={<Communication />} />
-
-
-
                 <Route path="/housekeeping/dashboard" element={<HouseKeepingDashboard />} />
-
-
                 <Route path="/generaltrainer/dashboard" element={<GeneralTrainerDashboard />} />
                 <Route path="/GeneralTrainer/attendance" element={<Attendance />} />
                 {/* <Route path="/GeneralTrainer/MemberInteraction" element={<MemberInteraction />} /> */}
@@ -307,8 +240,6 @@ function App() {
                 <Route path="/GeneralTrainer/Reports" element={<Report />} />
                 <Route path="/GeneralTrainer/DailyScedule" element={< DailyScedule />} />
                 <Route path="/GeneralTrainer/GroupPlansBookings" element={ <GroupPlansBookings />} />
-
-
                 <Route path="/member/dashboard" element={<MemberDashboard />} />
                 <Route path="/member/account" element={<Account />} />
                 <Route path="/member/classschedule" element={<ClassSchedule />} />
@@ -317,11 +248,6 @@ function App() {
                 <Route path="/member/viewplan" element={<ViewPlan />} />
 
                 {/* <Route path="/member/memberbooking" element={<MemberBooking />} /> */}
-
-
-
-
-
                 <Route path="/receptionist/dashboard" element={<ReceptionistDashboard />} />
                 <Route path="/receptionist/walk-in-registration" element={<ReceptionistWalkinMember />} />
                 <Route path="/receptionist/new-sign-ups" element={<ReceptionistMembershipSignups />} />
@@ -341,6 +267,7 @@ function App() {
                
 
                 <Route path="/personaltrainer/qrcheckin" element={<PersonalTrainerQrCheckin />} />
+                  <Route path="/personaltrainer/personalattendance" element={<PersonalAttendance />} />
                 <Route path="/personaltrainer/personalplansbookings" element={<PersonalPlansBookings />} />
 
                 <Route path="/housekeeping/dashboard" element={<HouseKeepingDashboard />} />
