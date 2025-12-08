@@ -390,7 +390,7 @@ const LendingPage = () => {
         <div className="nav-container">
 
           {/* LEFT — LOGO */}
-          <div className="mx-5 nav-left">
+          <div className=" nav-left">
             <motion.a
               className="navbar-brand"
               href="#"
@@ -417,43 +417,43 @@ const LendingPage = () => {
 
           {/* CENTER — MENU */}
           {/* CENTER — MENU */}
-<div className={`collapse navbar-collapse ${mobileMenuOpen ? "show" : ""} nav-center`}>
-  <ul className="navbar-nav mx-auto">
-    {['Home', 'Features', 'Benefits', 'Testimonials', 'Pricing', 'Contact'].map((item) => (
-      <motion.li
-        className="nav-item"
-        key={item}
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
-        <a className="nav-link" href={`#${item.toLowerCase()}`} onClick={() => setMobileMenuOpen(false)}>
-          {item}
-          <motion.div className="nav-underline" layoutId="navUnderline" />
-        </a>
-      </motion.li>
-    ))}
+          <div className={`collapse navbar-collapse ${mobileMenuOpen ? "show" : ""} nav-center`}>
+            <ul className="navbar-nav mx-auto">
+              {['Home', 'Features', 'Benefits', 'Testimonials', 'Pricing', 'Contact'].map((item) => (
+                <motion.li
+                  className="nav-item"
+                  key={item}
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                >
+                  <a className="nav-link" href={`#${item.toLowerCase()}`} onClick={() => setMobileMenuOpen(false)}>
+                    {item}
+                    <motion.div className="nav-underline" layoutId="navUnderline" />
+                  </a>
+                </motion.li>
+              ))}
 
-    {/* 🔥 MOBILE LOGIN BUTTON HERE */}
-    <li className="nav-item d-lg-none mt-3">
-      <Button
-        variant="primary"
-        className="w-100"
-        onClick={() => {
-          setMobileMenuOpen(false);
-          navigate("/login");
-        }}
-      >
-        Login
-        <FiArrowRightIcon className="btn-icon" />
-      </Button>
-    </li>
-  </ul>
-</div>
+              {/* 🔥 MOBILE LOGIN BUTTON HERE */}
+              <li className="nav-item d-lg-none mt-3">
+                <Button
+                  variant="primary"
+                  className="w-100"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate("/login");
+                  }}
+                >
+                  Login
+                  <FiArrowRightIcon className="btn-icon" />
+                </Button>
+              </li>
+            </ul>
+          </div>
 
 
           {/* RIGHT — LOGIN BUTTON */}
-          <div className="nav-right d-none d-lg-block">
+          <div className=" d-none d-lg-block">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -461,7 +461,7 @@ const LendingPage = () => {
             >
               <Button
                 variant="primary"
-                className="me-5 ml-3 demo-btn"
+                className=" demo-btn"
                 onClick={() => navigate("/login")}
               >
                 Login
