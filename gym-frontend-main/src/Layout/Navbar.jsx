@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FaBell, FaUserCircle, FaBars } from "react-icons/fa";
+import Logo from "../assets/Logo/Logo.png"
 
 const Navbar = ({ toggleSidebar }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const dropdownRef = useRef();
-  
+
   // Get user data from localStorage
   const getUserFromLocalStorage = () => {
     try {
@@ -48,7 +49,7 @@ const Navbar = ({ toggleSidebar }) => {
 
     // Listen for storage changes
     window.addEventListener('storage', handleStorageChange);
-    
+
     // Also check for direct changes in the same tab
     const intervalId = setInterval(() => {
       const currentUser = getUserFromLocalStorage();
@@ -138,17 +139,17 @@ const Navbar = ({ toggleSidebar }) => {
           </button>
 
           {/* Text Logo */}
-          <span
-            style={{
-              fontSize: "1.5rem",
-              fontWeight: "700",
-              color: "white",
-              letterSpacing: "-0.5px",
-              fontFamily: "'Poppins', sans-serif",
-            }}
-          >
-            Gym<span style={{ color: "#0d6efd", fontWeight: "800" }}>Management</span>
-          </span>
+          <div>
+            <img
+              src={Logo}
+              alt="Logo"
+              style={{
+                height: "50px",   // apne hisaab se change kar sakte ho
+                width: "200px",
+                objectFit: "contain"
+              }}
+            />
+          </div>
         </div>
 
         {/* Notification and User */}
@@ -171,7 +172,7 @@ const Navbar = ({ toggleSidebar }) => {
               <FaUserCircle size={24} />
               <div className="d-none d-sm-block text-white">
                 <small className="mb-0">Welcome    {profile.role} </small>
-            
+
                 <div className="fw-bold">{profile.name}</div>
               </div>
             </div>

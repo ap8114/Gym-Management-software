@@ -10,6 +10,7 @@ import { FiChevronDown, FiCheck as FiCheckIcon, FiArrowRight as FiArrowRightIcon
 import { Button, Container, Row, Col, Card } from 'react-bootstrap';
 import './LendingPage.css';
 import BaseUrl from '../Api/BaseUrl';
+import Logo from "../assets/Logo/Logo1.png";
 
 const LendingPage = () => {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -49,34 +50,6 @@ const LendingPage = () => {
     startDate: ''
   });
 
-  // Static plans data instead of API call
-  // const [plans] = useState([
-  //   {
-  //     id: 1,
-  //     name: "Basic",
-  //     price: 999,
-  //     duration: 30,
-  //     description: "Essential features for small gyms",
-  //     status: "ACTIVE"
-  //   },
-  //   {
-  //     id: 2,
-  //     name: "Professional",
-  //     price: 1999,
-  //     duration: 30,
-  //     description: "Advanced features for growing gyms",
-  //     status: "ACTIVE"
-  //   },
-  //   {
-  //     id: 3,
-  //     name: "Enterprise",
-  //     price: 4999,
-  //     duration: 30,
-  //     description: "Complete solution for large fitness centers",
-  //     status: "ACTIVE"
-  //   }
-  // ]);
-
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
@@ -115,61 +88,61 @@ const LendingPage = () => {
   };
 
   // Simplified purchase handler without API call
-const handlePurchaseSubmit = async () => {
-  // 表单验证
-  if (!purchaseFormData.companyName.trim() || !purchaseFormData.email.trim() || !purchaseFormData.startDate) {
-    alert("Please fill all required fields.");
-    return;
-  }
-  
-  try {
-    // 发送API请求
-    const response = await fetch(`${BaseUrl}/purchases`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        selectedPlan: purchaseFormData.selectedPlan,
-        companyName: purchaseFormData.companyName,
-        email: purchaseFormData.email,
-        billingDuration: purchaseFormData.billingDuration,
-        startDate: purchaseFormData.startDate
-      })
-    });
-    
-    // 检查响应状态
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to process purchase');
+  const handlePurchaseSubmit = async () => {
+    // 表单验证
+    if (!purchaseFormData.companyName.trim() || !purchaseFormData.email.trim() || !purchaseFormData.startDate) {
+      alert("Please fill all required fields.");
+      return;
     }
-    
-    // 解析成功响应
-    const data = await response.json();
-    
-    // 关闭模态框并显示成功通知
-    setShowPurchaseModal(false);
-    setShowSuccessNotification(true);
-    setTimeout(() => setShowSuccessNotification(false), 5000);
-    
-    // 重置表单数据
-    setPurchaseFormData({
-      selectedPlan: 'Professional',
-      companyName: '',
-      email: '',
-      billingDuration: 'Yearly',
-      startDate: ''
-    });
-    
-    // 可选：记录成功响应
-    console.log('Purchase successful:', data);
-    
-  } catch (error) {
-    // 处理错误
-    console.error('Purchase error:', error);
-    alert(`Error: ${error.message}`);
-  }
-};
+
+    try {
+      // 发送API请求
+      const response = await fetch(`${BaseUrl}/purchases`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          selectedPlan: purchaseFormData.selectedPlan,
+          companyName: purchaseFormData.companyName,
+          email: purchaseFormData.email,
+          billingDuration: purchaseFormData.billingDuration,
+          startDate: purchaseFormData.startDate
+        })
+      });
+
+      // 检查响应状态
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to process purchase');
+      }
+
+      // 解析成功响应
+      const data = await response.json();
+
+      // 关闭模态框并显示成功通知
+      setShowPurchaseModal(false);
+      setShowSuccessNotification(true);
+      setTimeout(() => setShowSuccessNotification(false), 5000);
+
+      // 重置表单数据
+      setPurchaseFormData({
+        selectedPlan: 'Professional',
+        companyName: '',
+        email: '',
+        billingDuration: 'Yearly',
+        startDate: ''
+      });
+
+      // 可选：记录成功响应
+      console.log('Purchase successful:', data);
+
+    } catch (error) {
+      // 处理错误
+      console.error('Purchase error:', error);
+      alert(`Error: ${error.message}`);
+    }
+  };
 
   const features = [
     {
@@ -414,49 +387,73 @@ const handlePurchaseSubmit = async () => {
 
       {/* Navigation */}
       <nav className={`navbar navbar-expand-lg fixed-top ${isScrolled ? 'scrolled' : ''}`}>
-        <Container>
-          <motion.a
-            className="navbar-brand"
-            href="#"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="brand-container">
-              <div className="brand-icon-wrapper">
-                <FaDumbbell className="brand-icon" />
-              </div>
-              <span>FitManager Pro</span>
-            </div>
-          </motion.a>
+        <div className="nav-container">
+
+          {/* LEFT — LOGO */}
+          <div className="mx-5 nav-left">
+            <motion.a
+              className="navbar-brand"
+              href="#"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              <img
+                src={Logo}
+                alt="Logo"
+                className="nav-logo"
+              />
+            </motion.a>
+          </div>
+
+          {/* MOBILE TOGGLER */}
           <button
             className="navbar-toggler"
             type="button"
             onClick={toggleMobileMenu}
-            aria-label="Toggle navigation"
           >
-            <span className={`navbar-toggler-icon ${mobileMenuOpen ? 'open' : ''}`}></span>
+            <span className="navbar-toggler-icon"></span>
           </button>
-          <div className={`navbar-collapse ${mobileMenuOpen ? 'show' : ''}`}>
-            <ul className="navbar-nav ml-auto">
-              {['Home', 'Features', 'Benefits', 'Testimonials', 'Pricing', 'Contact'].map((item) => (
-                <motion.li
-                  className="nav-item"
-                  key={item}
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.1 }}
-                >
-                  <a className="nav-link" href={`#${item.toLowerCase()}`} onClick={() => setMobileMenuOpen(false)}>
-                    {item}
-                    <motion.div
-                      className="nav-underline"
-                      layoutId="navUnderline"
-                    />
-                  </a>
-                </motion.li>
-              ))}
-            </ul>
+
+          {/* CENTER — MENU */}
+          {/* CENTER — MENU */}
+<div className={`collapse navbar-collapse ${mobileMenuOpen ? "show" : ""} nav-center`}>
+  <ul className="navbar-nav mx-auto">
+    {['Home', 'Features', 'Benefits', 'Testimonials', 'Pricing', 'Contact'].map((item) => (
+      <motion.li
+        className="nav-item"
+        key={item}
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+      >
+        <a className="nav-link" href={`#${item.toLowerCase()}`} onClick={() => setMobileMenuOpen(false)}>
+          {item}
+          <motion.div className="nav-underline" layoutId="navUnderline" />
+        </a>
+      </motion.li>
+    ))}
+
+    {/* 🔥 MOBILE LOGIN BUTTON HERE */}
+    <li className="nav-item d-lg-none mt-3">
+      <Button
+        variant="primary"
+        className="w-100"
+        onClick={() => {
+          setMobileMenuOpen(false);
+          navigate("/login");
+        }}
+      >
+        Login
+        <FiArrowRightIcon className="btn-icon" />
+      </Button>
+    </li>
+  </ul>
+</div>
+
+
+          {/* RIGHT — LOGIN BUTTON */}
+          <div className="nav-right d-none d-lg-block">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -464,7 +461,7 @@ const handlePurchaseSubmit = async () => {
             >
               <Button
                 variant="primary"
-                className="ml-3 demo-btn"
+                className="me-5 ml-3 demo-btn"
                 onClick={() => navigate("/login")}
               >
                 Login
@@ -472,8 +469,11 @@ const handlePurchaseSubmit = async () => {
               </Button>
             </motion.div>
           </div>
-        </Container>
+
+        </div>
       </nav>
+
+
 
       {/* Hero Section */}
       <section className="hero-section" ref={heroRef}>
@@ -1058,7 +1058,7 @@ const handlePurchaseSubmit = async () => {
                     }}
                     onBlur={(e) => {
                       e.target.style.border = '1px solid #e2e8f0',
-                      e.target.style.boxShadow = 'none';
+                        e.target.style.boxShadow = 'none';
                     }}
                   />
                 </div>
