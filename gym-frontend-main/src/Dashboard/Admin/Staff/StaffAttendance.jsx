@@ -89,7 +89,7 @@ const StaffAttendance = () => {
       const response = await axiosInstance.get(`${BaseUrl}admin-staff-attendance`);
       console.log('Attendance API response:', response.data);
       
-      if (response.data.success) {
+      if (response.data && Array.isArray(response.data)) {
         // Transform the API response to match the component's expected format
         const transformedRecords = response.data.map(record => ({
           attendance_id: record.id,
@@ -113,6 +113,42 @@ const StaffAttendance = () => {
     } catch (err) {
       console.error('Error fetching attendance records:', err);
       setError('Failed to load attendance records');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch attendance records by branch
+  const fetchAttendanceByBranch = async (branchId) => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.get(`${BaseUrl}admin-staff-attendance/branch/${branchId}`);
+      console.log('Attendance by branch API response:', response.data);
+      
+      if (response.data && Array.isArray(response.data)) {
+        // Transform the API response to match the component's expected format
+        const transformedRecords = response.data.map(record => ({
+          attendance_id: record.id,
+          staff_id: record.staffId,
+          staff_name: record.staffName,
+          role: getRoleNameFromStaff(record.staffId),
+          branch: record.branchName,
+          date: record.date,
+          checkin_time: record.checkInTime,
+          checkout_time: record.checkOutTime,
+          mode: record.mode,
+          shift_id: record.shiftId,
+          shift_name: getShiftName(record.shiftId),
+          status: record.status,
+          notes: record.notes
+        }));
+        setRecords(transformedRecords);
+      } else {
+        setError('Failed to load attendance records for this branch');
+      }
+    } catch (err) {
+      console.error('Error fetching attendance records by branch:', err);
+      setError('Failed to load attendance records for this branch');
     } finally {
       setLoading(false);
     }
@@ -205,7 +241,7 @@ const StaffAttendance = () => {
   const confirmDelete = async () => {
     if (selectedRecord) {
       try {
-        // Call the delete API
+        // Call Delete API
         await axiosInstance.delete(`${BaseUrl}admin-staff-attendance/${selectedRecord.attendance_id}`);
         
         // Update the local state
@@ -334,17 +370,21 @@ const StaffAttendance = () => {
           notes: formData.get('notes') || ''
         };
         
-        // Call the API to create attendance record
+        // Call the API to create an attendance record
         const response = await axiosInstance.post(`${BaseUrl}admin-staff-attendance`, payload);
         console.log('Create attendance response:', response.data);
         
-        if (response.data.success) {
+        if (response.data) {
           // Refresh the attendance records
-          fetchAttendanceRecords();
+          if (branchFilter !== 'All') {
+            fetchAttendanceByBranch(branchId);
+          } else {
+            fetchAttendanceRecords();
+          }
           closeModal();
           alert('New staff attendance record added successfully!');
         } else {
-          throw new Error(response.data.message || 'Failed to create attendance record');
+          throw new Error('Failed to create attendance record');
         }
       } catch (err) {
         console.error('Error creating attendance record:', err);
@@ -376,17 +416,21 @@ const StaffAttendance = () => {
           notes: formData.get('notes') || selectedRecord.notes
         };
         
-        // Call the API to update attendance record
+        // Call the API to update the attendance record
         const response = await axiosInstance.put(`${BaseUrl}admin-staff-attendance/${selectedRecord.attendance_id}`, payload);
         console.log('Update attendance response:', response.data);
         
-        if (response.data.success) {
+        if (response.data) {
           // Refresh the attendance records
-          fetchAttendanceRecords();
+          if (branchFilter !== 'All') {
+            fetchAttendanceByBranch(branchId);
+          } else {
+            fetchAttendanceRecords();
+          }
           closeModal();
           alert('Staff attendance record updated successfully!');
         } else {
-          throw new Error(response.data.message || 'Failed to update attendance record');
+          throw new Error('Failed to update attendance record');
         }
       } catch (err) {
         console.error('Error updating attendance record:', err);
@@ -425,6 +469,18 @@ const StaffAttendance = () => {
     setStatusFilter('All');
     setBranchFilter('All');
   };
+
+  // Handle branch filter change
+  useEffect(() => {
+    if (branchFilter !== 'All') {
+      const branch = branches.find(b => b.name === branchFilter);
+      if (branch) {
+        fetchAttendanceByBranch(branch.id);
+      }
+    } else {
+      fetchAttendanceRecords();
+    }
+  }, [branchFilter]);
 
   // Mobile Card View Component
   const MobileAttendanceCard = ({ record }) => (

@@ -4,6 +4,7 @@ import {
 } from 'react-bootstrap-icons';
 import axios from 'axios';
 import BaseUrl from '../../Api/BaseUrl';
+import GetAdminId from '../../Api/GetAdminId';
 
 const AdminTaskManagement = () => {
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -12,7 +13,7 @@ const AdminTaskManagement = () => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+  const adminId = GetAdminId(); 
   const [taskForm, setTaskForm] = useState({
     staffId: '',
     branchId: '',
@@ -33,7 +34,7 @@ const AdminTaskManagement = () => {
         setStaffMembers(staffResponse.data.staff);
         
         // Fetch branches data
-        const branchesResponse = await axios.get(`${BaseUrl}branches`);
+        const branchesResponse = await axios.get(`${BaseUrl}/branches/by-admin/${adminId}`);
         setBranches(branchesResponse.data.branches);
         
         // Fetch tasks from API
