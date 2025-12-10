@@ -9,7 +9,11 @@ const SessionBookingPage = () => {
   const adminId = GetAdminId();
   const [sessions, setSessions] = useState([]);
   const [branches, setBranches] = useState([]);
-  const [trainers, setTrainers] = useState([]);
+  // Static trainer options instead of fetching from API
+  const [trainers] = useState([
+    { id: 'general', fullName: 'General Trainer' },
+    { id: 'personal', fullName: 'Personal Trainer' }
+  ]);
 
   const [statusFilter, setStatusFilter] = useState('All');
   const [branchFilter, setBranchFilter] = useState('All');
@@ -41,15 +45,15 @@ const SessionBookingPage = () => {
       return;
     }
     fetchBranches();
-    fetchTrainers();
+    // Removed fetchTrainers() call since we're using static data
   }, [adminId]);
 
-  // Re-fetch sessions when branches or trainers load
+  // Re-fetch sessions when branches load
   useEffect(() => {
-    if (branches.length > 0 || trainers.length > 0) {
+    if (branches.length > 0) {
       fetchSessions();
     }
-  }, [branches, trainers]);
+  }, [branches]);
 
   // ✅ FIX: Fetch Sessions using branchId instead of adminId
   const fetchSessions = async () => {
@@ -89,7 +93,7 @@ const SessionBookingPage = () => {
     }
   };
 
-  // ✅ FIX: Fetch Branches with the correct URL
+  // ✅ FIX: Fetch Branches with correct URL
   const fetchBranches = async () => {
     try {
       const res = await axiosInstance.get(`${BaseUrl}branches/by-admin/${adminId}`);
@@ -106,25 +110,7 @@ const SessionBookingPage = () => {
     }
   };
 
-  // ✅ FIX: Fetch Trainers with correct URL (removed extra slash)
-  const fetchTrainers = async () => {
-    try {
-      const res = await axiosInstance.get(`${BaseUrl}class/trainers`); // ✅ Fixed: Removed extra slash
-      let trainerList = [];
-      if (res.data.success) {
-        if (res.data.trainers && Array.isArray(res.data.trainers)) {
-          trainerList = res.data.trainers;
-        } else if (Array.isArray(res.data)) {
-          trainerList = res.data;
-        }
-      }
-      setTrainers(trainerList);
-      console.log('Trainers loaded:', trainerList); // ✅ Added for debugging
-    } catch (err) {
-      console.error('Error fetching trainers:', err);
-      setTrainers([]);
-    }
-  };
+  // Removed fetchTrainers function since we're using static data
 
   const filteredSessions = sessions.filter(session => {
     const matchesStatus = statusFilter === 'All' || session.status === statusFilter;
@@ -159,12 +145,12 @@ const SessionBookingPage = () => {
     }
 
     // Validate numbers
-    const numTrainerId = Number(trainerId);
+    const numTrainerId = trainerId; // Keep as string since we're using static options
     const numBranchId = Number(branchId);
     const numDuration = Number(duration);
 
-    if (isNaN(numTrainerId) || isNaN(numBranchId) || isNaN(numDuration) || numDuration <= 0) {
-      setError('Please fill valid values for trainer, branch, and duration.');
+    if (isNaN(numBranchId) || isNaN(numDuration) || numDuration <= 0) {
+      setError('Please fill valid values for branch and duration.');
       return;
     }
 
@@ -173,7 +159,7 @@ const SessionBookingPage = () => {
     try {
       const payload = {
         sessionName: sessionName.trim(),
-        trainerId: numTrainerId,   // ✅ Send ID
+        trainerId: numTrainerId,   // ✅ Send ID (string for static options)
         branchId: numBranchId,     // ✅ Send ID
         date,                      // "YYYY-MM-DD"
         time,                      // "HH:mm"
@@ -380,12 +366,12 @@ const SessionBookingPage = () => {
             </div>
             <div className="col-12 col-md-2 col-lg-5 d-flex justify-content-end mt-2 mt-md-0">
                 <button
-                className="btn text-white w-100 w-md-auto"
-                style={{ backgroundColor: customColor }}
-                onClick={() => setShowAddSessionModal(true)}
-              >
-                <FaPlus className="me-1" /> Add Session
-              </button>
+                  className="btn text-white w-100 w-md-auto"
+                  style={{ backgroundColor: customColor }}
+                  onClick={() => setShowAddSessionModal(true)}
+                >
+                  <FaPlus className="me-1" /> Add Session
+                </button>
             </div>
           </div>
         </div>

@@ -86,57 +86,56 @@ const AdminMember = () => {
   // Get unique branches for filter
   const uniqueBranches = [...new Set(members.map((member) => member.branch))];
 
-  // Filter members based on search term, status and branch
-  const filteredMembers = members.filter((member) => {
-    const matchesSearch =
-      member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.phone.includes(searchTerm);
-    const matchesStatus = filterStatus === "" || member.status === filterStatus;
-    const matchesBranch =
-      filterBranch === "" || member.branchId === parseInt(filterBranch);
-    return matchesSearch && matchesStatus && matchesBranch;
-  });
+// Filter members based on search term, status and branch
+const filteredMembers = members.filter((member) => {
+  const matchesSearch =
+    member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    member.phone.includes(searchTerm);
+  const matchesStatus = filterStatus === "" || member.status === filterStatus;
+  const matchesBranch =
+    filterBranch === "" || member.branchId === parseInt(filterBranch); // ✅ Use branchId for comparison
+  return matchesSearch && matchesStatus && matchesBranch;
+});
 
-  // Fetch members by admin ID
-  const fetchMembersByAdminId = async () => {
-    setMembersLoading(true);
-    try {
-      const response = await axiosInstance.get(
-        `${BaseUrl}members/admin/${adminId}`
-      );
+// Fetch members by admin ID
+const fetchMembersByAdminId = async () => {
+  setMembersLoading(true);
+  try {
+    const response = await axiosInstance.get(
+      `${BaseUrl}members/admin/${adminId}`
+    );
 
-      if (response.data && response.data.success) {
-        // Map API response to match our component structure
-        const formattedMembers = response.data.data.map((member) => ({
-          id: member.id,
-          name: member.fullName,
-          phone: member.phone,
-          email: member.email,
-          gender: member.gender,
-          branch: member.branchId, // We'll need to map branchId to branch name
-          plan: member.planId, // We'll need to map planId to plan name
-          address: member.address,
-          dob: member.dateOfBirth,
-          planStart: member.membershipFrom,
-          expiry: member.membershipTo,
-          status: member.status,
-          interestedIn: member.interestedIn,
-          // Store original IDs for editing
-          branchId: member.branchId,
-          planId: member.planId,
-        }));
+    if (response.data && response.data.success) {
+      // Map API response to match our component structure
+      const formattedMembers = response.data.data.map((member) => ({
+        id: member.id,
+        name: member.fullName,
+        phone: member.phone,
+        email: member.email,
+        gender: member.gender,
+        branch: getBranchNameById(member.branchId), // ✅ Get branch name by ID
+        branchId: member.branchId, // Store the branch ID
+        plan: getPlanNameById(member.planId), // ✅ Get plan name by ID
+        planId: member.planId, // Store the plan ID
+        address: member.address,
+        dob: member.dateOfBirth,
+        planStart: member.membershipFrom,
+        expiry: member.membershipTo,
+        status: member.status,
+        interestedIn: member.interestedIn,
+      }));
 
-        setMembers(formattedMembers);
-        console.log("Members loaded successfully:", formattedMembers);
-      } else {
-        console.error("API response error:", response.data);
-      }
-    } catch (err) {
-      console.error("Error fetching members:", err);
-    } finally {
-      setMembersLoading(false);
+      setMembers(formattedMembers);
+      console.log("Members loaded successfully:", formattedMembers);
+    } else {
+      console.error("API response error:", response.data);
     }
-  };
+  } catch (err) {
+    console.error("Error fetching members:", err);
+  } finally {
+    setMembersLoading(false);
+  }
+};
 
   // Fetch plans from API
   const fetchPlansFromAPI = async () => {
@@ -382,57 +381,75 @@ const AdminMember = () => {
     setShowEditForm(true);
   };
 
-  // Handle renew plan
-  const handleRenewPlan = (e) => {
+  // Handle renew plan with API call
+  const handleRenewPlan = async (e) => {
     e.preventDefault();
-    const today = new Date();
-    const planStart = today.toISOString().split("T")[0];
+    setLoading(true);
 
-    // Calculate expiry based on plan
-    let expiry = new Date(today);
+    try {
+      // Prepare the payload for the API
+      const payload = {
+        adminId: adminId, // Add adminId to payload
+        planId: parseInt(renewPlan.plan), // Convert to number
+        paymentMode:
+          renewPlan.paymentMode.charAt(0).toUpperCase() +
+          renewPlan.paymentMode.slice(1), // Capitalize first letter
+        amountPaid: parseFloat(renewPlan.amountPaid), // Convert to number
+      };
 
-    // Find the selected plan to determine its validity
-    const selectedPlan = apiPlans.find(
-      (plan) => plan.id.toString() === renewPlan.plan
-    );
-    if (selectedPlan) {
-      // Add validity days from the plan
-      expiry.setDate(expiry.getDate() + parseInt(selectedPlan.validity));
-    } else {
-      // Fallback to plan name parsing if the plan is not found
-      if (renewPlan.plan.includes("Monthly")) {
-        expiry.setMonth(expiry.getMonth() + 1);
-      } else if (renewPlan.plan.includes("Quarterly")) {
-        expiry.setMonth(expiry.getMonth() + 3);
-      } else if (renewPlan.plan.includes("Annual")) {
-        expiry.setFullYear(expiry.getFullYear() + 1);
+      // Make API call to renew the membership
+      const response = await axiosInstance.put(
+        `${BaseUrl}members/renew/${renewPlan.memberId}`,
+        payload
+      );
+
+      // If the API call is successful, update the member in the local state
+      if (response.data && response.data.success) {
+        // Find the member to update
+        const updatedMemberIndex = members.findIndex(
+          (member) => member.id === parseInt(renewPlan.memberId)
+        );
+
+        if (updatedMemberIndex !== -1) {
+          // Create a copy of the members array
+          const updatedMembers = [...members];
+
+          // Update the member with the new plan information
+          updatedMembers[updatedMemberIndex] = {
+            ...updatedMembers[updatedMemberIndex],
+            planId: response.data.data.planId,
+            plan: getPlanNameById(response.data.data.planId),
+            planStart: new Date(
+              response.data.data.membershipFrom
+            ).toLocaleDateString(),
+            expiry: response.data.data.membershipTo
+              ? new Date(response.data.data.membershipTo).toLocaleDateString()
+              : "N/A", // Handle null membershipTo
+            status: "Active",
+          };
+
+          // Update the state with the modified members array
+          setMembers(updatedMembers);
+        }
+
+        // Reset the form
+        setRenewPlan({
+          memberId: "",
+          plan: "",
+          paymentMode: "cash",
+          amountPaid: "",
+        });
+        setShowRenewForm(false);
+        alert("Membership renewed successfully!");
+      } else {
+        alert("Failed to renew membership. Please try again.");
       }
+    } catch (error) {
+      console.error("Error renewing membership:", error);
+      alert("Failed to renew membership. Please try again.");
+    } finally {
+      setLoading(false);
     }
-
-    // Find the plan name for display
-    const planName = selectedPlan ? selectedPlan.name : renewPlan.plan;
-
-    setMembers(
-      members.map((member) =>
-        member.id === parseInt(renewPlan.memberId)
-          ? {
-              ...member,
-              plan: planName,
-              planStart,
-              expiry: expiry.toISOString().split("T")[0],
-              status: "Active",
-            }
-          : member
-      )
-    );
-
-    setRenewPlan({
-      memberId: "",
-      plan: "",
-      paymentMode: "cash",
-      amountPaid: "",
-    });
-    setShowRenewForm(false);
   };
 
   // Handle renew form open
@@ -460,17 +477,19 @@ const AdminMember = () => {
     }
   };
 
-  // Get branch name by ID
-  const getBranchNameById = (branchId) => {
-    const branch = branches.find((b) => b.id === parseInt(branchId));
-    return branch ? branch.name : "Unknown Branch";
-  };
+// Get branch name by ID
+const getBranchNameById = (branchId) => {
+  if (!branchId || branches.length === 0) return "Unknown Branch";
+  const branch = branches.find((b) => b.id === parseInt(branchId));
+  return branch ? branch.name : "Unknown Branch";
+};
 
-  // Get plan name by ID
-  const getPlanNameById = (planId) => {
-    const plan = apiPlans.find((p) => p.id === parseInt(planId));
-    return plan ? plan.name : "Unknown Plan";
-  };
+// Get plan name by ID
+const getPlanNameById = (planId) => {
+  if (!planId || apiPlans.length === 0) return "Unknown Plan";
+  const plan = apiPlans.find((p) => p.id === parseInt(planId));
+  return plan ? plan.name : "Unknown Plan";
+};
 
   return (
     <div className="container-fluid py-2 py-md-4">
