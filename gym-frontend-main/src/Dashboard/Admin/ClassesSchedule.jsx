@@ -16,8 +16,13 @@ const ClassesSchedule = () => {
 
   const [classes, setClasses] = useState([]);
   const [branches, setBranches] = useState([]);
-  const [trainers, setTrainers] = useState([]);
   const [members, setMembers] = useState([]); // For member dropdown
+
+  // Static trainer options
+  const trainerOptions = [
+    { id: 'general', name: 'General Trainer' },
+    { id: 'personal', name: 'Personal Trainer' }
+  ];
 
   useEffect(() => {
     if (!adminId) {
@@ -47,24 +52,6 @@ const ClassesSchedule = () => {
       }
       setBranches(branchList);
       console.log('Processed branches:', branchList);
-
-      // Fetch trainers
-      const trainersRes = await axiosInstance.get(`class/trainers`);
-      let trainerList = [];
-      console.log('Trainers API response:', trainersRes.data);
-      
-      if (trainersRes.data.success) {
-        // Handle different response structures
-        if (trainersRes.data.trainers) {
-          trainerList = Array.isArray(trainersRes.data.trainers) ? trainersRes.data.trainers : [];
-        } else if (trainersRes.data.trainer) {
-          trainerList = Array.isArray(trainersRes.data.trainer) ? trainersRes.data.trainer : [trainersRes.data.trainer];
-        } else if (Array.isArray(trainersRes.data)) {
-          trainerList = trainersRes.data;
-        }
-      }
-      setTrainers(trainerList);
-      console.log('Processed trainers:', trainerList);
 
       // Fetch members (plans = members)
       const membersRes = await axiosInstance.get(`MemberPlan?adminId=${adminId}`);
@@ -138,7 +125,7 @@ const ClassesSchedule = () => {
     setModalType('add');
     setSelectedClass({
       className: '',
-      trainerId: '',
+      trainerId: 'general', // Default to General Trainer
       branchId: branches.length > 0 ? branches[0].id : '',
       date: '',
       day: '',
@@ -165,14 +152,19 @@ const ClassesSchedule = () => {
       endTime = end.trim();
     }
     
-    // Find trainer and branch IDs from names
-    const trainer = trainers.find(t => (t.fullName || t.name) === gymClass.trainer);
+    // Find branch ID from name
     const branch = branches.find(b => b.name === gymClass.branch);
+    
+    // Set trainerId based on trainer name
+    let trainerId = 'general'; // Default
+    if (gymClass.trainer === 'Personal Trainer') {
+      trainerId = 'personal';
+    }
     
     setSelectedClass({ 
       ...gymClass, 
       members: [], // API doesn't return members, so leave empty
-      trainerId: trainer?.id || '',
+      trainerId,
       branchId: branch?.id || '',
       startTime,
       endTime
@@ -194,14 +186,19 @@ const ClassesSchedule = () => {
       endTime = end.trim();
     }
     
-    // Find trainer and branch IDs from names
-    const trainer = trainers.find(t => (t.fullName || t.name) === gymClass.trainer);
+    // Find branch ID from name
     const branch = branches.find(b => b.name === gymClass.branch);
+    
+    // Set trainerId based on trainer name
+    let trainerId = 'general'; // Default
+    if (gymClass.trainer === 'Personal Trainer') {
+      trainerId = 'personal';
+    }
     
     setSelectedClass({ 
       ...gymClass, 
       members: [], // No member editing from list
-      trainerId: trainer?.id || '',
+      trainerId,
       branchId: branch?.id || '',
       startTime,
       endTime
@@ -262,8 +259,8 @@ const ClassesSchedule = () => {
   };
 
   const getTrainerName = (trainerId) => {
-    const trainer = trainers.find(t => t.id === trainerId);
-    return trainer?.fullName || trainer?.name || '—';
+    const trainer = trainerOptions.find(t => t.id === trainerId);
+    return trainer?.name || '—';
   };
 
   const saveClass = async () => {
@@ -288,7 +285,7 @@ const ClassesSchedule = () => {
     try {
       const payload = {
         className,
-        trainerId: Number(trainerId),
+        trainerId, // Keep as string since we're using static options
         branchId: Number(branchId),
         date,
         day,
@@ -419,7 +416,6 @@ const ClassesSchedule = () => {
                       <th>TIME</th>
                       <th>DAY</th>
                       <th>STATUS</th>
-                      {/* <th>MEMBERS</th> */}
                       <th className="text-center">ACTIONS</th>
                     </tr>
                   </thead>
@@ -433,15 +429,6 @@ const ClassesSchedule = () => {
                         <td>{c.time}</td>
                         <td>{c.day}</td>
                         <td>{getStatusBadge(c.status)}</td>
-                        {/* <td>
-                          {c.membersCount !== undefined && c.membersCount > 0 ? (
-                            <span className="badge bg-light text-dark">
-                              {c.membersCount} {c.membersCount === 1 ? 'Member' : 'Members'}
-                            </span>
-                          ) : (
-                            <span className="text-muted">No members</span>
-                          )}
-                        </td> */}
                         <td className="text-center">
                           <div className="d-flex justify-content-center gap-1">
                             <button className="btn btn-sm btn-outline-secondary" title="View" onClick={() => handleView(c)}>
@@ -493,11 +480,6 @@ const ClassesSchedule = () => {
                     No branches found. Please add branches first before creating classes.
                   </div>
                 )}
-                {trainers.length === 0 && (
-                  <div className="alert alert-warning">
-                    No trainers found. Please add trainers first before creating classes.
-                  </div>
-                )}
                 <div className="row mb-3">
                   <div className="col-md-6 mb-3">
                     <label className="form-label fw-semibold">Class Name <span className="text-danger">*</span></label>
@@ -522,11 +504,11 @@ const ClassesSchedule = () => {
                         className="form-select rounded-3"
                         value={selectedClass.trainerId || ''}
                         onChange={e => setSelectedClass({ ...selectedClass, trainerId: e.target.value })}
-                        disabled={modalType === 'view' || trainers.length === 0}
+                        disabled={modalType === 'view'}
                       >
-                        <option value="">Select trainer</option>
-                        {trainers.map(t => (
-                          <option key={t.id} value={t.id}>{t.fullName || t.name}</option>
+                        <option value="">Select trainer type</option>
+                        {trainerOptions.map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
                         ))}
                       </select>
                     )}
@@ -705,7 +687,7 @@ const ClassesSchedule = () => {
                       className="btn px-4"
                       style={{ background: '#6EB2CC', color: 'white' }}
                       onClick={saveClass}
-                      disabled={loading || branches.length === 0 || trainers.length === 0}
+                      disabled={loading || branches.length === 0}
                     >
                       {loading ? 'Saving...' : modalType === 'add' ? 'Add Class' : 'Update Class'}
                     </button>

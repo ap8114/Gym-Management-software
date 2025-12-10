@@ -160,7 +160,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       { name: "Dashboard", icon: faChartBar, path: "/receptionist/dashboard" },
       { name: "QR Check-in", icon: faGear, path: "/receptionist/qrcheckin" },
       { name: "Walk-in Registration", icon: faFileAlt, path: "/receptionist/walk-in-registration" },
-      { name: "New Sign-ups", icon: faFileAlt, path: "/receptionist/new-sign-ups" },
+      // { name: "New Sign-ups", icon: faFileAlt, path: "/receptionist/new-sign-ups" },
       { name: "QR Attendance", icon: faFileAlt, path: "/receptionist/qr-attendance" },
       { name: "Book Classes & Sessions", icon: faFileAlt, path: "/receptionist/book-classes-sessions" },
       { name: "Payment", icon: faFileAlt, path: "/receptionist/payemnet" }

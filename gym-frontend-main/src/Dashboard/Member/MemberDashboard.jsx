@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  RiDashboardLine, 
-  RiVipCrownLine, 
-  RiCalendarCheckLine, 
-  RiTimeLine, 
+import {
+  RiDashboardLine,
+  RiVipCrownLine,
+  RiCalendarCheckLine,
+  RiTimeLine,
   RiCheckLine
 } from 'react-icons/ri';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import * as echarts from 'echarts';
-import axiosInstance from '../../Api/axiosInstance'; // Make sure this points to your axios config
+import axiosInstance from '../../Api/axiosInstance';
 
 const MemberDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -35,45 +35,46 @@ const MemberDashboard = () => {
   const branchId = user?.branchId || null;
   const name = user?.fullName || '';
 
+  console.log('MemberDashboard - memberId:', memberId, 'adminId:', adminId, 'branchId:', branchId);
 
-  // 🔄 Fetch dashboard data
   useEffect(() => {
+    if (!memberId) {
+      setError('Member ID not found. Please log in again.');
+      setLoading(false);
+      return;
+    }
+
     const fetchDashboard = async () => {
       try {
-        // Use dynamic memberId if needed (e.g., from route param)
-        const memberId = 20; // or get from useParams() if using React Router
         const response = await axiosInstance.get(`member-dashboard/${memberId}/dashboard`);
-        
+
         if (response.data.success) {
           setDashboardData(response.data.data);
         } else {
-          throw new Error('Failed to load dashboard');
+          throw new Error(response.data.message || 'Failed to load dashboard data');
         }
       } catch (err) {
-        // console.error('Dashboard fetch error:', err);
-        // setError('Unable to load dashboard data.');
+        console.error('Dashboard fetch error:', err);
+        setError('Unable to load dashboard data. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchDashboard();
-  }, []);
+  }, [memberId]);
 
-  // 📊 Initialize or update chart when data changes
   useEffect(() => {
     if (!dashboardData || !workoutChartRef.current) return;
 
-    // Dispose previous instance if exists
     if (chartInstance.current) {
       chartInstance.current.dispose();
     }
 
     chartInstance.current = echarts.init(workoutChartRef.current);
 
-    // Extract check-in counts for the week
-    const checkInData = dashboardData.workoutProgress.days.map(day => day.checkIns || 0);
-    const dayLabels = dashboardData.workoutProgress.days.map(day => day.dayLabel);
+    const checkInData = dashboardData.workoutProgress?.days?.map(day => day.checkIns || 0) || [];
+    const dayLabels = dashboardData.workoutProgress?.days?.map(day => day.dayLabel) || [];
 
     const option = {
       animation: true,
@@ -142,21 +143,15 @@ const MemberDashboard = () => {
     );
   }
 
-  if (error || !dashboardData) {
-    return (
-      <div className="container-fluid bg-light p-4 min-vh-100">
-        <div className="alert alert-danger text-center">{error || 'Failed to load dashboard.'}</div>
-      </div>
-    );
-  }
-
-  const { member, membership, classesThisWeek, nextSession } = dashboardData;
+  // ✅ Safely extract data with fallbacks
+  const membership = dashboardData?.membership || {};
+  const classesThisWeek = dashboardData?.classesThisWeek || { count: 0 };
+  const nextSession = dashboardData?.nextSession || null;
 
   return (
     <div className="container-fluid bg-light p-0 min-vh-100" style={{ fontFamily: 'Poppins, sans-serif' }}>
       <div className="p-3 p-md-4">
         <div className="mb-4">
-          {/* member.fullName */}
           <h1 className="display-6 fw-bold">Welcome, {name}!</h1>
           <p className="text-muted">Your fitness journey at a glance</p>
         </div>
@@ -187,7 +182,7 @@ const MemberDashboard = () => {
                       {membership.status || 'Unknown'}
                     </p>
                     <p className="small text-muted">
-                      {membership.expiresOn 
+                      {membership.expiresOn
                         ? `Expires: ${new Date(membership.expiresOn).toLocaleDateString()}`
                         : 'No expiry date'}
                     </p>
@@ -208,7 +203,7 @@ const MemberDashboard = () => {
                   <div>
                     <h3 className="h6 fw-semibold mb-1">Classes This Week</h3>
                     <p className="text-primary fw-medium d-flex align-items-center">
-                      {classesThisWeek.count} 
+                      {classesThisWeek.count}
                       {classesThisWeek.count > 0 && <RiCheckLine className="ms-2 text-success" />}
                     </p>
                     <p className="small text-muted">

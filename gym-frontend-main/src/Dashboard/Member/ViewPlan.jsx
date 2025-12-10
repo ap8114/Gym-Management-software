@@ -8,16 +8,15 @@ const ViewPlans = () => {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [bookingStatus, setBookingStatus] = useState(null); // 'pending', 'success', 'error'
-  const [paymentDetails, setPaymentDetails] = useState({ upi: '', amount: '' });
-
+  const [paymentDetails, setPaymentDetails] = useState({ upi: '' });
   const [allPlans, setAllPlans] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [loadingBookings, setLoadingBookings] = useState(true);
   const [error, setError] = useState(null);
-
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [bookingMessage, setBookingMessage] = useState('');
 
   const getUserFromStorage = () => {
     try {
@@ -34,27 +33,36 @@ const ViewPlans = () => {
   const adminId = user?.adminId || null;
   const branchId = user?.branchId || null;
 
-  // ✅ Fetch plans
+  console.log('Member ID:', memberId);
+  console.log('Admin ID:', adminId);
+  console.log('Branch ID:', branchId);
+
+  // Fetch plans
   useEffect(() => {
     const fetchPlans = async () => {
       if (!adminId) {
         setLoadingPlans(false);
+        setError('Admin ID not found. Unable to load plans.');
         return;
       }
 
       try {
         const response = await axiosInstance.get(`MemberPlan?adminId=${adminId}`);
         if (response.data.success && Array.isArray(response.data.plans)) {
+          // Store original price as number for booking; format only for display
           const formattedPlans = response.data.plans.map(plan => ({
             ...plan,
-            price: `₹${(plan.price || 0).toLocaleString()}`,
+            displayPrice: `₹${(plan.price || 0).toLocaleString()}`,
+            numericPrice: plan.price || 0,
           }));
           setAllPlans(formattedPlans);
         } else {
           setAllPlans([]);
+          setError('No plans available.');
         }
       } catch (err) {
         console.error('Error fetching plans:', err);
+        setError('Failed to load plans. Please try again.');
         setAllPlans([]);
       } finally {
         setLoadingPlans(false);
@@ -64,7 +72,7 @@ const ViewPlans = () => {
     fetchPlans();
   }, [adminId]);
 
-  // ✅ Fetch bookings
+  // Fetch bookings
   useEffect(() => {
     const fetchBookings = async () => {
       if (!memberId) {
@@ -73,7 +81,7 @@ const ViewPlans = () => {
       }
 
       try {
-        const response = await axiosInstance.get(`booking/requests`);
+        const response = await axiosInstance.get('booking/requests');
         if (response.data.success && Array.isArray(response.data.bookings)) {
           const mapped = response.data.bookings.map(b => ({
             id: b.id,
@@ -106,45 +114,45 @@ const ViewPlans = () => {
 
   const handleBookNow = (plan, planType) => {
     setSelectedPlan({ ...plan, type: planType });
-    setPaymentDetails({ upi: '', amount: plan.price });
+    setPaymentDetails({ upi: '' });
     setShowPaymentModal(true);
   };
 
   const handlePaymentSubmit = async (e) => {
     e.preventDefault();
-    if (!paymentDetails.upi.trim()) {
-      alert('Please enter a valid UPI ID.');
+    const upi = paymentDetails.upi.trim();
+
+    if (!upi) {
+      setBookingMessage('Please enter a valid UPI ID.');
       return;
     }
 
     if (!memberId || !adminId || !branchId || !selectedPlan) {
-      alert('Missing user or plan details. Please log in again.');
+      setBookingMessage('Missing user or plan details. Please log in again.');
       return;
     }
 
     setBookingStatus('pending');
+    setBookingMessage('');
 
     try {
-      const numericPrice = parseInt(selectedPlan.price.replace(/[^0-9]/g, ''), 10);
-
-      // ✅ CORRECT PAYLOAD — do NOT include 'id'
+      // Use numericPrice (not parsed from string)
       const payload = {
         memberId: memberId,
         classId: selectedPlan.id,
         branchId: branchId,
         adminId: adminId,
-        price: numericPrice,
-        upiId: paymentDetails.upi.trim(),
+        price: selectedPlan.numericPrice, // ✅ Correct numeric value
+        upiId: upi,
       };
-
-      console.log('Booking payload:', payload); // 🔍 Debug
 
       const response = await axiosInstance.post('booking/create', payload);
 
       if (response.data.success) {
         setBookingStatus('success');
+        setBookingMessage(response.data.message || 'Booking request sent to admin.');
         setShowPaymentModal(false);
-        setPaymentDetails({ upi: '', amount: '' });
+        setPaymentDetails({ upi: '' });
 
         // Refresh bookings
         const bookingsRes = await axiosInstance.get('booking/requests');
@@ -162,18 +170,15 @@ const ViewPlans = () => {
           }));
           setBookings(mapped);
         }
-
-        alert('✅ Booking request submitted! Awaiting admin approval.');
       } else {
-        const errorMsg = response.data.message || 'Booking failed';
-        console.error('Booking API error:', errorMsg);
-        alert(`❌ ${errorMsg}`);
-        throw new Error(errorMsg);
+        const errorMsg = response.data.message || 'Booking failed. Please try again.';
+        setBookingMessage(errorMsg);
+        setBookingStatus('error');
       }
     } catch (err) {
+      console.error('Booking submission error:', err);
       setBookingStatus('error');
-      // Do NOT show raw DB errors to user
-      alert('❌ Failed to create booking. Please try again or contact support.');
+      setBookingMessage('Failed to create booking. Please try again or contact support.');
     }
   };
 
@@ -285,7 +290,7 @@ const ViewPlans = () => {
                             <span className="text-muted" style={{ fontSize: '0.9rem' }}>💰</span>
                           </div>
                           <div>
-                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>Price: {plan.price}</div>
+                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>Price: {plan.displayPrice}</div>
                           </div>
                         </li>
                       </ul>
@@ -368,7 +373,7 @@ const ViewPlans = () => {
                             <span className="text-muted" style={{ fontSize: '0.9rem' }}>💰</span>
                           </div>
                           <div>
-                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>Price: {plan.price}</div>
+                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>Price: {plan.displayPrice}</div>
                           </div>
                         </li>
                       </ul>
@@ -398,7 +403,11 @@ const ViewPlans = () => {
         )}
 
         {/* Payment Modal */}
-        <Modal show={showPaymentModal} onHide={() => setShowPaymentModal(false)} centered size="md">
+        <Modal show={showPaymentModal} onHide={() => {
+          setShowPaymentModal(false);
+          setBookingMessage('');
+          setBookingStatus(null);
+        }} centered size="md">
           <Modal.Header closeButton style={{ backgroundColor: '#f8f9fa', borderBottom: '3px solid #2f6a87' }}>
             <Modal.Title style={{ color: '#333', fontWeight: '600', fontSize: '1.2rem' }}>Complete Payment</Modal.Title>
           </Modal.Header>
@@ -416,17 +425,25 @@ const ViewPlans = () => {
                     <strong>Plan:</strong> {selectedPlan?.name} ({selectedPlan?.type === 'group' ? 'Group' : 'Personal'})
                   </p>
                   <p className="mb-0">
-                    <strong>Amount:</strong> <span className="fw-bold" style={{ fontSize: '1.2rem', color: '#2f6a87' }}>{selectedPlan?.price}</span>
+                    <strong>Amount:</strong> <span className="fw-bold" style={{ fontSize: '1.2rem', color: '#2f6a87' }}>{selectedPlan?.displayPrice}</span>
                   </p>
                 </div>
+
+                {bookingMessage && (
+                  <Alert variant={bookingStatus === 'error' ? 'danger' : bookingStatus === 'success' ? 'success' : 'info'} className="mb-3">
+                    {bookingMessage}
+                  </Alert>
+                )}
+
                 <Form.Group className="mb-3">
                   <Form.Label style={{ color: '#333', fontWeight: '600', fontSize: '1rem' }}>UPI ID</Form.Label>
                   <Form.Control
                     type="text"
                     placeholder="yourname@upi"
                     value={paymentDetails.upi}
-                    onChange={(e) => setPaymentDetails({ ...paymentDetails, upi: e.target.value })}
+                    onChange={(e) => setPaymentDetails({ upi: e.target.value })}
                     required
+                    isInvalid={!!(bookingMessage && bookingStatus === 'error')}
                     style={{
                       padding: '10px',
                       fontSize: '1rem',
@@ -459,106 +476,85 @@ const ViewPlans = () => {
           </Modal.Body>
         </Modal>
 
-        {/* Success Alert */}
-        {bookingStatus === 'success' && (
-          <div className="position-fixed bottom-0 start-50 translate-middle-x mb-4" style={{ zIndex: 1000 }}>
-            <div className="alert p-3 rounded-pill shadow-lg" style={{
-              backgroundColor: 'rgba(40, 167, 69, 0.85)',
-              color: 'white',
-              border: 'none',
-              minWidth: '300px',
-              animation: 'fadeInUp 0.5s ease',
-            }}>
-              <div className="d-flex align-items-center justify-content-center gap-2">
-                <FaCheckCircle size={24} />
-                <span className="fw-bold">Booking Submitted!</span>
-              </div>
-              <div className="text-center mt-1" style={{ fontSize: '0.9rem' }}>
-                Awaiting admin approval.
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Bookings Table */}
-        {(loadingBookings || bookings.length > 0) && (
-          <div className="mt-4 mt-md-5 pt-4 pt-md-5 border-top">
-            <h3 className="fw-bold mb-3 mb-md-4 text-dark" style={{ fontSize: 'clamp(1.3rem, 3vw, 1.6rem)' }}>
-              {loadingBookings ? 'Loading Bookings...' : 'Your Bookings'}
-            </h3>
-            {loadingBookings ? (
-              <div className="text-center py-3">
-                <Spinner animation="border" size="sm" variant="primary" />
-              </div>
-            ) : (
-              <div className="table-responsive">
-                <Card className="border-0 shadow-sm" style={{ borderRadius: '12px', overflow: 'hidden' }}>
-                  <Card.Body className="p-0">
-                    <Table hover responsive className="align-middle mb-0">
-                      <thead className="bg-light">
-                        <tr>
-                          <th className="py-2 py-md-3">#</th>
-                          <th className="py-2 py-md-3">Plan Name</th>
-                          <th className="py-2 py-md-3 d-none d-md-table-cell">Type</th>
-                          <th className="py-2 py-md-3 d-none d-md-table-cell">Purchased On</th>
-                          <th className="py-2 py-md-3">Status</th>
-                          <th className="py-2 py-md-3">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {bookings.map((booking, index) => (
-                          <tr key={booking.id}>
-                            <td className="py-2 py-md-3 fw-bold">{index + 1}</td>
-                            <td className="py-2 py-md-3">
-                              <strong style={{ color: '#333', fontSize: '1rem' }}>{booking.planName}</strong>
-                            </td>
-                            <td className="py-2 py-md-3 d-none d-md-table-cell">
-                              <span className="badge" style={{
-                                backgroundColor: '#2f6a87',
-                                color: 'white',
+        {/* <div className="mt-4 mt-md-5 pt-4 pt-md-5 border-top">
+          <h3 className="fw-bold mb-3 mb-md-4 text-dark" style={{ fontSize: 'clamp(1.3rem, 3vw, 1.6rem)' }}>
+            {loadingBookings ? 'Loading Bookings...' : 'Your Bookings'}
+          </h3>
+          {loadingBookings ? (
+            <div className="text-center py-3">
+              <Spinner animation="border" size="sm" variant="primary" />
+            </div>
+          ) : bookings.length > 0 ? (
+            <div className="table-responsive">
+              <Card className="border-0 shadow-sm" style={{ borderRadius: '12px', overflow: 'hidden' }}>
+                <Card.Body className="p-0">
+                  <Table hover responsive className="align-middle mb-0">
+                    <thead className="bg-light">
+                      <tr>
+                        <th className="py-2 py-md-3">#</th>
+                        <th className="py-2 py-md-3">Plan Name</th>
+                        <th className="py-2 py-md-3 d-none d-md-table-cell">Type</th>
+                        <th className="py-2 py-md-3 d-none d-md-table-cell">Purchased On</th>
+                        <th className="py-2 py-md-3">Status</th>
+                        <th className="py-2 py-md-3">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bookings.map((booking, index) => (
+                        <tr key={booking.id}>
+                          <td className="py-2 py-md-3 fw-bold">{index + 1}</td>
+                          <td className="py-2 py-md-3">
+                            <strong style={{ color: '#333', fontSize: '1rem' }}>{booking.planName}</strong>
+                          </td>
+                          <td className="py-2 py-md-3 d-none d-md-table-cell">
+                            <span className="badge" style={{
+                              backgroundColor: '#2f6a87',
+                              color: 'white',
+                              borderRadius: '20px',
+                              fontSize: '0.8rem'
+                            }}>
+                              {booking.type}
+                            </span>
+                          </td>
+                          <td className="py-2 py-md-3 d-none d-md-table-cell" style={{ fontSize: '0.95rem' }}>
+                            {booking.purchasedAt}
+                          </td>
+                          <td className="py-2 py-md-3">
+                            {booking.status === 'approved' && <span className="badge bg-success px-2 py-1" style={{ borderRadius: '20px', fontSize: '0.8rem' }}>Approved</span>}
+                            {booking.status === 'pending' && <span className="badge bg-warning text-dark px-2 py-1" style={{ borderRadius: '20px', fontSize: '0.8rem' }}>Pending</span>}
+                            {booking.status === 'rejected' && <span className="badge bg-danger px-2 py-1" style={{ borderRadius: '20px', fontSize: '0.8rem' }}>Rejected</span>}
+                          </td>
+                          <td className="py-2 py-md-3">
+                            <Button
+                              variant="outline-secondary"
+                              size="sm"
+                              onClick={() => handleViewBooking(booking)}
+                              disabled={booking.status !== 'approved'}
+                              style={{
+                                borderColor: '#2f6a87',
+                                color: booking.status === 'approved' ? '#2f6a87' : '#ccc',
+                                cursor: booking.status === 'approved' ? 'pointer' : 'not-allowed',
                                 borderRadius: '20px',
-                                fontSize: '0.8rem'
-                              }}>
-                                {booking.type}
-                              </span>
-                            </td>
-                            <td className="py-2 py-md-3 d-none d-md-table-cell" style={{ fontSize: '0.95rem' }}>
-                              {booking.purchasedAt}
-                            </td>
-                            <td className="py-2 py-md-3">
-                              {booking.status === 'approved' && <span className="badge bg-success px-2 py-1" style={{ borderRadius: '20px', fontSize: '0.8rem' }}>Approved</span>}
-                              {booking.status === 'pending' && <span className="badge bg-warning text-dark px-2 py-1" style={{ borderRadius: '20px', fontSize: '0.8rem' }}>Pending</span>}
-                              {booking.status === 'rejected' && <span className="badge bg-danger px-2 py-1" style={{ borderRadius: '20px', fontSize: '0.8rem' }}>Rejected</span>}
-                            </td>
-                            <td className="py-2 py-md-3">
-                              <Button
-                                variant="outline-secondary"
-                                size="sm"
-                                onClick={() => handleViewBooking(booking)}
-                                disabled={booking.status !== 'approved'}
-                                style={{
-                                  borderColor: '#2f6a87',
-                                  color: booking.status === 'approved' ? '#2f6a87' : '#ccc',
-                                  cursor: booking.status === 'approved' ? 'pointer' : 'not-allowed',
-                                  borderRadius: '20px',
-                                  padding: '4px 12px',
-                                  fontWeight: '600',
-                                  fontSize: '0.85rem',
-                                }}
-                              >
-                                <FaEye className="me-1" /> View
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </Table>
-                  </Card.Body>
-                </Card>
-              </div>
-            )}
-          </div>
-        )}
+                                padding: '4px 12px',
+                                fontWeight: '600',
+                                fontSize: '0.85rem',
+                              }}
+                            >
+                              <FaEye className="me-1" /> View
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </Card.Body>
+              </Card>
+            </div>
+          ) : (
+            <div className="text-center py-3 text-muted">No bookings yet.</div>
+          )}
+        </div> */}
 
         {/* View Booking Modal */}
         <Modal show={showViewModal} onHide={() => setShowViewModal(false)} centered size="md">
@@ -672,14 +668,31 @@ const ViewPlans = () => {
             </Button>
           </Modal.Footer>
         </Modal>
-      </Container>
 
-      <style jsx="true">{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+        {/* Global Success Toast (optional) */}
+        {bookingStatus === 'success' && bookingMessage && (
+          <div className="position-fixed bottom-0 start-50 translate-middle-x mb-4" style={{ zIndex: 1000 }}>
+            <Alert
+              variant="success"
+              className="p-3 rounded-pill shadow-lg d-flex align-items-center gap-2 mb-0"
+              style={{
+                minWidth: '300px',
+                animation: 'fadeInUp 0.5s ease',
+              }}
+            >
+              <FaCheckCircle size={20} />
+              <span className="fw-bold">{bookingMessage}</span>
+            </Alert>
+          </div>
+        )}
+
+        <style jsx="true">{`
+          @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+      </Container>
     </div>
   );
 };
