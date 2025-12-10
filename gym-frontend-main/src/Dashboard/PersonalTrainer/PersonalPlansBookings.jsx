@@ -14,31 +14,31 @@ const PersonalPlansBookings = () => {
   const [error, setError] = useState(null);
 
   // ✅ Extract adminId once from localStorage
-  const getAdminIdFromStorage = () => {
+    const getUserFromStorage = () => {
     try {
       const userStr = localStorage.getItem('user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        return user?.adminId || null;
-      }
+      return userStr ? JSON.parse(userStr) : null;
     } catch (err) {
       console.error('Error parsing user from localStorage:', err);
+      return null;
     }
-    return null;
   };
 
-  const adminId = getAdminIdFromStorage(); // ✅ Now safely defined
+  const user = getUserFromStorage();
+  const memberId = user?.id || null;
+  const adminId = user?.adminId || null;
+  const branchId = user?.branchId || null;
+
+  console.log('Member ID:', memberId);
+  console.log('Admin ID:', adminId);
+  console.log('Branch ID:', branchId);
+
 
   // Optional: Log once after definition
-  // console.log('Fetching plans for adminId:', adminId);
+  console.log('Fetching plans for adminId:', adminId);
 
   // Fetch plans on mount
   useEffect(() => {
-    if (!adminId) {
-      setError('Trainer ID not found. Please log in again.');
-      setLoadingPlans(false);
-      return;
-    }
 
     const fetchPlans = async () => {
       try {
@@ -50,7 +50,7 @@ const PersonalPlansBookings = () => {
         }
       } catch (err) {
         console.error('Error fetching plans:', err);
-        setError('Failed to load your training plans.');
+       
         setAllPlans([]);
       } finally {
         setLoadingPlans(false);
@@ -139,14 +139,6 @@ const PersonalPlansBookings = () => {
       <div className="d-flex justify-content-center align-items-center vh-50">
         <Spinner animation="border" variant="primary" />
       </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container className="mt-5">
-        <div className="alert alert-danger text-center">{error}</div>
-      </Container>
     );
   }
 

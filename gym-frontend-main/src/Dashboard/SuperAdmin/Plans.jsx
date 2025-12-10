@@ -13,13 +13,13 @@ const MembershipPlans = () => {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // Form fields
+  // Form fields (used only for add/edit)
   const [planName, setPlanName] = useState("");
   const [basePrice, setBasePrice] = useState("");
-  const [duration, setDuration] = useState("Yearly"); // Changed default to match API ("Yearly", not "90")
+  const [duration, setDuration] = useState("Yearly");
   const [status, setStatus] = useState("Active");
-  const [description, setDescription] = useState(""); // Single string, not array
-  const [category, setCategory] = useState("PRO"); // Updated default to "PRO" (from your payload)
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("PRO");
 
   // Fetch all plans
   const fetchPlans = async () => {
@@ -30,7 +30,7 @@ const MembershipPlans = () => {
           id: p.id,
           planName: p.name,
           basePrice: p.price,
-          duration: p.duration, // e.g., "Yearly"
+          duration: p.duration,
           status: p.status === "ACTIVE" ? "Active" : "Inactive",
           description: p.description || "",
           category: p.category || "PRO",
@@ -88,6 +88,7 @@ const MembershipPlans = () => {
     setModalType("view");
     setSelectedPlan(plan);
     setIsModalOpen(true);
+    // Do NOT update form state in view mode
   };
 
   const openDeleteModal = (plan) => {
@@ -116,7 +117,6 @@ const MembershipPlans = () => {
     try {
       if (modalType === "add") {
         await axiosInstance.post("/plans/create", payload);
-        console.log(payload);
         alert("Plan created successfully!");
         fetchPlans();
       } else {
@@ -125,14 +125,14 @@ const MembershipPlans = () => {
           const updatedPlans = plans.map((plan) =>
             plan.id === selectedPlan.id
               ? {
-                  ...plan,
-                  planName: response.data.plan.name,
-                  basePrice: response.data.plan.price,
-                  duration: response.data.plan.duration,
-                  status: response.data.plan.status === "ACTIVE" ? "Active" : "Inactive",
-                  description: response.data.plan.description || "",
-                  category: response.data.plan.category || "PRO",
-                }
+                ...plan,
+                planName: response.data.plan.name,
+                basePrice: response.data.plan.price,
+                duration: response.data.plan.duration,
+                status: response.data.plan.status === "ACTIVE" ? "Active" : "Inactive",
+                description: response.data.plan.description || "",
+                category: response.data.plan.category || "PRO",
+              }
               : plan
           );
           setPlans(updatedPlans);
@@ -225,9 +225,8 @@ const MembershipPlans = () => {
                     <td>{plan.category}</td>
                     <td>
                       <span
-                        className={`badge ${
-                          plan.status === "Active" ? "bg-success" : "bg-secondary"
-                        }`}
+                        className={`badge ${plan.status === "Active" ? "bg-success" : "bg-secondary"
+                          }`}
                       >
                         {plan.status}
                       </span>
@@ -280,81 +279,126 @@ const MembershipPlans = () => {
                   {modalType === "add"
                     ? "Add New Plan"
                     : modalType === "edit"
-                    ? "Edit Plan"
-                    : "Plan Details"}
+                      ? "Edit Plan"
+                      : "Plan Details"}
                 </h5>
                 <button className="btn-close" onClick={() => setIsModalOpen(false)}></button>
               </div>
 
               <div className="modal-body">
                 <div
-                  className="bg-info text-white p-2 mb-3 rounded"
+                  className="bg-info text-white p-2 mb-4 rounded"
                   style={{ background: "#6EB2CC" }}
                 >
-                  {modalType === "view" ? "Plan Details" : "Plan Information"}
+                  Plan Details
                 </div>
 
-                <label className="form-label">Plan Name</label>
-                <input
-                  className="form-control mb-2"
-                  value={planName}
-                  disabled={modalType === "view"}
-                  onChange={(e) => setPlanName(e.target.value)}
-                />
+                {modalType === "view" ? (
+                  <div className="row g-3">
+                    <div className="col-12">
+                      <div className="d-flex justify-content-between">
+                        <strong className="text-muted">Plan Name</strong>
+                        <span className="fw-bold">{selectedPlan?.planName || "—"}</span>
+                      </div>
+                    </div>
+                    <div className="col-12">
+                      <div className="d-flex justify-content-between">
+                        <strong className="text-muted">Price</strong>
+                        <span className="fw-bold">₹{selectedPlan?.basePrice || "—"}</span>
+                      </div>
+                    </div>
+                    <div className="col-12">
+                      <div className="d-flex justify-content-between">
+                        <strong className="text-muted">Duration</strong>
+                        <span className="fw-bold">{selectedPlan?.duration || "—"}</span>
+                      </div>
+                    </div>
+                    <div className="col-12">
+                      <div className="d-flex justify-content-between">
+                        <strong className="text-muted">Category</strong>
+                        <span className="fw-bold">{selectedPlan?.category || "—"}</span>
+                      </div>
+                    </div>
+                    <div className="col-12">
+                      <div className="d-flex justify-content-between align-items-start">
+                        <strong className="text-muted">Status</strong>
+                        <span>
+                          <span
+                            className={`badge ${selectedPlan?.status === "Active" ? "bg-success" : "bg-secondary"
+                              }`}
+                          >
+                            {selectedPlan?.status || "—"}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="col-12">
+                      <div className="d-flex flex-column">
+                        <strong className="text-muted mb-1">Description</strong>
+                        <span className="fw-bold" style={{ whiteSpace: "pre-wrap" }}>
+                          {selectedPlan?.description || "—"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <label className="form-label">Plan Name</label>
+                    <input
+                      className="form-control mb-2"
+                      value={planName}
+                      onChange={(e) => setPlanName(e.target.value)}
+                    />
 
-                <label className="form-label">Price (₹)</label>
-                <input
-                  className="form-control mb-2"
-                  type="number"
-                  value={basePrice}
-                  disabled={modalType === "view"}
-                  onChange={(e) => setBasePrice(e.target.value)}
-                />
+                    <label className="form-label">Price (₹)</label>
+                    <input
+                      className="form-control mb-2"
+                      type="number"
+                      value={basePrice}
+                      onChange={(e) => setBasePrice(e.target.value)}
+                    />
 
-                <label className="form-label">Duration</label>
-                <select
-                  className="form-select mb-2"
-                  value={duration}
-                  disabled={modalType === "view"}
-                  onChange={(e) => setDuration(e.target.value)}
-                >
-                  <option value="Monthly">Monthly</option>
-                  <option value="Yearly">Yearly</option>
-                  <option value="Lifetime">Lifetime</option>
-                </select>
+                    <label className="form-label">Duration</label>
+                    <select
+                      className="form-select mb-2"
+                      value={duration}
+                      onChange={(e) => setDuration(e.target.value)}
+                    >
+                      <option value="Monthly">Monthly</option>
+                      <option value="Yearly">Yearly</option>
+                    </select>
 
-                <label className="form-label">Category</label>
-                <select
-                  className="form-select mb-2"
-                  value={category}
-                  disabled={modalType === "view"}
-                  onChange={(e) => setCategory(e.target.value)}
-                >
-                  <option value="PRO">PRO</option>
-                  <option value="BASIC">Basic</option>
-                  <option value="ENTERPRISE">Enterprise</option>
-                  <option value="GYM">Gym</option>
-                </select>
+                    <label className="form-label">Category</label>
+                    <select
+                      className="form-select mb-2"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                    >
+                      <option value="PRO">PRO</option>
+                      <option value="BASIC">Basic</option>
+                      <option value="ENTERPRISE">Enterprise</option>
+                      <option value="GYM">Gym</option>
+                    </select>
 
-                <label className="form-label">Status</label>
-                <select
-                  className="form-select mb-3"
-                  value={status}
-                  disabled={modalType === "view"}
-                  onChange={(e) => setStatus(e.target.value)}
-                >
-                  <option>Active</option>
-                  <option>Inactive</option>
-                </select>
+                    <label className="form-label">Status</label>
+                    <select
+                      className="form-select mb-3"
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
 
-                <label className="form-label">Description</label>
-                <textarea
-                  className="form-control"
-                  rows="3"
-                  value={description}
-                  disabled={modalType === "view"}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
+                    <label className="form-label">Description</label>
+                    <textarea
+                      className="form-control"
+                      rows="3"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                    />
+                  </>
+                )}
               </div>
 
               <div className="modal-footer border-0">
