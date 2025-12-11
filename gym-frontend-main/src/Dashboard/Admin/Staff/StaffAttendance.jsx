@@ -58,7 +58,7 @@ const StaffAttendance = () => {
       console.log('Staff API response:', response.data);
       
       if (response.data.success) {
-        // Transform the API response to match the component's expected format
+        // Transform API response to match component's expected format
         const transformedStaff = response.data.staff.map(staff => ({
           id: staff.staffId,
           staffId: staff.staffId,
@@ -90,7 +90,7 @@ const StaffAttendance = () => {
       console.log('Attendance API response:', response.data);
       
       if (response.data && Array.isArray(response.data)) {
-        // Transform the API response to match the component's expected format
+        // Transform API response to match the component's expected format
         const transformedRecords = response.data.map(record => ({
           attendance_id: record.id,
           staff_id: record.staffId,
@@ -126,7 +126,7 @@ const StaffAttendance = () => {
       console.log('Attendance by branch API response:', response.data);
       
       if (response.data && Array.isArray(response.data)) {
-        // Transform the API response to match the component's expected format
+        // Transform API response to match the component's expected format
         const transformedRecords = response.data.map(record => ({
           attendance_id: record.id,
           staff_id: record.staffId,
@@ -154,15 +154,17 @@ const StaffAttendance = () => {
     }
   };
 
-  // Helper function to get role name from roleId
+  // Helper function to get role name from roleId - Updated with all role IDs
   const getRoleName = (roleId) => {
     const roles = {
       1: 'Admin',
       2: 'Manager',
       3: 'Trainer',
       4: 'Receptionist',
-      5: 'Accountant',
-      6: 'Other'
+      5: 'Personal Trainer',
+      6: 'General Trainer',
+      7: 'Receptionist',
+      8: 'Housekeeping'
     };
     return roles[roleId] || 'Unknown';
   };
@@ -244,7 +246,7 @@ const StaffAttendance = () => {
         // Call Delete API
         await axiosInstance.delete(`${BaseUrl}admin-staff-attendance/${selectedRecord.attendance_id}`);
         
-        // Update the local state
+        // Update local state
         setRecords(prev => prev.filter(r => r.attendance_id !== selectedRecord.attendance_id));
         alert(`Deleted attendance record for ${selectedRecord.staff_name} (${selectedRecord.role}).`);
       } catch (err) {
@@ -357,7 +359,7 @@ const StaffAttendance = () => {
         const shiftId = formData.get('shift_id');
         const shiftName = shifts.find(s => s.id === shiftId)?.name || '';
 
-        // Create the payload for the API
+        // Create payload for API
         const payload = {
           staffId: staffId,
           branchId: branchId,
@@ -370,12 +372,12 @@ const StaffAttendance = () => {
           notes: formData.get('notes') || ''
         };
         
-        // Call the API to create an attendance record
+        // Call API to create an attendance record
         const response = await axiosInstance.post(`${BaseUrl}admin-staff-attendance`, payload);
         console.log('Create attendance response:', response.data);
         
         if (response.data) {
-          // Refresh the attendance records
+          // Refresh attendance records
           if (branchFilter !== 'All') {
             fetchAttendanceByBranch(branchId);
           } else {
@@ -403,7 +405,7 @@ const StaffAttendance = () => {
         const shiftId = formData.get('shift_id');
         const shiftName = shifts.find(s => s.id === shiftId)?.name || '';
 
-        // Create the payload for the API
+        // Create payload for API
         const payload = {
           staffId: staffId,
           branchId: branchId,
@@ -416,12 +418,12 @@ const StaffAttendance = () => {
           notes: formData.get('notes') || selectedRecord.notes
         };
         
-        // Call the API to update the attendance record
+        // Call API to update attendance record
         const response = await axiosInstance.put(`${BaseUrl}admin-staff-attendance/${selectedRecord.attendance_id}`, payload);
         console.log('Update attendance response:', response.data);
         
         if (response.data) {
-          // Refresh the attendance records
+          // Refresh attendance records
           if (branchFilter !== 'All') {
             fetchAttendanceByBranch(branchId);
           } else {

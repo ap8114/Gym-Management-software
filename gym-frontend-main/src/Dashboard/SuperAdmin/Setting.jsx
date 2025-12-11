@@ -269,17 +269,7 @@ const handleSubmit = async (e) => {
                           onChange={handleInputChange}
                         />
                       </div>
-                      <div className="col-md-6">
-                        <label htmlFor="phone" className="form-label">Phone</label>
-                        <input
-                          type="tel"
-                          className="form-control"
-                          id="phone"
-                          name="phone"
-                          value={settingsData.phone}
-                          onChange={handleInputChange}
-                        />
-                      </div>
+                
                     </div>
                   </div>
                 </div>
