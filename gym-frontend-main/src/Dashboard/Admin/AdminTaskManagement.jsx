@@ -143,69 +143,77 @@ const AdminTaskManagement = () => {
       alert('An error occurred while updating the task. Please try again.');
     }
   };
-
-  const handleCreateTask = async () => {
-    try {
-      // Validate form
-      if (!taskForm.staffId || !taskForm.branchId || !taskForm.taskTitle || !taskForm.dueDate) {
-        alert('Please fill in all required fields');
-        return;
-      }
-
-      // Get the current user ID (this should come from your auth context)
-      // For now, using a hardcoded value
-      const createdById = 4; // This should be replaced with the actual user ID
-      
-      // Prepare data for API
-      const taskData = {
-        assignedTo: parseInt(taskForm.staffId),
-        branchId: parseInt(taskForm.branchId),
-        taskTitle: taskForm.taskTitle,
-        description: taskForm.description,
-        dueDate: taskForm.dueDate,
-        priority: taskForm.priority.toLowerCase(),
-        status: "Pending",
-        createdById: createdById
-      };
-
-      // Make API call to create task
-      const response = await axios.post(`${BaseUrl}housekeepingtask/create`, taskData);
-      
-      if (response.data.success) {
-        // Add the new task to the tasks list
-        const newTask = {
-          id: response.data.data.id,
-          staffId: response.data.data.assignedTo,
-          branchId: response.data.data.branchId,
-          title: response.data.data.taskTitle,
-          description: response.data.data.description,
-          dueDate: response.data.data.dueDate,
-          priority: response.data.data.priority.charAt(0).toUpperCase() + response.data.data.priority.slice(1),
-          status: response.data.data.status
-        };
-        
-        setTasks([...tasks, newTask]);
-        
-        // Reset form and close modal
-        setTaskForm({
-          staffId: '',
-          branchId: '',
-          taskTitle: '',
-          description: '',
-          dueDate: '',
-          priority: 'Medium'
-        });
-        setShowTaskModal(false);
-        
-        alert('Task created successfully!');
-      } else {
-        alert('Failed to create task. Please try again.');
-      }
-    } catch (err) {
-      console.error('Error creating task:', err);
-      alert('An error occurred while creating the task. Please try again.');
+const handleCreateTask = async () => {
+  try {
+    // Validate form
+    if (!taskForm.staffId || !taskForm.branchId || !taskForm.taskTitle || !taskForm.dueDate) {
+      alert('Please fill in all required fields');
+      return;
     }
-  };
+
+    // Get current user ID (this should come from your auth context)
+    // For now, using a hardcoded value
+    const createdById = 4; // This should be replaced with actual user ID
+    
+    // Find the selected staff member to get their user ID
+    const selectedStaff = staffMembers.find(staff => staff.staffId === parseInt(taskForm.staffId));
+    const userId = selectedStaff ? selectedStaff.userId : null;
+    
+    if (!userId) {
+      alert('Invalid staff member selected');
+      return;
+    }
+
+    // Prepare data for API
+    const taskData = {
+      assignedTo: userId, // Use user ID instead of staff ID
+      branchId: parseInt(taskForm.branchId),
+      taskTitle: taskForm.taskTitle,
+      description: taskForm.description,
+      dueDate: taskForm.dueDate,
+      priority: taskForm.priority.toLowerCase(),
+      status: "Pending",
+      createdById: createdById
+    };
+
+    // Make API call to create task
+    const response = await axios.post(`${BaseUrl}housekeepingtask/create`, taskData);
+    
+    if (response.data.success) {
+      // Add new task to tasks list
+      const newTask = {
+        id: response.data.data.id,
+        staffId: response.data.data.assignedTo,
+        branchId: response.data.data.branchId,
+        title: response.data.data.taskTitle,
+        description: response.data.data.description,
+        dueDate: response.data.data.dueDate,
+        priority: response.data.data.priority.charAt(0).toUpperCase() + response.data.data.priority.slice(1),
+        status: response.data.data.status
+      };
+      
+      setTasks([...tasks, newTask]);
+      
+      // Reset form and close modal
+      setTaskForm({
+        staffId: '',
+        branchId: '',
+        taskTitle: '',
+        description: '',
+        dueDate: '',
+        priority: 'Medium'
+      });
+      setShowTaskModal(false);
+      
+      alert('Task created successfully!');
+    } else {
+      alert('Failed to create task. Please try again.');
+    }
+  } catch (err) {
+    console.error('Error creating task:', err);
+    alert('An error occurred while creating task. Please try again.');
+  }
+};
 
   const renderTaskModal = () => {
     if (!showTaskModal) return null;

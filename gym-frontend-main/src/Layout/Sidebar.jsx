@@ -109,11 +109,11 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         path: "/admin/booking/personal-training"
       },
 
-      {
-        name: "Payments",
-        icon: faCalculator,
-        path: "/admin/payments/membership",
-      },
+      // {
+      //   name: "Payments",
+      //   icon: faCalculator,
+      //   path: "/admin/payments/membership",
+      // },
 
       {
         name: "Reports",
