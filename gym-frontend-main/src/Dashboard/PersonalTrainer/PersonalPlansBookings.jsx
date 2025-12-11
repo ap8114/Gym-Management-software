@@ -17,7 +17,11 @@ const PersonalPlansBookings = () => {
     const getUserFromStorage = () => {
     try {
       const userStr = localStorage.getItem('user');
-      return userStr ? JSON.parse(userStr) : null;
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        // For personal trainers, their own ID is used as "adminId" in the API
+        return user?.id || null; // 👈 Use `id` instead of `adminId`
+      }
     } catch (err) {
       console.error('Error parsing user from localStorage:', err);
       return null;
