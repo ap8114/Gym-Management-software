@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FaBell, FaUserCircle, FaBars } from "react-icons/fa";
 import Logo from "../assets/Logo/Logo.png"
-
+import Account from "../Dashboard/Member/Account";
+import { Link } from "react-router-dom";
 const Navbar = ({ toggleSidebar }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -191,15 +192,18 @@ const Navbar = ({ toggleSidebar }) => {
                 }}
               >
                 <li>
-                  <button
-                    className="dropdown-item"
-                    onClick={() => {
-                      setDropdownOpen(false);
-                      setShowProfileModal(true);
-                    }}
-                  >
-                    Profile
-                  </button>
+                  <Link to="/member/account" className="text-decoration-none">
+
+                    <button
+                      className="dropdown-item"
+                      onClick={() => {
+                        setDropdownOpen(false);
+                        // setShowProfileModal(true);
+                      }}
+                    >
+                      Profile
+                    </button> 
+                  </Link>
                 </li>
                 <li>
                   <hr className="dropdown-divider" />
@@ -212,119 +216,6 @@ const Navbar = ({ toggleSidebar }) => {
           </div>
         </div>
       </nav>
-
-      {/* PROFILE MODAL */}
-      {showProfileModal && (
-        <div
-          className="modal fade show"
-          tabIndex="-1"
-          style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
-          onClick={() => setShowProfileModal(false)}
-        >
-          <div
-            className="modal-dialog modal-lg modal-dialog-centered"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-content">
-              <div className="modal-header border-0 pb-0">
-                <div className="d-flex align-items-center gap-3 mb-3">
-                  <FaUserCircle size={48} color="#6c757d" />
-                  <h5 className="modal-title fw-bold">My Profile</h5>
-                </div>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowProfileModal(false)}
-                ></button>
-              </div>
-
-              <div className="modal-body">
-                <div className="row g-3">
-                  <div className="col-12 col-md-6">
-                    <label className="form-label">Full Name</label>
-                    <input
-                      className="form-control"
-                      value={profile.name}
-                      onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                    />
-                  </div>
-                  <div className="col-12 col-md-6">
-                    <label className="form-label">Email</label>
-                    <input
-                      type="email"
-                      className="form-control"
-                      value={profile.email}
-                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                    />
-                  </div>
-                  <div className="col-12 col-md-6">
-                    <label className="form-label">Phone</label>
-                    <input
-                      className="form-control"
-                      value={profile.phone}
-                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                    />
-                  </div>
-                  <div className="col-12 col-md-6">
-                    <label className="form-label">Role</label>
-                    <input
-                      className="form-control"
-                      value={profile.role}
-                      readOnly
-                    />
-                  </div>
-                  <div className="col-12 col-md-6">
-                    <label className="form-label">Branch</label>
-                    <select
-                      className="form-select"
-                      value={profile.branch}
-                      onChange={(e) => setProfile({ ...profile, branch: e.target.value })}
-                    >
-                      <option>All Branches</option>
-                      <option>Andheri</option>
-                      <option>Bandra</option>
-                      <option>Thane</option>
-                      <option>Pune</option>
-                    </select>
-                  </div>
-                </div>
-
-                <hr className="my-4" />
-
-                {/* Password change */}
-                <div className="row g-3">
-                  <div className="col-12 col-md-4">
-                    <label className="form-label">Current Password</label>
-                    <input type="password" className="form-control" placeholder="••••••••" />
-                  </div>
-                  <div className="col-12 col-md-4">
-                    <label className="form-label">New Password</label>
-                    <input type="password" className="form-control" placeholder="••••••••" />
-                  </div>
-                  <div className="col-12 col-md-4">
-                    <label className="form-label">Confirm New Password</label>
-                    <input type="password" className="form-control" placeholder="••••••••" />
-                  </div>
-                </div>
-
-                <hr className="my-4" />
-              </div>
-
-              <div className="modal-footer border-0">
-                <button
-                  className="btn btn-outline-secondary"
-                  onClick={() => setShowProfileModal(false)}
-                >
-                  Cancel
-                </button>
-                <button className="btn btn-primary" onClick={handleSaveProfile}>
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };

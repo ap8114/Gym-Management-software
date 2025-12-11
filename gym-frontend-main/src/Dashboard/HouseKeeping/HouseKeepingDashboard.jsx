@@ -12,6 +12,7 @@ import {
 import 'bootstrap/dist/css/bootstrap.min.css';
 import * as echarts from 'echarts';
 import axios from 'axios';
+import axiosInstance from '../../Api/axiosInstance';
 
 const HouseKeepingDashboard = () => {
   const barChartRef = useRef(null);
@@ -26,12 +27,33 @@ const HouseKeepingDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
+
+  const getUserFromStorage = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (err) {
+      console.error('Error parsing user from localStorage:', err);
+      return null;
+    }
+  };
+
+  const user = getUserFromStorage();
+  const memberId = user?.id || null;
+  const adminId = user?.adminId || null;
+  const branchId = user?.branchId || null;
+  const name = user?.fullName || null;
+
+  console.log('Member ID:', memberId);
+  console.log('Admin ID:', adminId);
+  console.log('Branch ID:', branchId);
+
   // Fetch data from API
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('https://84kmwvvs-4000.inc1.devtunnels.ms/api/housekeepingdashboard');
+        const response = await axiosInstance.get('housekeepingdashboard');
         if (response.data.success) {
           setDashboardData(response.data.housekeepingDashboard);
         } else {
@@ -364,16 +386,6 @@ const HouseKeepingDashboard = () => {
     );
   }
 
-  if (error) {
-    return (
-      <div className='w-100 min-vh-100 bg-light d-flex justify-content-center align-items-center'>
-        <div className="alert alert-danger" role="alert">
-          {error}
-        </div>
-      </div>
-    );
-  }
-
   // Calculate percentage for tasks
   const tasksPercentage = dashboardData && dashboardData.tasksTotal > 0 
     ? Math.round((dashboardData.tasksCompleted / dashboardData.tasksTotal) * 100) 
@@ -390,7 +402,7 @@ const HouseKeepingDashboard = () => {
         
         {/* Header */}
         <div className="mb-4">
-          <h1 className="h3 mb-1 fw-bold">Welcome, Priya!</h1>
+          <h1 className="h3 mb-1 fw-bold">Welcome, {name}!</h1>
           <p className="text-muted">Your schedule, tasks, and alerts for today</p>
         </div>
         

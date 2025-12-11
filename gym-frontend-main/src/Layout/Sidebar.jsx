@@ -78,7 +78,8 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       { name: "Request Plan", icon:  faClipboardCheck, path: "/superadmin/request-plan" },
       { name: "Plans & Pricing", icon: faChartLine, path: "/superadmin/Plans&Pricing" },
       { name: "Payments", icon: faMoneyBillAlt, path: "/superadmin/payments" },
-      { name: "Setting", icon:  faCogs, path: "/superadmin/setting" },
+      // { name: "Setting", icon:  faCogs, path: "/superadmin/setting" },
+      { name: "Setting", icon:  faCogs, path: "/member/account" },
     ],
 
     ADMIN: [
@@ -128,7 +129,8 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       {
         name: "Settings",
         icon: faGear,
-        path: "/admin/settings/RoleManagement"
+        // path: "/admin/settings/RoleManagement"
+        path: "/member/account"
       }
     ],
 
@@ -138,7 +140,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       { name: "Duty Roster", icon: faUsers, path: "/housekeeping/members" },
       { name: "Attendance Marking", icon: faUserTag, path: "/housekeeping/membership-plan" },
       { name: "Task Checklist", icon: faCalendarAlt, path: "/housekeeping/duty-roster" },
-      { name: "Notifications", icon: faCalendarDays, path: "/housekeeping/class-schedule" }
+      // { name: "Notifications", icon: faCalendarDays, path: "/housekeeping/class-schedule" }
     ],
 
     GENERALTRAINER: [
