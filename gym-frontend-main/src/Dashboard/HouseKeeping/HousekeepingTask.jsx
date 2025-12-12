@@ -1,17 +1,17 @@
 import axios from 'axios';
 import React, { useState, useEffect } from 'react';
 import { ClipboardCheck, PlayFill } from 'react-bootstrap-icons';
-import BaseUrl from '../../Api/BaseUrl';
+import axiosInstance from '../../Api/axiosInstance';
 
 const HousekeepingTask = () => {
   const [tasks, setTasks] = useState([]);
-
+  const [loadingTaskId, setLoadingTaskId] = useState(null); // For loading state on button
   const userId = localStorage.getItem('userId'); // assignedTo = userId
 
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        const response = await axios.get(`${BaseUrl}/housekeepingtask/asignedto/${userId}`);
+        const response = await axiosInstance.get(`housekeepingtask/asignedto/${userId}`);
         setTasks(response.data.data || []);
       } catch (error) {
         console.error('Error fetching tasks:', error);
@@ -24,23 +24,21 @@ const HousekeepingTask = () => {
     }
   }, [userId]);
 
-  // Format dueDate to show time like "08:00"
+  // Format time (08:00)
   const formatTime = (isoString) => {
     if (!isoString) return '—';
     const date = new Date(isoString);
-    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); // "08:00"
+    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Format date for display if needed
+  // Format date (04/12/2025)
   const formatDate = (isoString) => {
     if (!isoString) return '—';
     const date = new Date(isoString);
-    return date.toLocaleDateString('en-GB'); // "04/12/2025"
+    return date.toLocaleDateString('en-GB');
   };
 
   const getStatusBadge = (status) => {
-    // Your API returns "Approved", but you might have other statuses like "Pending", "Completed"
-    // Adjust logic based on actual possible statuses
     switch (status?.toLowerCase()) {
       case 'completed':
         return <span className="badge bg-success">Completed</span>;
@@ -50,6 +48,38 @@ const HousekeepingTask = () => {
         return <span className="badge bg-warning">Pending</span>;
       default:
         return <span className="badge bg-secondary">{status || 'Unknown'}</span>;
+    }
+  };
+
+  // ✅ Handle task completion
+  const handleCompleteTask = async (taskId, originalStatus) => {
+    // Set loading
+    setLoadingTaskId(taskId);
+
+    // Optimistically update UI
+    const updatedTasks = tasks.map((task) =>
+      task.id === taskId ? { ...task, status: 'completed' } : task
+    );
+    setTasks(updatedTasks);
+
+    try {
+      // 🔁 Call your backend to mark as completed
+      // Adjust the endpoint if needed (e.g., /update, /status, etc.)
+      await axiosInstance.put(`housekeepingtask/${taskId}`, {
+        status: 'completed'
+      });
+      // Success: UI already updated
+    } catch (error) {
+      console.error('Failed to complete task:', error);
+      // ❌ Revert on error
+      const revertedTasks = tasks.map((task) =>
+        task.id === taskId ? { ...task, status: originalStatus } : task
+      );
+      setTasks(revertedTasks);
+      // Optional: show toast error
+      alert('Failed to update task. Please try again.');
+    } finally {
+      setLoadingTaskId(null);
     }
   };
 
@@ -78,7 +108,7 @@ const HousekeepingTask = () => {
                         <th>Description</th>
                         <th>Due Time</th>
                         <th>Status</th>
-                        {/* <th>Action</th> */}
+                        <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -90,15 +120,30 @@ const HousekeepingTask = () => {
                             {formatDate(task.dueDate)} {formatTime(task.dueDate)}
                           </td>
                           <td>{getStatusBadge(task.status)}</td>
-                          {/* <td>
+                          <td>
                             {task.status?.toLowerCase() !== 'completed' ? (
-                              <button className="btn btn-sm btn-success">
-                                <PlayFill size={12} className="me-1" /> Start
+                              <button
+                                className="btn btn-sm btn-success"
+                                onClick={() =>
+                                  handleCompleteTask(task.id, task.status)
+                                }
+                                disabled={loadingTaskId === task.id}
+                              >
+                                {loadingTaskId === task.id ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    Completing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <PlayFill size={12} className="me-1" /> Complete
+                                  </>
+                                )}
                               </button>
                             ) : (
                               <span className="text-muted">—</span>
                             )}
-                          </td> */}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
