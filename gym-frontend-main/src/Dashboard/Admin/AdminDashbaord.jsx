@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { 
   RiUserLine, 
-  RiMoneyDollarCircleLine, 
   RiCalendarCheckLine, 
   RiTeamLine,
   RiUserAddLine,
@@ -16,12 +15,11 @@ import GetAdminId from '../../Api/GetAdminId';
 const AdminDashboard = () => {
   const adminId = GetAdminId();
   const memberGrowthChartRef = useRef(null);
-  const revenueChartRef = useRef(null);
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [chartsReady, setChartsReady] = useState(false);
+  const [chartInitialized, setChartInitialized] = useState(false);
 
   // Fetch dashboard data
   useEffect(() => {
@@ -34,7 +32,8 @@ const AdminDashboard = () => {
 
       try {
         setLoading(true);
-        const response = await axiosInstance.get(`auth/admindashboard`);
+        // Updated API endpoint to include adminId
+        const response = await axiosInstance.get(`auth/admindashboard/${adminId}`);
         
         if (response.data.success && response.data.data) {
           setDashboardData(response.data.data);
@@ -53,185 +52,188 @@ const AdminDashboard = () => {
     fetchDashboardData();
   }, [adminId]);
 
-  // Initialize charts after component is mounted and data is loaded
+  // Initialize chart when component mounts and data is available
   useEffect(() => {
-    // Only initialize charts if component is mounted and refs are available
-    if (!chartsReady && memberGrowthChartRef.current && revenueChartRef.current) {
-      setChartsReady(true);
-    }
-  }, [chartsReady, dashboardData]);
+    if (!memberGrowthChartRef.current || !dashboardData) return;
 
-  // Initialize charts when ready
-  useEffect(() => {
-    if (!chartsReady || !dashboardData) return;
-
-    let memberGrowthChart = null;
-    let revenueChart = null;
-
-    // Initialize Member Growth Chart
-    try {
-      if (memberGrowthChartRef.current) {
-        memberGrowthChart = echarts.init(memberGrowthChartRef.current);
-        
-        // Generate dynamic data based on dashboard data
-        const memberGrowthData = generateMemberGrowthData(dashboardData);
-        
-        const memberGrowthOption = {
-          animation: false,
-          grid: { top: 0, right: 0, bottom: 0, left: 0 },
-          xAxis: {
-            type: 'category',
-            data: memberGrowthData.weeks,
-            axisLine: { show: false },
-            axisTick: { show: false },
-            axisLabel: { color: '#6B7280', fontSize: 12 }
-          },
-          yAxis: {
-            type: 'value',
-            axisLine: { show: false },
-            axisTick: { show: false },
-            axisLabel: { color: '#6B7280', fontSize: 12 },
-            splitLine: { lineStyle: { color: '#F3F4F6' } }
-          },
-          series: [{
-            data: memberGrowthData.values,
-            type: 'line',
-            smooth: true,
-            lineStyle: { color: '#2f6a87', width: 3 },
-            itemStyle: { color: '#2f6a87' },
-            areaStyle: {
-              color: {
-                type: 'linear',
-                x: 0, y: 0, x2: 0, y2: 1,
-                colorStops: [
-                  { offset: 0, color: 'rgba(47, 106, 135, 0.1)' },
-                  { offset: 1, color: 'rgba(47, 106, 135, 0.01)' }
-                ]
-              }
-            },
-            showSymbol: false
-          }],
-          tooltip: {
-            trigger: 'axis',
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            borderColor: '#E5E7EB',
-            textStyle: { color: '#1F2937' }
-          }
-        };
-        memberGrowthChart.setOption(memberGrowthOption);
-      }
-    } catch (error) {
-      console.error("Error initializing member growth chart:", error);
-    }
-
-    // Initialize Revenue Chart
-    try {
-      if (revenueChartRef.current) {
-        revenueChart = echarts.init(revenueChartRef.current);
-        
-        // Generate dynamic data based on dashboard data
-        const revenueData = generateRevenueData(dashboardData);
-        
-        const revenueOption = {
-          animation: false,
-          grid: { top: 20, right: 20, bottom: 20, left: 20 },
-          series: [{
-            type: 'pie',
-            radius: ['40%', '70%'],
-            data: revenueData,
-            emphasis: {
-              itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' }
-            },
-            label: { color: '#1F2937', fontSize: 12 }
-          }],
-          tooltip: {
-            trigger: 'item',
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            borderColor: '#E5E7EB',
-            textStyle: { color: '#1F2937' },
-            formatter: '{a} <br/>{b}: ${c} ({d}%)'
-          }
-        };
-        revenueChart.setOption(revenueOption);
-      }
-    } catch (error) {
-      console.error("Error initializing revenue chart:", error);
-    }
-
+    // Initialize chart
+    const chart = echarts.init(memberGrowthChartRef.current);
+    setChartInitialized(true);
+    
     // Handle window resize
     const handleResize = () => {
-      if (memberGrowthChart) {
-        memberGrowthChart.resize();
-      }
-      if (revenueChart) {
-        revenueChart.resize();
-      }
+      chart.resize();
     };
     window.addEventListener('resize', handleResize);
-
-    // Cleanup
+    
+    // Cleanup function
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (memberGrowthChart) {
-        memberGrowthChart.dispose();
-      }
-      if (revenueChart) {
-        revenueChart.dispose();
-      }
+      chart.dispose();
+      setChartInitialized(false);
     };
-  }, [chartsReady, dashboardData]);
+  }, [dashboardData]);
+
+  // Update chart when data changes
+  useEffect(() => {
+    if (!chartInitialized || !memberGrowthChartRef.current || !dashboardData) return;
+
+    try {
+      // Get chart instance
+      const chart = echarts.getInstanceByDom(memberGrowthChartRef.current);
+      if (!chart) return;
+      
+      // Generate dynamic data based on dashboard data
+      const memberGrowthData = generateMemberGrowthData(dashboardData);
+      
+      const memberGrowthOption = {
+        animation: false,
+        grid: { 
+          top: 20, 
+          right: 20, 
+          bottom: 40, 
+          left: 40 
+        },
+        xAxis: {
+          type: 'category',
+          data: memberGrowthData.months,
+          axisLine: { show: true, lineStyle: { color: '#E5E7EB' } },
+          axisTick: { show: true, lineStyle: { color: '#E5E7EB' } },
+          axisLabel: { color: '#6B7280', fontSize: 12 }
+        },
+        yAxis: {
+          type: 'value',
+          axisLine: { show: true, lineStyle: { color: '#E5E7EB' } },
+          axisTick: { show: true, lineStyle: { color: '#E5E7EB' } },
+          axisLabel: { color: '#6B7280', fontSize: 12 },
+          splitLine: { lineStyle: { color: '#F3F4F6' } }
+        },
+        series: [{
+          data: memberGrowthData.values,
+          type: 'line',
+          smooth: true,
+          lineStyle: { color: '#2f6a87', width: 3 },
+          itemStyle: { color: '#2f6a87' },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0, y: 0, x2: 0, y2: 1,
+              colorStops: [
+                { offset: 0, color: 'rgba(47, 106, 135, 0.3)' },
+                { offset: 1, color: 'rgba(47, 106, 135, 0.05)' }
+              ]
+            }
+          },
+          showSymbol: true,
+          symbolSize: 6
+        }],
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          borderColor: '#E5E7EB',
+          textStyle: { color: '#1F2937' },
+          formatter: function(params) {
+            return `${params[0].name}<br/>Members: ${params[0].value}`;
+          }
+        }
+      };
+      
+      chart.setOption(memberGrowthOption);
+    } catch (error) {
+      console.error("Error updating member growth chart:", error);
+    }
+  }, [chartInitialized, dashboardData]);
 
   // Generate member growth data based on dashboard data
   const generateMemberGrowthData = (data) => {
-    if (!data) {
+    if (!data || !data.memberGrowth || data.memberGrowth.length === 0) {
       return {
-        weeks: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-        values: [0, 0, 0, 0]
+        months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        values: [0, 0, 0, 0, 0, 0]
       };
     }
     
-    // Create a realistic growth pattern based on total members
-    const totalMembers = data.totalMembers || 0;
-    const baseValue = Math.max(totalMembers / 4, 1);
+    // Extract months and counts from API data
+    const months = data.memberGrowth.map(item => item.month);
+    const values = data.memberGrowth.map(item => item.count);
     
-    // Generate values with some growth pattern
-    const values = [
-      baseValue,
-      baseValue + Math.floor(Math.random() * 5) + 1,
-      baseValue + Math.floor(Math.random() * 10) + 5,
-      baseValue + Math.floor(Math.random() * 15) + 10
-    ];
+    // If we have less than 6 months of data, pad with zeros
+    while (months.length < 6) {
+      months.push('Month ' + (months.length + 1));
+      values.push(0);
+    }
     
     return {
-      weeks: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+      months: months,
       values: values
     };
   };
 
-  // Generate revenue data based on dashboard data
-  const generateRevenueData = (data) => {
-    if (!data) {
-      return [
-        { value: 0, name: 'Memberships', itemStyle: { color: '#2f6a87' } },
-        { value: 0, name: 'Personal Training', itemStyle: { color: '#6eb2cc' } },
-        { value: 0, name: 'Classes', itemStyle: { color: '#9ac7da' } },
-        { value: 0, name: 'Merchandise', itemStyle: { color: '#c5dde8' } }
-      ];
+  // Format time for activities
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 60) {
+      return `${diffMins} min ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    } else {
+      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
     }
-    
-    // Create a realistic revenue distribution based on total members
-    const totalMembers = data.totalMembers || 0;
-    const membershipRevenue = totalMembers * 1200; // Assuming average membership fee
-    const trainingRevenue = Math.floor(totalMembers * 0.3 * 2000); // 30% of members take personal training
-    const classesRevenue = Math.floor(totalMembers * 0.5 * 500); // 50% of members take classes
-    const merchandiseRevenue = Math.floor(totalMembers * 0.2 * 100); // 20% of members buy merchandise
-    
-    return [
-      { value: membershipRevenue, name: 'Memberships', itemStyle: { color: '#2f6a87' } },
-      { value: trainingRevenue, name: 'Personal Training', itemStyle: { color: '#6eb2cc' } },
-      { value: classesRevenue, name: 'Classes', itemStyle: { color: '#9ac7da' } },
-      { value: merchandiseRevenue, name: 'Merchandise', itemStyle: { color: '#c5dde8' } }
-    ];
+  };
+
+  // Get icon for activity type
+  const getActivityIcon = (type) => {
+    switch(type) {
+      case 'member':
+        return <RiUserAddLine className="text-success" />;
+      case 'payment':
+        return <RiMoneyDollarCircleLine className="text-primary" />;
+      case 'booking':
+      case 'class_booking':
+        return <RiCalendarLine className="text-warning" />;
+      case 'staff':
+        return <RiUserLine className="text-info" />;
+      default:
+        return <RiCalendarCheckLine className="text-secondary" />;
+    }
+  };
+
+  // Get icon background color for activity type
+  const getActivityIconBg = (type) => {
+    switch(type) {
+      case 'member':
+        return 'bg-success bg-opacity-10';
+      case 'payment':
+        return 'bg-primary bg-opacity-10';
+      case 'booking':
+      case 'class_booking':
+        return 'bg-warning bg-opacity-10';
+      case 'staff':
+        return 'bg-info bg-opacity-10';
+      default:
+        return 'bg-secondary bg-opacity-10';
+    }
+  };
+
+  // Parse activity text to extract title and description
+  const parseActivityText = (activityText) => {
+    const parts = activityText.split(': ');
+    if (parts.length > 1) {
+      return {
+        title: parts[0],
+        description: parts[1]
+      };
+    }
+    return {
+      title: activityText,
+      description: ''
+    };
   };
 
   // Additional activities to show when "View All" is clicked
@@ -413,23 +415,10 @@ const AdminDashboard = () => {
                 </div>
               </div>
               <div className="card-body">
-                <div ref={memberGrowthChartRef} style={{ height: '250px', width: '100%' }}></div>
+                <div ref={memberGrowthChartRef} style={{ height: '300px', width: '100%' }}></div>
               </div>
             </div>
           </div>
-
-          {/* <div className="col-12 col-lg-6">
-            <div className="card shadow-sm h-100" data-testid="revenue-distribution-chart">
-              <div className="card-header bg-white border-0 pt-4 pb-0">
-                <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
-                  <h3 className="h5 fw-semibold mb-2 mb-md-0">Revenue Distribution</h3>
-                </div>
-              </div>
-              <div className="card-body">
-                <div ref={revenueChartRef} style={{ height: '250px', width: '100%' }}></div>
-              </div>
-            </div>
-          </div> */}
         </div>
 
         {/* Activities Section */}
@@ -450,51 +439,23 @@ const AdminDashboard = () => {
               </div>
               <div className="card-body">
                 <div className="d-flex flex-column gap-3">
-                  {/* Original activities */}
-                  <div className="d-flex align-items-center p-3 border rounded" data-testid="activity-new-member">
-                    <div className="bg-success bg-opacity-10 p-2 rounded-circle me-3">
-                      <RiUserAddLine className="text-success" />
-                    </div>
-                    <div className="flex-grow-1">
-                      <p className="fw-medium mb-0">New member registration</p>
-                      <p className="text-muted small mb-0">Sarah Johnson joined Premium Plan</p>
-                    </div>
-                    <span className="text-muted small">2 min ago</span>
-                  </div>
-
-                  <div className="d-flex align-items-center p-3 border rounded" data-testid="activity-payment-received">
-                    <div className="bg-primary bg-opacity-10 p-2 rounded-circle me-3">
-                      <RiMoneyDollarCircleLine className="text-primary" />
-                    </div>
-                    <div className="flex-grow-1">
-                      <p className="fw-medium mb-0">Payment received</p>
-                      <p className="text-muted small mb-0">Michael Brown - Monthly membership $89</p>
-                    </div>
-                    <span className="text-muted small">15 min ago</span>
-                  </div>
-
-                  <div className="d-flex align-items-center p-3 border rounded" data-testid="activity-class-booking">
-                    <div className="bg-warning bg-opacity-10 p-2 rounded-circle me-3">
-                      <RiCalendarLine className="text-warning" />
-                    </div>
-                    <div className="flex-grow-1">
-                      <p className="fw-medium mb-0">Class booking</p>
-                      <p className="text-muted small mb-0">Emma Davis booked Yoga Class for tomorrow</p>
-                    </div>
-                    <span className="text-muted small">32 min ago</span>
-                  </div>
-
-                  <div className="d-flex align-items-center p-3 border rounded" data-testid="activity-staff-checkin">
-                    <div className="bg-info bg-opacity-10 p-2 rounded-circle me-3">
-                      <RiUserLine className="text-info" />
-                    </div>
-                    <div className="flex-grow-1">
-                      <p className="fw-medium mb-0">Staff check-in</p>
-                      <p className="text-muted small mb-0">Alex Thompson started morning shift</p>
-                    </div>
-                    <span className="text-muted small">1 hour ago</span>
-                  </div>
-
+                  {/* API Activities */}
+                  {dashboardData?.recentActivities && dashboardData.recentActivities.map((activity, index) => {
+                    const { title, description } = parseActivityText(activity.activity);
+                    return (
+                      <div key={index} className="d-flex align-items-center p-3 border rounded">
+                        <div className={`${getActivityIconBg(activity.type)} p-2 rounded-circle me-3`}>
+                          {getActivityIcon(activity.type)}
+                        </div>
+                        <div className="flex-grow-1">
+                          <p className="fw-medium mb-0">{title}</p>
+                          <p className="text-muted small mb-0">{description}</p>
+                        </div>
+                        <span className="text-muted small">{formatTime(activity.time)}</span>
+                      </div>
+                    );
+                  })}
+                  
                   {/* Additional activities shown when "View All" is clicked */}
                   {showAllActivities && additionalActivities.map(activity => (
                     <div key={activity.id} className="d-flex align-items-center p-3 border rounded">

@@ -51,14 +51,31 @@ const CreatePlan = () => {
   const [plansLoaded, setPlansLoaded] = useState(false);
   const [viewLoading, setViewLoading] = useState(false);
   const [bookingRequests, setBookingRequests] = useState([]);
+  const [renewalRequests, setRenewalRequests] = useState([]);
   const [branches, setBranches] = useState([]);
   const [branchDetails, setBranchDetails] = useState([]); // Store full branch objects with ID and name
   const [branchesLoading, setBranchesLoading] = useState(true); // Separate loading for branches
+  const [activeRequestTab, setActiveRequestTab] = useState("booking"); // New state for request tabs
 
   const customColor = "#6EB2CC";
 
   const [groupPlans, setGroupPlans] = useState([]);
   const [personalPlans, setPersonalPlans] = useState([]);
+
+  const getUserFromStorage = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (err) {
+      console.error('Error parsing user from localStorage:', err);
+      return null;
+    }
+  };
+
+  const user = getUserFromStorage();
+  const memberId = user?.id || null;
+  const branchId = user?.branchId || null;
+  const name = user?.fullName || null;
 
   // Fetch branches first, then plans and booking requests
   useEffect(() => {
@@ -127,6 +144,7 @@ const CreatePlan = () => {
     if (!branchesLoading) {
       fetchPlansFromAPI();
       fetchBookingRequests();
+      fetchRenewalRequests();
     }
   }, [branchesLoading]);
 
@@ -193,6 +211,7 @@ const CreatePlan = () => {
           classId: request.classId,
           memberId: request.memberId,
           branchId: request.branchId,
+          requestType: "booking" // Add request type to differentiate
         }));
         setBookingRequests(formattedRequests);
       }
@@ -200,6 +219,47 @@ const CreatePlan = () => {
       console.error("Error fetching booking requests:", err);
       setError(
         err.response?.data?.message || "Failed to fetch booking requests."
+      );
+    }
+  };
+
+  // New function to fetch renewal requests
+  const fetchRenewalRequests = async () => {
+    try {
+      const adminId = localStorage.getItem("userId") || "4";
+      // We need to fetch all members with renewal requests
+      // This is a placeholder - you might need to adjust based on your actual API
+      const response = await axiosInstance.get(
+        `${BaseUrl}members/renew/${memberId}`
+      );
+      
+      if (response.data.success) {
+        const formattedRenewals = response.data.renewals.map((renewal) => ({
+          id: renewal.id,
+          memberName: renewal.member.fullName,
+          memberEmail: renewal.member.email,
+          memberPhone: renewal.member.phone,
+          currentPlan: renewal.currentPlan.name,
+          currentPlanType: renewal.currentPlan.type.toLowerCase(),
+          requestedPlan: renewal.requestedPlan.name,
+          requestedPlanType: renewal.requestedPlan.type.toLowerCase(),
+          price: `₹${renewal.requestedPlan.price.toLocaleString()}`,
+          sessions: renewal.requestedPlan.sessions,
+          validity: renewal.requestedPlan.validityDays,
+          membershipFrom: renewal.membershipFrom,
+          membershipTo: renewal.membershipTo,
+          requestedAt: new Date(renewal.createdAt).toLocaleString(),
+          status: renewal.status.toLowerCase(),
+          memberId: renewal.memberId,
+          branchId: renewal.branchId,
+          requestType: "renewal" // Add request type to differentiate
+        }));
+        setRenewalRequests(formattedRenewals);
+      }
+    } catch (err) {
+      console.error("Error fetching renewal requests:", err);
+      setError(
+        err.response?.data?.message || "Failed to fetch renewal requests."
       );
     }
   };
@@ -500,50 +560,73 @@ const CreatePlan = () => {
     if (!requestToProcess) return;
     try {
       let response;
-
+      const isRenewal = requestToProcess.requestType === "renewal";
+      
       const payload = {
-        adminId: parseInt(adminId), // ✅ Add adminId to payload
+        adminId: parseInt(adminId),
       };
 
-      if (status === "approved") {
-        response = await axiosInstance.put(
-          `${BaseUrl}booking/approve/${requestToProcess.id}`,
-          payload // ✅ Pass the payload here
-        );
+      if (isRenewal) {
+        // Handle renewal request approval/rejection
+        const endpoint = status === "approved" 
+          ? `${BaseUrl}members/renew/approve/${requestToProcess.id}`
+          : `${BaseUrl}members/renew/reject/${requestToProcess.id}`;
+          
+        response = await axiosInstance.put(endpoint, payload);
+        
+        if (response.data.success) {
+          setRenewalRequests(
+            renewalRequests.map((req) =>
+              req.id === requestToProcess.id ? { ...req, status } : req
+            )
+          );
+        }
       } else {
-        response = await axiosInstance.put(
-          `${BaseUrl}booking/reject/${requestToProcess.id}`,
-          payload // ✅ Pass the payload here
-        );
+        // Handle booking request approval/rejection
+        const endpoint = status === "approved"
+          ? `${BaseUrl}booking/approve/${requestToProcess.id}`
+          : `${BaseUrl}booking/reject/${requestToProcess.id}`;
+          
+        response = await axiosInstance.put(endpoint, payload);
+        
+        if (response.data.success) {
+          setBookingRequests(
+            bookingRequests.map((req) =>
+              req.id === requestToProcess.id ? { ...req, status } : req
+            )
+          );
+        }
       }
 
       if (response.data.success) {
-        setBookingRequests(
-          bookingRequests.map((req) =>
-            req.id === requestToProcess.id ? { ...req, status } : req
-          )
-        );
         const msg =
           status === "approved"
-            ? "✅ Booking Approved! Member will be notified."
-            : "❌ Booking Rejected. Member will be notified.";
+            ? `✅ ${isRenewal ? "Renewal" : "Booking"} Approved! Member will be notified.`
+            : `❌ ${isRenewal ? "Renewal" : "Booking"} Rejected. Member will be notified.`;
         alert(msg);
         setShowStatusModal(false);
         setRequestToProcess(null);
       } else {
-        setError("Failed to update request status.");
+        setError(`Failed to update ${isRenewal ? "renewal" : "booking"} status.`);
       }
     } catch (err) {
       console.error("Error updating status:", err);
       setError(
-        err.response?.data?.message || "Failed to update request status."
+        err.response?.data?.message || `Failed to update ${requestToProcess.requestType === "renewal" ? "renewal" : "booking"} status.`
       );
     }
   };
 
   const handleToggleRequestStatus = async (requestId) => {
-    const request = bookingRequests.find((req) => req.id === requestId);
+    // Find the request in both booking and renewal requests
+    const bookingRequest = bookingRequests.find((req) => req.id === requestId);
+    const renewalRequest = renewalRequests.find((req) => req.id === requestId);
+    
+    const request = bookingRequest || renewalRequest;
     if (!request) return;
+    
+    const isRenewal = request.requestType === "renewal";
+    
     if (request.status === "pending") {
       handleOpenStatusModal(request);
       return;
@@ -552,47 +635,72 @@ const CreatePlan = () => {
     const newStatus = request.status === "approved" ? "rejected" : "approved";
     try {
       let response;
-
       const payload = {
-        adminId: parseInt(adminId), // ✅ Add adminId to payload
+        adminId: parseInt(adminId),
       };
 
-      if (newStatus === "approved") {
-        response = await axiosInstance.put(
-          `${BaseUrl}booking/approve/${requestId}`,
-          payload // ✅ Pass the payload here
-        );
+      if (isRenewal) {
+        // Handle renewal request toggle
+        const endpoint = newStatus === "approved"
+          ? `${BaseUrl}members/renew/approve/${requestId}`
+          : `${BaseUrl}members/renew/reject/${requestId}`;
+          
+        response = await axiosInstance.put(endpoint, payload);
+        
+        if (response.data.success) {
+          setRenewalRequests(
+            renewalRequests.map((req) =>
+              req.id === requestId ? { ...req, status: newStatus } : req
+            )
+          );
+        }
       } else {
-        response = await axiosInstance.put(
-          `${BaseUrl}booking/reject/${requestId}`,
-          payload // ✅ Pass the payload here
-        );
+        // Handle booking request toggle
+        const endpoint = newStatus === "approved"
+          ? `${BaseUrl}booking/approve/${requestId}`
+          : `${BaseUrl}booking/reject/${requestId}`;
+          
+        response = await axiosInstance.put(endpoint, payload);
+        
+        if (response.data.success) {
+          setBookingRequests(
+            bookingRequests.map((req) =>
+              req.id === requestId ? { ...req, status: newStatus } : req
+            )
+          );
+        }
       }
 
       if (response.data.success) {
-        setBookingRequests(
-          bookingRequests.map((req) =>
-            req.id === requestId ? { ...req, status: newStatus } : req
-          )
-        );
         const msg =
           newStatus === "approved"
-            ? "✅ Booking Approved!"
-            : "❌ Booking Rejected.";
+            ? `✅ ${isRenewal ? "Renewal" : "Booking"} Approved!`
+            : `❌ ${isRenewal ? "Renewal" : "Booking"} Rejected.`;
         alert(msg);
       } else {
-        setError("Failed to toggle request status.");
+        setError(`Failed to toggle ${isRenewal ? "renewal" : "booking"} status.`);
       }
     } catch (err) {
       console.error("Error toggling request:", err);
-      setError(err.response?.data?.message || "Failed to update request.");
+      setError(
+        err.response?.data?.message || `Failed to update ${isRenewal ? "renewal" : "booking"} request.`
+      );
     }
   };
+
   const pendingRequests = bookingRequests.filter((r) => r.status === "pending");
   const approvedRequests = bookingRequests.filter(
     (r) => r.status === "approved"
   );
   const rejectedRequests = bookingRequests.filter(
+    (r) => r.status === "rejected"
+  );
+
+  const pendingRenewals = renewalRequests.filter((r) => r.status === "pending");
+  const approvedRenewals = renewalRequests.filter(
+    (r) => r.status === "approved"
+  );
+  const rejectedRenewals = renewalRequests.filter(
     (r) => r.status === "rejected"
   );
 
@@ -744,6 +852,527 @@ const CreatePlan = () => {
     </Col>
   );
 
+  // Function to render booking request row
+  const renderBookingRequestRow = (req, index) => (
+    <tr key={req.id}>
+      <td>{index + 1}</td>
+      <td>
+        <strong>{req.memberName}</strong>
+      </td>
+      <td>{req.planName}</td>
+      <td>
+        <span
+          className="badge px-3 py-2"
+          style={{
+            backgroundColor: customColor,
+            color: "white",
+            borderRadius: "20px",
+          }}
+        >
+          {req.planType}
+        </span>
+      </td>
+      <td className="d-none d-lg-table-cell">
+        {req.sessions} total
+      </td>
+      <td className="d-none d-lg-table-cell">
+        {req.validity} days
+      </td>
+      <td>{req.requestedAt}</td>
+      <td>
+        {req.status === "pending" && (
+          <span
+            className="badge bg-warning text-dark px-3 py-2"
+            style={{ borderRadius: "20px" }}
+          >
+            Pending
+          </span>
+        )}
+        {req.status === "approved" && (
+          <span
+            className="badge px-3 py-2"
+            style={{
+              backgroundColor: customColor,
+              color: "white",
+              borderRadius: "20px",
+            }}
+          >
+            Approved
+          </span>
+        )}
+        {req.status === "rejected" && (
+          <span
+            className="badge bg-danger px-3 py-2"
+            style={{ borderRadius: "20px" }}
+          >
+            Rejected
+          </span>
+        )}
+      </td>
+      <td>
+        <div className="d-flex gap-2 align-items-center">
+          {req.status === "pending" ? (
+            <Button
+              size="sm"
+              className="d-flex align-items-center gap-1 fw-medium"
+              onClick={() => handleOpenStatusModal(req)}
+              style={{
+                backgroundColor: "#ffc107",
+                borderColor: "#ffc107",
+                color: "#212529",
+              }}
+            >
+              <FaToggleOn size={14} /> Process
+            </Button>
+          ) : req.status === "approved" ? (
+            <Button
+              size="sm"
+              className="d-flex align-items-center gap-1 fw-medium"
+              onClick={() => handleToggleRequestStatus(req.id)}
+              style={{
+                backgroundColor: customColor,
+                borderColor: customColor,
+                color: "white",
+              }}
+            >
+              <FaToggleOn size={14} /> Active
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className="d-flex align-items-center gap-1 fw-medium"
+              onClick={() => handleToggleRequestStatus(req.id)}
+              style={{
+                backgroundColor: "#6c757d",
+                borderColor: "#6c757d",
+                color: "white",
+              }}
+            >
+              <FaToggleOff size={14} /> Inactive
+            </Button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+
+  // Function to render renewal request row
+  const renderRenewalRequestRow = (req, index) => (
+    <tr key={req.id}>
+      <td>{index + 1}</td>
+      <td>
+        <strong>{req.memberName}</strong>
+        <div className="text-muted small">{req.memberEmail}</div>
+      </td>
+      <td>
+        <div>{req.currentPlan}</div>
+        <div className="text-muted small">Current Plan</div>
+      </td>
+      <td>
+        <div>{req.requestedPlan}</div>
+        <div className="text-muted small">Requested Plan</div>
+      </td>
+      <td>
+        <span
+          className="badge px-3 py-2"
+          style={{
+            backgroundColor: customColor,
+            color: "white",
+            borderRadius: "20px",
+          }}
+        >
+          {req.requestedPlanType}
+        </span>
+      </td>
+      <td className="d-none d-lg-table-cell">
+        {req.sessions} total
+      </td>
+      <td className="d-none d-lg-table-cell">
+        {req.validity} days
+      </td>
+      <td>{req.requestedAt}</td>
+      <td>
+        {req.status === "pending" && (
+          <span
+            className="badge bg-warning text-dark px-3 py-2"
+            style={{ borderRadius: "20px" }}
+          >
+            Pending
+          </span>
+        )}
+        {req.status === "approved" && (
+          <span
+            className="badge px-3 py-2"
+            style={{
+              backgroundColor: customColor,
+              color: "white",
+              borderRadius: "20px",
+            }}
+          >
+            Approved
+          </span>
+        )}
+        {req.status === "rejected" && (
+          <span
+            className="badge bg-danger px-3 py-2"
+            style={{ borderRadius: "20px" }}
+          >
+            Rejected
+          </span>
+        )}
+      </td>
+      <td>
+        <div className="d-flex gap-2 align-items-center">
+          {req.status === "pending" ? (
+            <Button
+              size="sm"
+              className="d-flex align-items-center gap-1 fw-medium"
+              onClick={() => handleOpenStatusModal(req)}
+              style={{
+                backgroundColor: "#ffc107",
+                borderColor: "#ffc107",
+                color: "#212529",
+              }}
+            >
+              <FaToggleOn size={14} /> Process
+            </Button>
+          ) : req.status === "approved" ? (
+            <Button
+              size="sm"
+              className="d-flex align-items-center gap-1 fw-medium"
+              onClick={() => handleToggleRequestStatus(req.id)}
+              style={{
+                backgroundColor: customColor,
+                borderColor: customColor,
+                color: "white",
+              }}
+            >
+              <FaToggleOn size={14} /> Active
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className="d-flex align-items-center gap-1 fw-medium"
+              onClick={() => handleToggleRequestStatus(req.id)}
+              style={{
+                backgroundColor: "#6c757d",
+                borderColor: "#6c757d",
+                color: "white",
+              }}
+            >
+              <FaToggleOff size={14} /> Inactive
+            </Button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+
+  // Function to render booking request card for mobile view
+  const renderBookingRequestCard = (req, index) => (
+    <Card
+      key={req.id}
+      className="mb-3 border shadow-sm"
+      style={{ borderRadius: "10px" }}
+    >
+      <Card.Body className="p-3">
+        <div className="d-flex justify-content-between align-items-start mb-2">
+          <h6 className="mb-0 fw-bold">{req.memberName}</h6>
+          <span className="badge bg-secondary rounded-pill">
+            {index + 1}
+          </span>
+        </div>
+        <div className="mb-2">
+          <span className="text-muted small">Plan: </span>
+          {req.planName}
+        </div>
+        <div className="mb-2">
+          <span className="text-muted small">Type: </span>
+          <span
+            className="badge px-2 py-1"
+            style={{
+              backgroundColor: customColor,
+              color: "white",
+              borderRadius: "20px",
+            }}
+          >
+            {req.planType}
+          </span>
+        </div>
+        <div className="row mb-2">
+          <div className="col-6">
+            <span className="text-muted small">
+              Sessions:{" "}
+            </span>
+            {req.sessions}
+          </div>
+          <div className="col-6">
+            <span className="text-muted small">
+              Validity:{" "}
+            </span>
+            {req.validity} days
+          </div>
+        </div>
+        <div className="mb-3">
+          <span className="text-muted small">
+            Requested:{" "}
+          </span>
+          {req.requestedAt}
+        </div>
+        <div className="d-flex justify-content-between align-items-center">
+          <div>
+            {req.status === "pending" && (
+              <span
+                className="badge bg-warning text-dark px-3 py-2"
+                style={{ borderRadius: "20px" }}
+              >
+                Pending
+              </span>
+            )}
+            {req.status === "approved" && (
+              <span
+                className="badge px-3 py-2"
+                style={{
+                  backgroundColor: customColor,
+                  color: "white",
+                  borderRadius: "20px",
+                }}
+              >
+                Approved
+              </span>
+            )}
+            {req.status === "rejected" && (
+              <span
+                className="badge bg-danger px-3 py-2"
+                style={{ borderRadius: "20px" }}
+              >
+                Rejected
+              </span>
+            )}
+          </div>
+          {req.status === "pending" ? (
+            <Button
+              size="sm"
+              className="d-flex align-items-center gap-1 fw-medium"
+              onClick={() => handleOpenStatusModal(req)}
+              style={{
+                backgroundColor: "#ffc107",
+                borderColor: "#ffc107",
+                color: "#212529",
+              }}
+            >
+              <FaToggleOn size={14} /> Process
+            </Button>
+          ) : req.status === "approved" ? (
+            <Button
+              size="sm"
+              className="d-flex align-items-center gap-1 fw-medium"
+              onClick={() => handleToggleRequestStatus(req.id)}
+              style={{
+                backgroundColor: customColor,
+                borderColor: customColor,
+                color: "white",
+              }}
+            >
+              <FaToggleOn size={14} /> Active
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className="d-flex align-items-center gap-1 fw-medium"
+              onClick={() => handleToggleRequestStatus(req.id)}
+              style={{
+                backgroundColor: "#6c757d",
+                borderColor: "#6c757d",
+                color: "white",
+              }}
+            >
+              <FaToggleOff size={14} /> Inactive
+            </Button>
+          )}
+        </div>
+      </Card.Body>
+    </Card>
+  );
+
+  // Function to render renewal request card for mobile view
+  const renderRenewalRequestCard = (req, index) => (
+    <Card
+      key={req.id}
+      className="mb-3 border shadow-sm"
+      style={{ borderRadius: "10px" }}
+    >
+      <Card.Body className="p-3">
+        <div className="d-flex justify-content-between align-items-start mb-2">
+          <h6 className="mb-0 fw-bold">{req.memberName}</h6>
+          <span className="badge bg-secondary rounded-pill">
+            {index + 1}
+          </span>
+        </div>
+        <div className="mb-2">
+          <span className="text-muted small">Email: </span>
+          {req.memberEmail}
+        </div>
+        <div className="mb-2">
+          <span className="text-muted small">Current Plan: </span>
+          {req.currentPlan}
+        </div>
+        <div className="mb-2">
+          <span className="text-muted small">Requested Plan: </span>
+          {req.requestedPlan}
+        </div>
+        <div className="mb-2">
+          <span className="text-muted small">Type: </span>
+          <span
+            className="badge px-2 py-1"
+            style={{
+              backgroundColor: customColor,
+              color: "white",
+              borderRadius: "20px",
+            }}
+          >
+            {req.requestedPlanType}
+          </span>
+        </div>
+        <div className="row mb-2">
+          <div className="col-6">
+            <span className="text-muted small">
+              Sessions:{" "}
+            </span>
+            {req.sessions}
+          </div>
+          <div className="col-6">
+            <span className="text-muted small">
+              Validity:{" "}
+            </span>
+            {req.validity} days
+          </div>
+        </div>
+        <div className="mb-3">
+          <span className="text-muted small">
+            Requested:{" "}
+          </span>
+          {req.requestedAt}
+        </div>
+        <div className="d-flex justify-content-between align-items-center">
+          <div>
+            {req.status === "pending" && (
+              <span
+                className="badge bg-warning text-dark px-3 py-2"
+                style={{ borderRadius: "20px" }}
+              >
+                Pending
+              </span>
+            )}
+            {req.status === "approved" && (
+              <span
+                className="badge px-3 py-2"
+                style={{
+                  backgroundColor: customColor,
+                  color: "white",
+                  borderRadius: "20px",
+                }}
+              >
+                Approved
+              </span>
+            )}
+            {req.status === "rejected" && (
+              <span
+                className="badge bg-danger px-3 py-2"
+                style={{ borderRadius: "20px" }}
+              >
+                Rejected
+              </span>
+            )}
+          </div>
+          {req.status === "pending" ? (
+            <Button
+              size="sm"
+              className="d-flex align-items-center gap-1 fw-medium"
+              onClick={() => handleOpenStatusModal(req)}
+              style={{
+                backgroundColor: "#ffc107",
+                borderColor: "#ffc107",
+                color: "#212529",
+              }}
+            >
+              <FaToggleOn size={14} /> Process
+            </Button>
+          ) : req.status === "approved" ? (
+            <Button
+              size="sm"
+              className="d-flex align-items-center gap-1 fw-medium"
+              onClick={() => handleToggleRequestStatus(req.id)}
+              style={{
+                backgroundColor: customColor,
+                borderColor: customColor,
+                color: "white",
+              }}
+            >
+              <FaToggleOn size={14} /> Active
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className="d-flex align-items-center gap-1 fw-medium"
+              onClick={() => handleToggleRequestStatus(req.id)}
+              style={{
+                backgroundColor: "#6c757d",
+                borderColor: "#6c757d",
+                color: "white",
+              }}
+            >
+              <FaToggleOff size={14} /> Inactive
+            </Button>
+          )}
+        </div>
+      </Card.Body>
+    </Card>
+  );
+
+  // Define the statistics arrays outside the render function
+  const bookingStats = [
+    {
+      label: "Pending Requests",
+      count: pendingRequests.length,
+      bg: "#fff3cd",
+      color: "#856404",
+    },
+    {
+      label: "Approved Bookings",
+      count: approvedRequests.length,
+      bg: "#d1ecf1",
+      color: "#0c5460",
+    },
+    {
+      label: "Rejected Requests",
+      count: rejectedRequests.length,
+      bg: "#f8d7da",
+      color: "#721c24",
+    },
+  ];
+
+  const renewalStats = [
+    {
+      label: "Pending Renewals",
+      count: pendingRenewals.length,
+      bg: "#fff3cd",
+      color: "#856404",
+    },
+    {
+      label: "Approved Renewals",
+      count: approvedRenewals.length,
+      bg: "#d1ecf1",
+      color: "#0c5460",
+    },
+    {
+      label: "Rejected Renewals",
+      count: rejectedRenewals.length,
+      bg: "#f8d7da",
+      color: "#721c24",
+    },
+  ];
+
   return (
     <div className="bg-light min-vh-100">
       <Container fluid className="px-2 px-sm-3 px-md-5 py-3 py-md-4">
@@ -883,29 +1512,48 @@ const CreatePlan = () => {
             className="fw-bold mb-4 text-dark"
             style={{ fontSize: "clamp(1.2rem, 3vw, 1.4rem)" }}
           >
-            Member Booking Requests
+            Member Requests
           </h3>
+          
+          {/* Request Type Tabs */}
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 mb-4 p-3 bg-white rounded shadow-sm border">
+            <div className="d-flex flex-column flex-md-row gap-3 w-100 w-md-auto">
+              <Button
+                variant={activeRequestTab === "booking" ? "primary" : "outline-primary"}
+                onClick={() => setActiveRequestTab("booking")}
+                className="px-3 px-md-4 py-2 fw-medium d-flex align-items-center justify-content-center"
+                style={{
+                  backgroundColor:
+                    activeRequestTab === "booking" ? customColor : "transparent",
+                  borderColor: customColor,
+                  color: activeRequestTab === "booking" ? "white" : customColor,
+                  width: "100%",
+                  maxWidth: "300px",
+                }}
+              >
+                Booking Requests
+              </Button>
+              <Button
+                variant={activeRequestTab === "renewal" ? "primary" : "outline-primary"}
+                onClick={() => setActiveRequestTab("renewal")}
+                className="px-3 px-md-4 py-2 fw-medium d-flex align-items-center justify-content-center"
+                style={{
+                  backgroundColor:
+                    activeRequestTab === "renewal" ? customColor : "transparent",
+                  borderColor: customColor,
+                  color: activeRequestTab === "renewal" ? "white" : customColor,
+                  width: "100%",
+                  maxWidth: "300px",
+                }}
+              >
+                Renewal Requests
+              </Button>
+            </div>
+          </div>
+
+          {/* Request Statistics */}
           <Row className="mb-4 g-3">
-            {[
-              {
-                label: "Pending Requests",
-                count: pendingRequests.length,
-                bg: "#fff3cd",
-                color: "#856404",
-              },
-              {
-                label: "Approved Bookings",
-                count: approvedRequests.length,
-                bg: "#d1ecf1",
-                color: "#0c5460",
-              },
-              {
-                label: "Rejected Requests",
-                count: rejectedRequests.length,
-                bg: "#f8d7da",
-                color: "#721c24",
-              },
-            ].map((item, i) => (
+            {(activeRequestTab === "booking" ? bookingStats : renewalStats).map((item, i) => (
               <Col xs={12} sm={6} md={4} key={i}>
                 <Card
                   className="text-center border-0 shadow-sm h-100"
@@ -945,17 +1593,17 @@ const CreatePlan = () => {
               style={{ borderBottom: `3px solid ${customColor}` }}
             >
               <h5 className="mb-0 text-dark" style={{ fontWeight: "600" }}>
-                All Booking Requests
+                All {activeRequestTab === "booking" ? "Booking" : "Renewal"} Requests
               </h5>
               <small className="text-muted">
-                Total: {bookingRequests.length} requests
+                Total: {activeRequestTab === "booking" ? bookingRequests.length : renewalRequests.length} requests
               </small>
             </Card.Header>
             <Card.Body className="p-0">
-              {bookingRequests.length === 0 ? (
+              {(activeRequestTab === "booking" ? bookingRequests.length === 0 : renewalRequests.length === 0) ? (
                 <div className="text-center text-muted py-5">
                   <div className="display-4 mb-3">📭</div>
-                  <p className="fs-5">No booking requests yet.</p>
+                  <p className="fs-5">No {activeRequestTab === "booking" ? "booking" : "renewal"} requests yet.</p>
                 </div>
               ) : (
                 <>
@@ -965,7 +1613,8 @@ const CreatePlan = () => {
                         <tr>
                           <th>#</th>
                           <th>Member</th>
-                          <th>Plan</th>
+                          {activeRequestTab === "renewal" && <th>Current Plan</th>}
+                          <th>{activeRequestTab === "renewal" ? "Requested Plan" : "Plan"}</th>
                           <th>Type</th>
                           <th className="d-none d-lg-table-cell">Sessions</th>
                           <th className="d-none d-lg-table-cell">Validity</th>
@@ -975,247 +1624,20 @@ const CreatePlan = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {bookingRequests.map((req, index) => (
-                          <tr key={req.id}>
-                            <td>{index + 1}</td>
-                            <td>
-                              <strong>{req.memberName}</strong>
-                            </td>
-                            <td>{req.planName}</td>
-                            <td>
-                              <span
-                                className="badge px-3 py-2"
-                                style={{
-                                  backgroundColor: customColor,
-                                  color: "white",
-                                  borderRadius: "20px",
-                                }}
-                              >
-                                {req.planType}
-                              </span>
-                            </td>
-                            <td className="d-none d-lg-table-cell">
-                              {req.sessions} total
-                            </td>
-                            <td className="d-none d-lg-table-cell">
-                              {req.validity} days
-                            </td>
-                            <td>{req.requestedAt}</td>
-                            <td>
-                              {req.status === "pending" && (
-                                <span
-                                  className="badge bg-warning text-dark px-3 py-2"
-                                  style={{ borderRadius: "20px" }}
-                                >
-                                  Pending
-                                </span>
-                              )}
-                              {req.status === "approved" && (
-                                <span
-                                  className="badge px-3 py-2"
-                                  style={{
-                                    backgroundColor: customColor,
-                                    color: "white",
-                                    borderRadius: "20px",
-                                  }}
-                                >
-                                  Approved
-                                </span>
-                              )}
-                              {req.status === "rejected" && (
-                                <span
-                                  className="badge bg-danger px-3 py-2"
-                                  style={{ borderRadius: "20px" }}
-                                >
-                                  Rejected
-                                </span>
-                              )}
-                            </td>
-                            <td>
-                              <div className="d-flex gap-2 align-items-center">
-                                {req.status === "pending" ? (
-                                  <Button
-                                    size="sm"
-                                    className="d-flex align-items-center gap-1 fw-medium"
-                                    onClick={() => handleOpenStatusModal(req)}
-                                    style={{
-                                      backgroundColor: "#ffc107",
-                                      borderColor: "#ffc107",
-                                      color: "#212529",
-                                    }}
-                                  >
-                                    <FaToggleOn size={14} /> Process
-                                  </Button>
-                                ) : req.status === "approved" ? (
-                                  <Button
-                                    size="sm"
-                                    className="d-flex align-items-center gap-1 fw-medium"
-                                    onClick={() =>
-                                      handleToggleRequestStatus(req.id)
-                                    }
-                                    style={{
-                                      backgroundColor: customColor,
-                                      borderColor: customColor,
-                                      color: "white",
-                                    }}
-                                  >
-                                    <FaToggleOn size={14} /> Active
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    className="d-flex align-items-center gap-1 fw-medium"
-                                    onClick={() =>
-                                      handleToggleRequestStatus(req.id)
-                                    }
-                                    style={{
-                                      backgroundColor: "#6c757d",
-                                      borderColor: "#6c757d",
-                                      color: "white",
-                                    }}
-                                  >
-                                    <FaToggleOff size={14} /> Inactive
-                                  </Button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                        {activeRequestTab === "booking" 
+                          ? bookingRequests.map((req, index) => renderBookingRequestRow(req, index))
+                          : renewalRequests.map((req, index) => renderRenewalRequestRow(req, index))
+                        }
                       </tbody>
                     </Table>
                   </div>
 
                   {/* Mobile View */}
                   <div className="d-md-none p-3">
-                    {bookingRequests.map((req, index) => (
-                      <Card
-                        key={req.id}
-                        className="mb-3 border shadow-sm"
-                        style={{ borderRadius: "10px" }}
-                      >
-                        <Card.Body className="p-3">
-                          <div className="d-flex justify-content-between align-items-start mb-2">
-                            <h6 className="mb-0 fw-bold">{req.memberName}</h6>
-                            <span className="badge bg-secondary rounded-pill">
-                              {index + 1}
-                            </span>
-                          </div>
-                          <div className="mb-2">
-                            <span className="text-muted small">Plan: </span>
-                            {req.planName}
-                          </div>
-                          <div className="mb-2">
-                            <span className="text-muted small">Type: </span>
-                            <span
-                              className="badge px-2 py-1"
-                              style={{
-                                backgroundColor: customColor,
-                                color: "white",
-                                borderRadius: "20px",
-                              }}
-                            >
-                              {req.planType}
-                            </span>
-                          </div>
-                          <div className="row mb-2">
-                            <div className="col-6">
-                              <span className="text-muted small">
-                                Sessions:{" "}
-                              </span>
-                              {req.sessions}
-                            </div>
-                            <div className="col-6">
-                              <span className="text-muted small">
-                                Validity:{" "}
-                              </span>
-                              {req.validity} days
-                            </div>
-                          </div>
-                          <div className="mb-3">
-                            <span className="text-muted small">
-                              Requested:{" "}
-                            </span>
-                            {req.requestedAt}
-                          </div>
-                          <div className="d-flex justify-content-between align-items-center">
-                            <div>
-                              {req.status === "pending" && (
-                                <span
-                                  className="badge bg-warning text-dark px-3 py-2"
-                                  style={{ borderRadius: "20px" }}
-                                >
-                                  Pending
-                                </span>
-                              )}
-                              {req.status === "approved" && (
-                                <span
-                                  className="badge px-3 py-2"
-                                  style={{
-                                    backgroundColor: customColor,
-                                    color: "white",
-                                    borderRadius: "20px",
-                                  }}
-                                >
-                                  Approved
-                                </span>
-                              )}
-                              {req.status === "rejected" && (
-                                <span
-                                  className="badge bg-danger px-3 py-2"
-                                  style={{ borderRadius: "20px" }}
-                                >
-                                  Rejected
-                                </span>
-                              )}
-                            </div>
-                            {req.status === "pending" ? (
-                              <Button
-                                size="sm"
-                                className="d-flex align-items-center gap-1 fw-medium"
-                                onClick={() => handleOpenStatusModal(req)}
-                                style={{
-                                  backgroundColor: "#ffc107",
-                                  borderColor: "#ffc107",
-                                  color: "#212529",
-                                }}
-                              >
-                                <FaToggleOn size={14} /> Process
-                              </Button>
-                            ) : req.status === "approved" ? (
-                              <Button
-                                size="sm"
-                                className="d-flex align-items-center gap-1 fw-medium"
-                                onClick={() =>
-                                  handleToggleRequestStatus(req.id)
-                                }
-                                style={{
-                                  backgroundColor: customColor,
-                                  borderColor: customColor,
-                                  color: "white",
-                                }}
-                              >
-                                <FaToggleOn size={14} /> Active
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                className="d-flex align-items-center gap-1 fw-medium"
-                                onClick={() =>
-                                  handleToggleRequestStatus(req.id)
-                                }
-                                style={{
-                                  backgroundColor: "#6c757d",
-                                  borderColor: "#6c757d",
-                                  color: "white",
-                                }}
-                              >
-                                <FaToggleOff size={14} /> Inactive
-                              </Button>
-                            )}
-                          </div>
-                        </Card.Body>
-                      </Card>
-                    ))}
+                    {activeRequestTab === "booking" 
+                      ? bookingRequests.map((req, index) => renderBookingRequestCard(req, index))
+                      : renewalRequests.map((req, index) => renderRenewalRequestCard(req, index))
+                    }
                   </div>
                 </>
               )}
@@ -1241,7 +1663,7 @@ const CreatePlan = () => {
             <Modal.Title
               style={{ color: "#333", fontWeight: "600", fontSize: "1.1rem" }}
             >
-              Process Request
+              Process {requestToProcess?.requestType === "renewal" ? "Renewal" : "Booking"} Request
             </Modal.Title>
             <Button
               variant="link"
@@ -1256,12 +1678,20 @@ const CreatePlan = () => {
             {requestToProcess && (
               <div>
                 <p className="mb-2 fw-medium text-center">
-                  Process request from:
+                  Process {requestToProcess.requestType === "renewal" ? "renewal" : "booking"} request from:
                 </p>
                 <div className="text-center mb-3">
                   <strong>{requestToProcess.memberName}</strong>
+                  {requestToProcess.requestType === "renewal" && (
+                    <div className="text-muted small">
+                      {requestToProcess.memberEmail}
+                    </div>
+                  )}
                   <div className="text-muted small">
-                    {requestToProcess.planName}
+                    {requestToProcess.requestType === "renewal" 
+                      ? `${requestToProcess.currentPlan} → ${requestToProcess.requestedPlan}`
+                      : requestToProcess.planName
+                    }
                   </div>
                 </div>
                 <div className="d-flex gap-2 justify-content-center">
