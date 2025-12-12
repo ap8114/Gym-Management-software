@@ -61,7 +61,7 @@ const AdminDashboard = () => {
     setChartInitialized(true);
     
     // Handle window resize
-    const handleResize = () => {
+    const handleResize = () => {  
       chart.resize();
     };
     window.addEventListener('resize', handleResize);
