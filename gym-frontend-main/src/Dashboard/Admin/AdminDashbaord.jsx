@@ -236,42 +236,6 @@ const AdminDashboard = () => {
     };
   };
 
-  // Additional activities to show when "View All" is clicked
-  const additionalActivities = [
-    {
-      id: 5,
-      type: 'equipment-maintenance',
-      icon: <RiStoreLine className="text-secondary" />,
-      title: 'Equipment maintenance',
-      description: 'Treadmill #5 scheduled for maintenance',
-      time: '2 hours ago'
-    },
-    {
-      id: 6,
-      type: 'membership-renewal',
-      icon: <RiCalendarCheckLine className="text-success" />,
-      title: 'Membership renewal',
-      description: 'David Williams renewed annual membership',
-      time: '3 hours ago'
-    },
-    {
-      id: 7,
-      type: 'class-cancellation',
-      icon: <RiCalendarLine className="text-danger" />,
-      title: 'Class cancellation',
-      description: 'Evening Yoga class cancelled due to instructor illness',
-      time: '4 hours ago'
-    },
-    {
-      id: 8,
-      type: 'new-staff',
-      icon: <RiUserAddLine className="text-primary" />,
-      title: 'New staff member',
-      description: 'James Smith joined as Personal Trainer',
-      time: '5 hours ago'
-    }
-  ];
-
   const handleViewAllActivities = () => {
     setShowAllActivities(!showAllActivities);
   };
@@ -455,20 +419,6 @@ const AdminDashboard = () => {
                       </div>
                     );
                   })}
-                  
-                  {/* Additional activities shown when "View All" is clicked */}
-                  {showAllActivities && additionalActivities.map(activity => (
-                    <div key={activity.id} className="d-flex align-items-center p-3 border rounded">
-                      <div className="bg-secondary bg-opacity-10 p-2 rounded-circle me-3">
-                        {activity.icon}
-                      </div>
-                      <div className="flex-grow-1">
-                        <p className="fw-medium mb-0">{activity.title}</p>
-                        <p className="text-muted small mb-0">{activity.description}</p>
-                      </div>
-                      <span className="text-muted small">{activity.time}</span>
-                    </div>
-                  ))}
                 </div>
               </div>
             </div>

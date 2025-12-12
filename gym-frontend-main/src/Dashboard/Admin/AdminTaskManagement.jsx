@@ -5,6 +5,7 @@ import {
 import axios from 'axios';
 import BaseUrl from '../../Api/BaseUrl';
 import GetAdminId from '../../Api/GetAdminId';
+import { FaTrash } from 'react-icons/fa';
 
 const AdminTaskManagement = () => {
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -13,7 +14,7 @@ const AdminTaskManagement = () => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const adminId = GetAdminId(); 
+  const adminId = GetAdminId();
   const [taskForm, setTaskForm] = useState({
     staffId: '',
     branchId: '',
@@ -28,18 +29,18 @@ const AdminTaskManagement = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
+
         // Fetch staff data
         const staffResponse = await axios.get(`${BaseUrl}staff/all`);
         setStaffMembers(staffResponse.data.staff);
-        
+
         // Fetch branches data
         const branchesResponse = await axios.get(`${BaseUrl}/branches/by-admin/${adminId}`);
         setBranches(branchesResponse.data.branches);
-        
+
         // Fetch tasks from API
         const tasksResponse = await axios.get(`${BaseUrl}housekeepingtask/all`);
-        
+
         if (tasksResponse.data.success) {
           // Transform API data to match component expectations
           const transformedTasks = tasksResponse.data.data.map(task => ({
@@ -52,12 +53,12 @@ const AdminTaskManagement = () => {
             priority: task.priority.charAt(0).toUpperCase() + task.priority.slice(1), // Capitalize first letter
             status: task.status || 'Pending' // Default to 'Pending' if status is empty
           }));
-          
+
           setTasks(transformedTasks);
         } else {
           setError('Failed to fetch tasks. Please try again later.');
         }
-        
+
         setLoading(false);
       } catch (err) {
         setError('Failed to fetch data. Please try again later.');
@@ -65,7 +66,7 @@ const AdminTaskManagement = () => {
         console.error('Error fetching data:', err);
       }
     };
-    
+
     fetchData();
   }, []);
 
@@ -90,7 +91,7 @@ const AdminTaskManagement = () => {
 
   const getStatusClass = (status) => {
     switch (status) {
-      case 'Completed': return 'success';
+      case 'completed': return 'success';
       case 'In Progress': return 'primary';
       case 'Pending': return 'warning';
       case 'Rejected': return 'danger';
@@ -103,13 +104,34 @@ const AdminTaskManagement = () => {
     setTaskForm({ ...taskForm, [name]: value });
   };
 
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) {
+      return;
+    }
+
+    try {
+      const response = await axios.delete(`${BaseUrl}housekeepingtask/${taskId}`);
+
+      if (response.data.success) {
+        // Remove the task from state
+        setTasks(tasks.filter(task => task.id !== taskId));
+        alert('Task deleted successfully!');
+      } else {
+        alert('Failed to delete task. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error deleting task:', err);
+      alert('An error occurred while deleting the task.');
+    }
+  };
+
   const handleApproveTask = async (taskId) => {
     try {
       // Make API call to update task status to 'Completed'
       const response = await axios.put(`${BaseUrl}housekeepingtask/status/${taskId}`, {
         status: 'Approved'
       });
-      
+
       if (response.data.success) {
         // Remove the task from the pending tasks list
         setTasks(tasks.filter(task => task.id !== taskId));
@@ -130,7 +152,7 @@ const AdminTaskManagement = () => {
       const response = await axios.put(`${BaseUrl}housekeepingtask/status/${taskId}`, {
         status: 'Rejected'
       });
-      
+
       if (response.data.success) {
         // Remove the task from the pending tasks list
         setTasks(tasks.filter(task => task.id !== taskId));
@@ -143,77 +165,77 @@ const AdminTaskManagement = () => {
       alert('An error occurred while updating the task. Please try again.');
     }
   };
-const handleCreateTask = async () => {
-  try {
-    // Validate form
-    if (!taskForm.staffId || !taskForm.branchId || !taskForm.taskTitle || !taskForm.dueDate) {
-      alert('Please fill in all required fields');
-      return;
-    }
+  const handleCreateTask = async () => {
+    try {
+      // Validate form
+      if (!taskForm.staffId || !taskForm.branchId || !taskForm.taskTitle || !taskForm.dueDate) {
+        alert('Please fill in all required fields');
+        return;
+      }
 
-    // Get current user ID (this should come from your auth context)
-    // For now, using a hardcoded value
-    const createdById = 4; // This should be replaced with actual user ID
-    
-    // Find the selected staff member to get their user ID
-    const selectedStaff = staffMembers.find(staff => staff.staffId === parseInt(taskForm.staffId));
-    const userId = selectedStaff ? selectedStaff.userId : null;
-    
-    if (!userId) {
-      alert('Invalid staff member selected');
-      return;
-    }
+      // Get current user ID (this should come from your auth context)
+      // For now, using a hardcoded value
+      const createdById = 4; // This should be replaced with actual user ID
 
-    // Prepare data for API
-    const taskData = {
-      assignedTo: userId, // Use user ID instead of staff ID
-      branchId: parseInt(taskForm.branchId),
-      taskTitle: taskForm.taskTitle,
-      description: taskForm.description,
-      dueDate: taskForm.dueDate,
-      priority: taskForm.priority.toLowerCase(),
-      status: "Pending",
-      createdById: createdById
-    };
+      // Find the selected staff member to get their user ID
+      const selectedStaff = staffMembers.find(staff => staff.staffId === parseInt(taskForm.staffId));
+      const userId = selectedStaff ? selectedStaff.userId : null;
 
-    // Make API call to create task
-    const response = await axios.post(`${BaseUrl}housekeepingtask/create`, taskData);
-    
-    if (response.data.success) {
-      // Add new task to tasks list
-      const newTask = {
-        id: response.data.data.id,
-        staffId: response.data.data.assignedTo,
-        branchId: response.data.data.branchId,
-        title: response.data.data.taskTitle,
-        description: response.data.data.description,
-        dueDate: response.data.data.dueDate,
-        priority: response.data.data.priority.charAt(0).toUpperCase() + response.data.data.priority.slice(1),
-        status: response.data.data.status
+      if (!userId) {
+        alert('Invalid staff member selected');
+        return;
+      }
+
+      // Prepare data for API
+      const taskData = {
+        assignedTo: userId, // Use user ID instead of staff ID
+        branchId: parseInt(taskForm.branchId),
+        taskTitle: taskForm.taskTitle,
+        description: taskForm.description,
+        dueDate: taskForm.dueDate,
+        priority: taskForm.priority.toLowerCase(),
+        status: "Pending",
+        createdById: createdById
       };
-      
-      setTasks([...tasks, newTask]);
-      
-      // Reset form and close modal
-      setTaskForm({
-        staffId: '',
-        branchId: '',
-        taskTitle: '',
-        description: '',
-        dueDate: '',
-        priority: 'Medium'
-      });
-      setShowTaskModal(false);
-      
-      alert('Task created successfully!');
-    } else {
-      alert('Failed to create task. Please try again.');
+
+      // Make API call to create task
+      const response = await axios.post(`${BaseUrl}housekeepingtask/create`, taskData);
+
+      if (response.data.success) {
+        // Add new task to tasks list
+        const newTask = {
+          id: response.data.data.id,
+          staffId: response.data.data.assignedTo,
+          branchId: response.data.data.branchId,
+          title: response.data.data.taskTitle,
+          description: response.data.data.description,
+          dueDate: response.data.data.dueDate,
+          priority: response.data.data.priority.charAt(0).toUpperCase() + response.data.data.priority.slice(1),
+          status: response.data.data.status
+        };
+
+        setTasks([...tasks, newTask]);
+
+        // Reset form and close modal
+        setTaskForm({
+          staffId: '',
+          branchId: '',
+          taskTitle: '',
+          description: '',
+          dueDate: '',
+          priority: 'Medium'
+        });
+        setShowTaskModal(false);
+
+        alert('Task created successfully!');
+      } else {
+        alert('Failed to create task. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error creating task:', err);
+      alert('An error occurred while creating task. Please try again.');
     }
-  } catch (err) {
-    console.error('Error creating task:', err);
-    alert('An error occurred while creating task. Please try again.');
-  }
-};
+  };
 
   const renderTaskModal = () => {
     if (!showTaskModal) return null;
@@ -225,8 +247,8 @@ const handleCreateTask = async () => {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Create New Task</h5>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="btn-close"
                   onClick={() => setShowTaskModal(false)}
                 ></button>
@@ -236,7 +258,7 @@ const handleCreateTask = async () => {
                   <div className="row mb-3">
                     <div className="col-md-6">
                       <label className="form-label">Assign To</label>
-                      <select 
+                      <select
                         className="form-select"
                         name="staffId"
                         value={taskForm.staffId}
@@ -252,7 +274,7 @@ const handleCreateTask = async () => {
                     </div>
                     <div className="col-md-6">
                       <label className="form-label">Branch</label>
-                      <select 
+                      <select
                         className="form-select"
                         name="branchId"
                         value={taskForm.branchId}
@@ -271,8 +293,8 @@ const handleCreateTask = async () => {
                   <div className="row mb-3">
                     <div className="col-md-12">
                       <label className="form-label">Task Title</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         className="form-control"
                         name="taskTitle"
                         value={taskForm.taskTitle}
@@ -285,7 +307,7 @@ const handleCreateTask = async () => {
                   <div className="row mb-3">
                     <div className="col-md-12">
                       <label className="form-label">Description</label>
-                      <textarea 
+                      <textarea
                         className="form-control"
                         name="description"
                         value={taskForm.description}
@@ -299,8 +321,8 @@ const handleCreateTask = async () => {
                   <div className="row mb-3">
                     <div className="col-md-6">
                       <label className="form-label">Due Date</label>
-                      <input 
-                        type="date" 
+                      <input
+                        type="date"
                         className="form-control"
                         name="dueDate"
                         value={taskForm.dueDate}
@@ -309,7 +331,7 @@ const handleCreateTask = async () => {
                     </div>
                     <div className="col-md-6">
                       <label className="form-label">Priority</label>
-                      <select 
+                      <select
                         className="form-select"
                         name="priority"
                         value={taskForm.priority}
@@ -324,15 +346,15 @@ const handleCreateTask = async () => {
                 </form>
               </div>
               <div className="modal-footer">
-                <button 
+                <button
                   className="btn btn-secondary"
                   onClick={() => setShowTaskModal(false)}
                 >
                   Cancel
                 </button>
-                <button 
-                  className="btn btn-outline-light" 
-                  style={{ backgroundColor: '#2f6a87', color: '#fff' }} 
+                <button
+                  className="btn btn-outline-light"
+                  style={{ backgroundColor: '#2f6a87', color: '#fff' }}
                   onClick={handleCreateTask}
                 >
                   Create Task
@@ -350,24 +372,20 @@ const handleCreateTask = async () => {
     return <div className="container-fluid py-4">Loading data...</div>;
   }
 
-  if (error) {
-    return <div className="container-fluid py-4">Error: {error}</div>;
-  }
-
   return (
     <div className="container-fluid py-4">
-      <h2 className="mb-4">Task Management</h2>
-      
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h3>Task List</h3>
-        <button 
-          className="btn btn-outline-light" 
-          style={{ backgroundColor: '#2f6a87', color: '#fff' }}
-          onClick={() => setShowTaskModal(true)}
-        >
-          <Plus size={18} className="me-1" /> Create Task
-        </button>
-      </div>
+     <div className="d-flex justify-content-between align-items-center mb-4">
+  <h2 className="mb-0">Task Management</h2>
+
+  <button
+    className="btn btn-outline-light"
+    style={{ backgroundColor: '#2f6a87', color: '#fff' }}
+    onClick={() => setShowTaskModal(true)}
+  >
+    <Plus size={18} className="me-1" /> Create Task
+  </button>
+</div>
+
 
       {/* Task Table */}
       <div className="table-responsive mb-4">
@@ -381,6 +399,7 @@ const handleCreateTask = async () => {
               <th>Priority</th>
               <th>Branch</th>
               <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -400,6 +419,15 @@ const handleCreateTask = async () => {
                   <span className={`badge bg-${getStatusClass(task.status)}`}>
                     {task.status}
                   </span>
+                </td>
+                <td>
+                  <button
+                    className="btn btn-sm btn-outline-danger"
+                    onClick={() => handleDeleteTask(task.id)}
+                    title="Delete Task"
+                  >
+                    <FaTrash size={14} />
+                  </button>
                 </td>
               </tr>
             ))}
@@ -440,14 +468,14 @@ const handleCreateTask = async () => {
                     </td>
                     <td>
                       <div className="btn-group">
-                        <button 
+                        <button
                           className="btn btn-sm btn-success"
                           onClick={() => handleApproveTask(task.id)}
                           title="Mark as Completed"
                         >
                           <Check size={14} />
                         </button>
-                        <button 
+                        <button
                           className="btn btn-sm btn-danger"
                           onClick={() => handleRejectTask(task.id)}
                           title="Reject Task"

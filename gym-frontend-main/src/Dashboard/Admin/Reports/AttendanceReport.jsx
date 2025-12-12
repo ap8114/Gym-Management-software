@@ -289,7 +289,7 @@ export default function AttendanceReport() {
           <div className="row g-3">
             {/* Staff Table */}
             {selectedRole === "staff" && (
-              <div className="col-12 col-xl-6">
+              <div className="col-12 col-xl-12">
                 <div className="card border-0 shadow-sm h-100">
                   <div className="card-header bg-white border-0 d-flex align-items-center justify-content-between">
                     <div className="fw-semibold">Staff Attendance</div>
