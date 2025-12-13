@@ -56,7 +56,7 @@ const SalaryCalculator = () => {
       const response = await axiosInstance.get(`${BaseUrl}staff/all`);
       console.log("Staff API response:", response.data); // Debug log
       if (response.data.success) {
-        // Transform the API response to match the component's expected format
+        // Transform API response to match component's expected format
         const transformedStaff = response.data.staff.map((staff) => ({
           id: staff.staffId,
           staff_id: staff.staffId,
@@ -99,13 +99,13 @@ const fetchSalaries = async () => {
     const response = await axiosInstance.get(`${BaseUrl}salaries`);
     console.log("Salaries API response:", response.data); // Debug log
     if (response.data.success) {
-      // Transform the API response to match the component's expected format
+      // Transform API response to match component's expected format
       const transformedSalaries = response.data.data.map((salary) => {
         // Get staff information
         const staffInfo = getStaffInfo(salary.staffId);
 
         return {
-          id: salary.id, // Add the internal ID
+          id: salary.id, // Add internal ID
           salary_id: salary.salaryId,
           staff_id: salary.staffId,
           role: salary.role,
@@ -217,11 +217,11 @@ const fetchSalaries = async () => {
 const confirmDelete = async () => {
   if (selectedSalary) {
     try {
-      // Use the internal ID for the API call
+      // Use internal ID for API call
       const internalId = selectedSalary.id || selectedSalary.salary_id.replace("SAL-", "");
       
       const response = await axiosInstance.delete(
-        `${BaseUrl}salaries/${internalId}` // Use internal ID in the URL
+        `${BaseUrl}salaries/${internalId}` // Use internal ID in URL
       );
       if (response.data.success) {
         setSalaries((prev) =>
@@ -499,7 +499,7 @@ const handleSubmit = async () => {
       if (response.data.success) {
         // Add new salary to list with response data
         const newSalary = {
-          id: response.data.id, // Add the internal ID
+          id: response.data.id, // Add internal ID
           salary_id: response.data.salaryId,
           staff_id: response.data.staffId,
           role: response.data.role,
@@ -554,7 +554,7 @@ const handleSubmit = async () => {
       // Get staff information to include role in payload
       const staffInfo = getStaffInfo(formData.staff_id);
 
-      // Find salary record to get the internal ID
+      // Find salary record to get internal ID
       const salaryRecord = salaries.find(s => s.salary_id === formData.salary_id);
       const internalId = salaryRecord ? salaryRecord.id : formData.salary_id.replace("SAL-", "");
 
@@ -587,14 +587,14 @@ const handleSubmit = async () => {
 
       // Call API to update salary with internal ID
       const response = await axiosInstance.put(
-        `${BaseUrl}salaries/${internalId}`, // Use internal ID in the URL
+        `${BaseUrl}salaries/${internalId}`, // Use internal ID in URL
         payload
       );
 
       if (response.data.success) {
         // Update salary in list with response data
         const updatedSalary = {
-          id: salaryRecord ? salaryRecord.id : internalId, // Keep the internal ID
+          id: salaryRecord ? salaryRecord.id : internalId, // Keep internal ID
           salary_id: response.data.salaryId,
           staff_id: response.data.staffId,
           role: response.data.role,
@@ -686,9 +686,9 @@ const handleSubmit = async () => {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("en-IN", {
       style: "currency",
-      currency: "USD",
+      currency: "INR",
     }).format(amount || 0);
   };
 
@@ -883,7 +883,7 @@ const handleSubmit = async () => {
                         to {formatDate(salary.period_end)}
                       </small>
                     </td>
-                    <td className="text-end fw-bold">${salary.net_pay}</td>
+                    <td className="text-end fw-bold">{formatCurrency(salary.net_pay)}</td>
                     <td className="text-center d-none d-lg-table-cell">
                       {getStatusBadge(salary.status)}
                     </td>

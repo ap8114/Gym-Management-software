@@ -688,11 +688,11 @@ export default function SalesReport() {
               <Widget title="Total Bookings" value={kpis.totalBookings} />
               <Widget
                 title="Total Revenue"
-                value={`$ ${kpis.totalRevenue.toLocaleString("en-IN")}`}
+                value={`₹ ${kpis.totalRevenue.toLocaleString("en-IN")}`}
               />
               <Widget
                 title="Avg Ticket"
-                value={`$ ${kpis.avgTicket.toLocaleString("en-IN")}`}
+                value={`₹ ${kpis.avgTicket.toLocaleString("en-IN")}`}
               />
               <Widget title="Confirmed" value={kpis.confirmed} />
               <Widget title="Cancelled" value={kpis.cancelled} />

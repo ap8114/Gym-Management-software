@@ -132,7 +132,7 @@ const ClassesSchedule = () => {
     setSelectedClass({
       className: '',
       trainerId: trainers.length > 0 ? trainers[0].id : '', // Default to first trainer
-      branchId: branches.length > 0 ? branches[0].id : '',
+      // branchId: branches.length > 0 ? branches[0].id : '', // Commented out branch field
       date: '',
       day: '',
       startTime: '',
@@ -159,7 +159,7 @@ const ClassesSchedule = () => {
     }
     
     // Find branch ID from name
-    const branch = branches.find(b => b.name === gymClass.branch);
+    // const branch = branches.find(b => b.name === gymClass.branch); // Commented out branch field
     
     // Find trainer ID from name
     let trainerId = '';
@@ -172,7 +172,7 @@ const ClassesSchedule = () => {
       ...gymClass, 
       members: [], // API doesn't return members, so leave empty
       trainerId,
-      branchId: branch?.id || '',
+      // branchId: branch?.id || '', // Commented out branch field
       startTime,
       endTime
     });
@@ -194,7 +194,7 @@ const ClassesSchedule = () => {
     }
     
     // Find branch ID from name
-    const branch = branches.find(b => b.name === gymClass.branch);
+    // const branch = branches.find(b => b.name === gymClass.branch); // Commented out branch field
     
     // Find trainer ID from name
     let trainerId = '';
@@ -207,7 +207,7 @@ const ClassesSchedule = () => {
       ...gymClass, 
       members: [], // No member editing from list
       trainerId,
-      branchId: branch?.id || '',
+      // branchId: branch?.id || '', // Commented out branch field
       startTime,
       endTime
     });
@@ -275,7 +275,7 @@ const ClassesSchedule = () => {
     const {
       className,
       trainerId,
-      branchId,
+      // branchId, // Commented out branch field
       date,
       day,
       startTime,
@@ -284,7 +284,7 @@ const ClassesSchedule = () => {
       status
     } = selectedClass;
 
-    if (!className || !trainerId || !branchId || !date || !startTime || !endTime) {
+    if (!className || !trainerId || !date || !startTime || !endTime) { // Removed branchId from validation
       alert("Please fill all required fields.");
       return;
     }
@@ -294,7 +294,7 @@ const ClassesSchedule = () => {
       const payload = {
         className,
         trainerId: Number(trainerId), // Convert to number since API returns numeric IDs
-        branchId: Number(branchId),
+        // branchId: Number(branchId), // Commented out branch field
         date,
         day,
         startTime,
@@ -349,7 +349,7 @@ const ClassesSchedule = () => {
         <div className="row mb-2">
           <div className="col-6">
             <p className="mb-1"><strong>Trainer:</strong> {gymClass.trainer}</p>
-            <p className="mb-1"><strong>Branch:</strong> {gymClass.branch}</p>
+            {/* <p className="mb-1"><strong>Branch:</strong> {gymClass.branch}</p> Commented out branch field */}
           </div>
           <div className="col-6">
             <p className="mb-1"><strong>Date:</strong> {gymClass.date ? gymClass.date.split('T')[0] : ''}</p>
@@ -419,7 +419,7 @@ const ClassesSchedule = () => {
                     <tr>
                       <th>CLASS NAME</th>
                       <th>TRAINER</th>
-                      <th>BRANCH</th>
+                      {/* <th>BRANCH</th> Commented out branch field */}
                       <th>DATE</th>
                       <th>TIME</th>
                       <th>DAY</th>
@@ -432,7 +432,7 @@ const ClassesSchedule = () => {
                       <tr key={c.id}>
                         <td>{c.className}</td>
                         <td>{c.trainer}</td>
-                        <td><span className="badge bg-primary-subtle text-primary-emphasis px-3 py-1">{c.branch}</span></td>
+                        {/* <td><span className="badge bg-primary-subtle text-primary-emphasis px-3 py-1">{c.branch}</span></td> Commented out branch field */}
                         <td>{c.date ? c.date.split('T')[0] : ''}</td>
                         <td>{c.time}</td>
                         <td>{c.day}</td>
@@ -483,11 +483,11 @@ const ClassesSchedule = () => {
                 <button type="button" className="btn-close btn-close-white" onClick={closeModal}></button>
               </div>
               <div className="modal-body p-4">
-                {branches.length === 0 && (
+                {/* {branches.length === 0 && (
                   <div className="alert alert-warning">
                     No branches found. Please add branches first before creating classes.
                   </div>
-                )}
+                )} Commented out branch field */}
                 {trainers.length === 0 && (
                   <div className="alert alert-warning">
                     No trainers found. Please add trainers first before creating classes.
@@ -527,6 +527,7 @@ const ClassesSchedule = () => {
                     )}
                   </div>
                 </div>
+                {/* Commented out branch field
                 <div className="row mb-3">
                   <div className="col-md-6 mb-3">
                     <label className="form-label fw-semibold">Branch <span className="text-danger">*</span></label>
@@ -561,7 +562,18 @@ const ClassesSchedule = () => {
                     />
                   </div>
                 </div>
+                */}
                 <div className="row mb-3">
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label fw-semibold">Date <span className="text-danger">*</span></label>
+                    <input
+                      type="date"
+                      className="form-control rounded-3"
+                      value={selectedClass.date ? selectedClass.date.split('T')[0] : ''}
+                      onChange={e => setSelectedClass({ ...selectedClass, date: e.target.value })}
+                      disabled={modalType === 'view'}
+                    />
+                  </div>
                   <div className="col-md-6 mb-3">
                     <label className="form-label fw-semibold">Start Time <span className="text-danger">*</span></label>
                     <input
@@ -572,6 +584,8 @@ const ClassesSchedule = () => {
                       disabled={modalType === 'view'}
                     />
                   </div>
+                </div>
+                <div className="row mb-3">
                   <div className="col-md-6 mb-3">
                     <label className="form-label fw-semibold">End Time <span className="text-danger">*</span></label>
                     <input
@@ -582,8 +596,6 @@ const ClassesSchedule = () => {
                       disabled={modalType === 'view'}
                     />
                   </div>
-                </div>
-                <div className="row mb-3">
                   <div className="col-md-6 mb-3">
                     <label className="form-label fw-semibold">Day</label>
                     <select
@@ -602,6 +614,8 @@ const ClassesSchedule = () => {
                       <option value="Sunday">Sunday</option>
                     </select>
                   </div>
+                </div>
+                <div className="row mb-3">
                   <div className="col-md-6 mb-3">
                     <label className="form-label fw-semibold">Capacity</label>
                     <input
@@ -612,9 +626,7 @@ const ClassesSchedule = () => {
                       disabled={modalType === 'view'}
                     />
                   </div>
-                </div>
-                <div className="row mb-3">
-                  <div className={modalType === 'view' ? "col-md-6 mb-3" : "col-md-12 mb-3"}>
+                  <div className={modalType === 'view' ? "col-md-6 mb-3" : "col-md-6 mb-3"}>
                     <label className="form-label fw-semibold">Status</label>
                     <select
                       className="form-select rounded-3"
@@ -700,7 +712,7 @@ const ClassesSchedule = () => {
                       className="btn px-4"
                       style={{ background: '#6EB2CC', color: 'white' }}
                       onClick={saveClass}
-                      disabled={loading || branches.length === 0 || trainers.length === 0}
+                      disabled={loading || trainers.length === 0} // Removed branches.length check
                     >
                       {loading ? 'Saving...' : modalType === 'add' ? 'Add Class' : 'Update Class'}
                     </button>
