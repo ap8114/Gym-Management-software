@@ -501,7 +501,7 @@ const Attendance = () => {
             )}
           </div>
         </>
-      )}
+      )}          
 
       {/* View Modal */}
       <Modal
