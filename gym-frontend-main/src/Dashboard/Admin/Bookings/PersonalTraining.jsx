@@ -1,80 +1,80 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
+import axiosInstance from '../../../Api/axiosInstance';
+import GetAdminId from '../../../Api/GetAdminId';
 
 const PersonalTraining = () => {
-  const [trainingData, setTrainingData] = useState([
-    {
-      id: 1,
-      trainer: "John Smith",
-      type: "Strength Training",
-      date: "2023-06-20",
-      time: "10:00 - 11:00",
-      price: "$50",
-      paymentStatus: "Paid",
-      bookingStatus: "Booked",
-      username: "john_doe",
-      memberName: "Alex Johnson",
-      memberEmail: "alex.johnson@example.com",
-      memberPhone: "+1 555-123-4567",
-      memberJoinDate: "2023-01-15",
-      totalMembers: 1
-    },
-    {
-      id: 2,
-      trainer: "Mike Williams",
-      type: "Cardio & HIIT",
-      date: "2023-06-22",
-      time: "14:00 - 15:00",
-      price: "$60",
-      paymentStatus: "Paid",
-      bookingStatus: "Booked",
-      username: "mike_w",
-      memberName: "Sarah Miller",
-      memberEmail: "sarah.miller@example.com",
-      memberPhone: "+1 555-987-6543",
-      memberJoinDate: "2023-02-10",
-      totalMembers: 2
-    },
-    {
-      id: 3,
-      trainer: "Mike Williams",
-      type: "Cardio & HIIT",
-      date: "2025-09-18",
-      time: "23:34 - 03:04",
-      price: "$70",
-      paymentStatus: "Paid",
-      bookingStatus: "Booked",
-      username: "mike_w",
-      memberName: "Emily Davis",
-      memberEmail: "emily.davis@example.com",
-      memberPhone: "+1 555-456-7890",
-      memberJoinDate: "2023-03-05",
-      totalMembers: 3
-    },
-    {
-      id: 4,
-      trainer: "Unknown",
-      type: "",
-      date: "",
-      time: "",
-      price: "",
-      paymentStatus: "Paid",
-      bookingStatus: "Booked",
-      username: "guest_user",
-      memberName: "Guest User",
-      memberEmail: "",
-      memberPhone: "",
-      memberJoinDate: "",
-      totalMembers: 1
-    }
-  ]);
-
+  const adminId = GetAdminId();
+  const [trainingData, setTrainingData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMobileViewModalOpen, setIsMobileViewModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
 
   const customColor = "#6EB2CC";
+
+  // Fetch data from API when component mounts
+  useEffect(() => {
+    fetchTrainingData();
+  }, []);
+
+  const fetchTrainingData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await axiosInstance.get(`booking/getptDetailsByAdminId/${adminId}`);
+      
+      if (response.data && response.data.success) {
+        // Check if data exists and has items
+        if (response.data.data && response.data.data.length > 0) {
+          // Transform API data to match our component's expected format
+          const transformedData = response.data.data.map(item => ({
+            id: item.id,
+            memberId: item.memberId,
+            trainerId: item.trainerId,
+            sessionId: item.sessionId,
+            classId: item.classId,
+            date: item.date ? new Date(item.date).toLocaleDateString() : 'N/A',
+            startTime: item.startTime || 'N/A',
+            endTime: item.endTime || 'N/A',
+            time: item.startTime && item.endTime ? `${item.startTime} - ${item.endTime}` : 'N/A',
+            bookingType: item.bookingType || 'N/A',
+            bookingStatus: item.bookingStatus || 'N/A',
+            paymentStatus: item.paymentStatus || 'N/A',
+            notes: item.notes || 'N/A',
+            branchId: item.branchId,
+            createdAt: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A',
+            updatedAt: item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : 'N/A',
+            memberName: item.memberName || 'Member', // Use memberName from API response
+            trainerName: item.trainerName || 'Trainer', // Use trainerName from API response
+            sessionName: item.sessionName || 'N/A',
+            // Adding additional fields that might be needed for UI
+            type: item.sessionName || item.notes || 'Personal Training',
+            price: 'N/A', // Price is not provided in API response
+            memberEmail: 'N/A', // Email is not provided in API response
+            memberPhone: 'N/A', // Phone is not provided in API response
+            memberJoinDate: 'N/A', // Join date is not provided in API response
+            totalMembers: 1 // Default to 1 as it's not provided in API response
+          }));
+          
+          setTrainingData(transformedData);
+        } else {
+          // No data found case
+          setTrainingData([]);
+        }
+      } else {
+        throw new Error('Failed to fetch training data');
+      }
+    } catch (err) {
+      setError(err.message || 'An error occurred while fetching data');
+      console.error('Error fetching training data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleShow = (booking) => {
     setSelectedBooking(booking);
@@ -86,11 +86,31 @@ const PersonalTraining = () => {
     setIsMobileViewModalOpen(true);
   };
 
-  const handleDelete = (id, username) => {
-    if (window.confirm(`Are you sure you want to delete booking for ${username}?`)) {
-      const updatedData = trainingData.filter(item => item.id !== id);
-      setTrainingData(updatedData);
-      alert(`Booking for ${username} has been deleted`);
+  const handleDelete = async (id, memberName) => {
+    if (window.confirm(`Are you sure you want to delete booking for ${memberName}?`)) {
+      try {
+        // Make API call to delete the booking
+        const response = await axiosInstance.delete(`booking/deleteunified/${id}`);
+        
+        if (response.data && response.data.success) {
+          // Update local state to remove the deleted booking
+          const updatedData = trainingData.filter(item => item.id !== id);
+          setTrainingData(updatedData);
+          alert(`Booking for ${memberName} has been deleted`);
+          
+          // Close modal if it's open and the deleted booking was selected
+          if (selectedBooking && selectedBooking.id === id) {
+            setIsModalOpen(false);
+            setIsMobileViewModalOpen(false);
+            setSelectedBooking(null);
+          }
+        } else {
+          throw new Error(response.data.message || 'Failed to delete booking');
+        }
+      } catch (err) {
+        console.error('Error deleting booking:', err);
+        alert(`Error deleting booking: ${err.message || 'Unknown error'}`);
+      }
     }
   };
 
@@ -107,11 +127,15 @@ const PersonalTraining = () => {
     }
     
     setTrainingData(newData);
+    
+    // In a real app, you would make an API call to update status
+    // For now, we're just updating the local state
   };
 
   const getBadgeColor = (status) => {
     switch (status) {
       case "Confirmed":
+      case "Completed":
         return "bg-success";
       case "Cancelled":
         return "bg-danger";
@@ -151,19 +175,19 @@ const PersonalTraining = () => {
         <div className="row g-2 mb-2">
           <div className="col-6">
             <small className="text-muted d-block">Trainer</small>
-            <span style={{ fontSize: '0.85rem' }}>{booking.trainer}</span>
+            <span style={{ fontSize: '0.85rem' }}>{booking.trainerName}</span>
           </div>
           <div className="col-6">
             <small className="text-muted d-block">Date</small>
-            <span style={{ fontSize: '0.85rem' }}>{booking.date || 'N/A'}</span>
+            <span style={{ fontSize: '0.85rem' }}>{booking.date}</span>
           </div>
           <div className="col-6">
             <small className="text-muted d-block">Time</small>
-            <span style={{ fontSize: '0.85rem' }}>{booking.time || 'N/A'}</span>
+            <span style={{ fontSize: '0.85rem' }}>{booking.time}</span>
           </div>
           <div className="col-6">
             <small className="text-muted d-block">Price</small>
-            <span style={{ fontSize: '0.85rem' }}>{booking.price || 'N/A'}</span>
+            <span style={{ fontSize: '0.85rem' }}>{booking.price}</span>
           </div>
         </div>
         
@@ -190,7 +214,7 @@ const PersonalTraining = () => {
             </button>
             <button
               className="btn btn-sm"
-              onClick={() => handleDelete(booking.id, booking.username)}
+              onClick={() => handleDelete(booking.id, booking.memberName)}
               style={{ 
                 fontSize: '0.75rem', 
                 padding: '0.25rem 0.5rem',
@@ -207,6 +231,24 @@ const PersonalTraining = () => {
     </div>
   );
 
+  // Function to fetch a specific booking by ID
+  const fetchBookingById = async (id) => {
+    try {
+      // In a real app, you would have an endpoint to fetch a specific booking
+      // For now, we'll just find it in our local state
+      const booking = trainingData.find(item => item.id === parseInt(id));
+      if (booking) {
+        setSelectedBooking(booking);
+        setIsModalOpen(true);
+      } else {
+        alert(`No booking found with ID: ${id}`);
+      }
+    } catch (err) {
+      console.error('Error fetching booking by ID:', err);
+      alert('An error occurred while fetching the booking');
+    }
+  };
+
   return (
     <div className="container-fluid p-2 p-md-4">
       <div className="d-flex justify-content-between align-items-center mb-3 mb-md-4">
@@ -221,89 +263,154 @@ const PersonalTraining = () => {
           </div>
         </div>
       </div>
-      
-      <div className="d-none d-md-block">
-        <div className="table-responsive">
-          <table className="table table-bordered table-hover">
-            <thead className="table-light">
-              <tr>
-                <th>Member Name</th>
-                <th>Trainer</th>
-                <th>Type</th>
-                <th>Date</th>
-                <th>Time</th>
-                <th>Price</th>
-                <th>Payment Status</th>
-                <th>Booking Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {trainingData.map((data, index) => (
-                <tr key={data.id}>
-                  <td>{data.memberName}</td>
-                  <td>
-                    {data.trainer} {data.type && `(${data.type})`}
-                  </td>
-                  <td>{data.type || 'N/A'}</td>
-                  <td>{data.date}</td>
-                  <td>{data.time}</td>
-                  <td>{data.price}</td>
-                  <td>
-                    <span className={`badge ${data.paymentStatus === 'Paid' ? 'bg-success' : 'bg-warning'}`}>
-                      {data.paymentStatus}
-                    </span>
-                  </td>
-                  <td>
-                    <button 
-                      className={`badge ${getBadgeColor(data.bookingStatus)} border-0 bg-opacity-75`}
-                      onClick={() => handleBookingStatusClick(index)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      {data.bookingStatus}
-                    </button>
-                  </td>
-                  <td>
-                    <div className="btn-group" role="group">
-                      <button 
-                        className="btn btn-sm" 
-                        title="Show"
-                        onClick={() => handleShow(data)}
-                        style={{ 
-                          color: customColor,
-                          background: 'none',
-                          border: 'none'
-                        }}
-                      >
-                        <i className="bi bi-eye"></i>
-                      </button>
-                      <button 
-                        className="btn btn-sm" 
-                        title="Delete"
-                        onClick={() => handleDelete(data.id, data.username)}
-                        style={{ 
-                          color: '#dc3545',
-                          background: 'none',
-                          border: 'none'
-                        }}
-                      >
-                        <i className="bi bi-trash"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+      {/* Loading state */}
+      {loading && (
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-2">Loading personal training data...</p>
         </div>
-      </div>
+      )}
 
-      <div className="d-md-none">
-        {trainingData.map((booking, index) => (
-          <MobileBookingCard key={booking.id} booking={booking} index={index} />
-        ))}
-      </div>
+      {/* Error state */}
+      {error && (
+        <div className="alert alert-danger" role="alert">
+          <i className="bi bi-exclamation-triangle me-2"></i>
+          {error}
+        </div>
+      )}
 
+      {/* Search by ID */}
+      {!loading && !error && (
+        <div className="row mb-3">
+          <div className="col-md-6">
+            <div className="input-group">
+              <span className="input-group-text">Search by ID</span>
+              <input
+                type="number"
+                className="form-control"
+                placeholder="Enter booking ID"
+                id="bookingIdSearch"
+              />
+              <button 
+                className="btn btn-outline-primary" 
+                type="button" 
+                onClick={() => {
+                  const id = document.getElementById('bookingIdSearch').value;
+                  if (id) {
+                    fetchBookingById(id);
+                  } else {
+                    alert('Please enter a booking ID');
+                  }
+                }}
+              >
+                <i className="bi bi-search"></i> Search
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Desktop view */}
+      {!loading && !error && (
+        <div className="d-none d-md-block">
+          <div className="table-responsive">
+            <table className="table table-bordered table-hover">
+              <thead className="table-light">
+                <tr>
+                  <th>ID</th>
+                  <th>Member Name</th>
+                  <th>Trainer</th>
+                  <th>Type</th>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Price</th>
+                  <th>Payment Status</th>
+                  <th>Booking Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trainingData.map((data, index) => (
+                  <tr key={data.id}>
+                    <td>{data.id}</td>
+                    <td>{data.memberName}</td>
+                    <td>{data.trainerName}</td>
+                    <td>{data.type}</td>
+                    <td>{data.date}</td>
+                    <td>{data.time}</td>
+                    <td>{data.price}</td>
+                    <td>
+                      <span className={`badge ${data.paymentStatus === 'Paid' ? 'bg-success' : 'bg-warning'}`}>
+                        {data.paymentStatus}
+                      </span>
+                    </td>
+                    <td>
+                      <button 
+                        className={`badge ${getBadgeColor(data.bookingStatus)} border-0 bg-opacity-75`}
+                        onClick={() => handleBookingStatusClick(index)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {data.bookingStatus}
+                      </button>
+                    </td>
+                    <td>
+                      <div className="btn-group" role="group">
+                        <button 
+                          className="btn btn-sm" 
+                          title="Show"
+                          onClick={() => handleShow(data)}
+                          style={{ 
+                            color: customColor,
+                            background: 'none',
+                            border: 'none'
+                          }}
+                        >
+                          <i className="bi bi-eye"></i>
+                        </button>
+                        <button 
+                          className="btn btn-sm" 
+                          title="Delete"
+                          onClick={() => handleDelete(data.id, data.memberName)}
+                          style={{ 
+                            color: '#dc3545',
+                            background: 'none',
+                            border: 'none'
+                          }}
+                        >
+                          <i className="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile view */}
+      {!loading && !error && (
+        <div className="d-md-none">
+          {trainingData.map((booking, index) => (
+            <MobileBookingCard key={booking.id} booking={booking} index={index} />
+          ))}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && !error && trainingData.length === 0 && (
+        <div className="text-center py-5">
+          <i className="bi bi-calendar-x" style={{ fontSize: '3rem', color: customColor }}></i>
+          <h5 className="mt-3">No personal training bookings found</h5>
+          <p className="text-muted">There are no bookings to display at this time</p>
+        </div>
+      )}
+
+      {/* Desktop modal */}
       {isModalOpen && (
         <div
           className="modal fade show"
@@ -328,37 +435,58 @@ const PersonalTraining = () => {
                 {selectedBooking ? (
                   <div className="row g-3">
                     <div className="col-md-6">
+                      <strong>Booking ID:</strong> {selectedBooking.id}
+                    </div>
+                    <div className="col-md-6">
+                      <strong>Member ID:</strong> {selectedBooking.memberId || 'N/A'}
+                    </div>
+                    <div className="col-md-6">
+                      <strong>Trainer ID:</strong> {selectedBooking.trainerId || 'N/A'}
+                    </div>
+                    <div className="col-md-6">
+                      <strong>Session ID:</strong> {selectedBooking.sessionId || 'N/A'}
+                    </div>
+                    <div className="col-md-6">
+                      <strong>Class ID:</strong> {selectedBooking.classId || 'N/A'}
+                    </div>
+                    <div className="col-md-6">
+                      <strong>Branch ID:</strong> {selectedBooking.branchId || 'N/A'}
+                    </div>
+                    <div className="col-md-6">
                       <strong>Member Name:</strong> {selectedBooking.memberName}
                     </div>
                     <div className="col-md-6">
-                      <strong>Email:</strong> {selectedBooking.memberEmail || 'N/A'}
+                      <strong>Trainer Name:</strong> {selectedBooking.trainerName}
                     </div>
                     <div className="col-md-6">
-                      <strong>Phone:</strong> {selectedBooking.memberPhone || 'N/A'}
+                      <strong>Session Name:</strong> {selectedBooking.sessionName}
                     </div>
                     <div className="col-md-6">
-                      <strong>Join Date:</strong> {selectedBooking.memberJoinDate || 'N/A'}
+                      <strong>Booking Type:</strong> {selectedBooking.bookingType}
                     </div>
                     <div className="col-md-6">
-                      <strong>Trainer:</strong> {selectedBooking.trainer}
+                      <strong>Date:</strong> {selectedBooking.date}
                     </div>
                     <div className="col-md-6">
-                      <strong>Type:</strong> {selectedBooking.type || 'N/A'}
+                      <strong>Time:</strong> {selectedBooking.time}
                     </div>
                     <div className="col-md-6">
-                      <strong>Date:</strong> {selectedBooking.date || 'N/A'}
-                    </div>
-                    <div className="col-md-6">
-                      <strong>Time:</strong> {selectedBooking.time || 'N/A'}
-                    </div>
-                    <div className="col-md-6">
-                      <strong>Price:</strong> {selectedBooking.price || 'N/A'}
+                      <strong>Price:</strong> {selectedBooking.price}
                     </div>
                     <div className="col-md-6">
                       <strong>Payment Status:</strong> {selectedBooking.paymentStatus}
                     </div>
                     <div className="col-md-6">
                       <strong>Booking Status:</strong> {selectedBooking.bookingStatus}
+                    </div>
+                    <div className="col-12">
+                      <strong>Notes:</strong> {selectedBooking.notes}
+                    </div>
+                    <div className="col-md-6">
+                      <strong>Created At:</strong> {selectedBooking.createdAt}
+                    </div>
+                    <div className="col-md-6">
+                      <strong>Updated At:</strong> {selectedBooking.updatedAt}
                     </div>
                   </div>
                 ) : (
@@ -379,6 +507,7 @@ const PersonalTraining = () => {
         </div>
       )}
 
+      {/* Mobile modal */}
       {isMobileViewModalOpen && (
         <div
           className="modal fade show"
@@ -413,36 +542,24 @@ const PersonalTraining = () => {
                       
                       <div className="row g-2">
                         <div className="col-6">
-                          <small className="text-muted d-block">Email</small>
-                          <div>{selectedBooking.memberEmail || 'N/A'}</div>
+                          <small className="text-muted d-block">Booking ID</small>
+                          <div>{selectedBooking.id}</div>
                         </div>
                         <div className="col-6">
-                          <small className="text-muted d-block">Phone</small>
-                          <div>{selectedBooking.memberPhone || 'N/A'}</div>
+                          <small className="text-muted d-block">Trainer Name</small>
+                          <div>{selectedBooking.trainerName}</div>
                         </div>
                         <div className="col-6">
-                          <small className="text-muted d-block">Join Date</small>
-                          <div>{selectedBooking.memberJoinDate || 'N/A'}</div>
-                        </div>
-                        <div className="col-6">
-                          <small className="text-muted d-block">Trainer</small>
-                          <div>{selectedBooking.trainer}</div>
-                        </div>
-                        <div className="col-6">
-                          <small className="text-muted d-block">Type</small>
-                          <div>{selectedBooking.type || 'N/A'}</div>
+                          <small className="text-muted d-block">Session Name</small>
+                          <div>{selectedBooking.sessionName || 'N/A'}</div>
                         </div>
                         <div className="col-6">
                           <small className="text-muted d-block">Date</small>
-                          <div>{selectedBooking.date || 'N/A'}</div>
+                          <div>{selectedBooking.date}</div>
                         </div>
                         <div className="col-6">
                           <small className="text-muted d-block">Time</small>
-                          <div>{selectedBooking.time || 'N/A'}</div>
-                        </div>
-                        <div className="col-6">
-                          <small className="text-muted d-block">Price</small>
-                          <div>{selectedBooking.price || 'N/A'}</div>
+                          <div>{selectedBooking.time}</div>
                         </div>
                         <div className="col-6">
                           <small className="text-muted d-block">Payment</small>
@@ -451,6 +568,10 @@ const PersonalTraining = () => {
                               {selectedBooking.paymentStatus}
                             </span>
                           </div>
+                        </div>
+                        <div className="col-12">
+                          <small className="text-muted d-block">Notes</small>
+                          <div>{selectedBooking.notes}</div>
                         </div>
                       </div>
                     </div>

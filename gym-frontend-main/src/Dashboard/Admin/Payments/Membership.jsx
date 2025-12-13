@@ -254,18 +254,18 @@ const Membership = () => {
                                 <div className="row mb-2">
                                     <div className="col-6">
                                         <small className="text-muted">Total Amount</small>
-                                        <p className="mb-1 fw-bold">₹{member.amount}</p>
+                                        <p className="mb-1 fw-bold">${member.amount}</p>
                                     </div>
                                     <div className="col-6">
                                         <small className="text-muted">Paid Amount</small>
-                                        <p className="mb-1 fw-bold">₹{member.paidAmount}</p>
+                                        <p className="mb-1 fw-bold">${member.paidAmount}</p>
                                     </div>
                                 </div>
                                 
                                 <div className="row mb-2">
                                     <div className="col-6">
                                         <small className="text-muted">Due Amount</small>
-                                        <p className="mb-1 fw-bold">₹{member.dueAmount}</p>
+                                        <p className="mb-1 fw-bold">${member.dueAmount}</p>
                                     </div>
                                     <div className="col-6">
                                         <small className="text-muted">Membership Period</small>
@@ -360,9 +360,9 @@ const Membership = () => {
                                     <tr key={member.id} className={member.paymentStatus === 'Completed' ? 'table-success' : ''}>
                                         <td>{member.title}</td>
                                         <td>{member.name}</td>
-                                        <td className="d-none d-md-table-cell">₹{member.amount}</td>
-                                        <td className="d-none d-lg-table-cell">₹{member.paidAmount}</td>
-                                        <td className="d-none d-lg-table-cell">₹{member.dueAmount}</td>
+                                        <td className="d-none d-md-table-cell">${member.amount}</td>
+                                        <td className="d-none d-lg-table-cell">${member.paidAmount}</td>
+                                        <td className="d-none d-lg-table-cell">${member.dueAmount}</td>
                                         <td className="d-none d-xl-table-cell">{member.startDate}</td>
                                         <td className="d-none d-xl-table-cell">{member.endDate}</td>
                                         <td>
@@ -465,9 +465,9 @@ const Membership = () => {
                                         <div className="card h-100 border-0 bg-light">
                                             <div className="card-body">
                                                 <h6 className="card-title fw-bold mb-3">Payment Information</h6>
-                                                <p className="mb-2"><strong>Total Amount:</strong> ₹{selectedMember.amount}</p>
-                                                <p className="mb-2"><strong>Paid Amount:</strong> ₹{updatedPayment.paidAmount}</p>
-                                                <p className="mb-2"><strong>Due Amount:</strong> ₹{updatedPayment.dueAmount}</p>
+                                                <p className="mb-2"><strong>Total Amount:</strong> ${selectedMember.amount}</p>
+                                                <p className="mb-2"><strong>Paid Amount:</strong> ${updatedPayment.paidAmount}</p>
+                                                <p className="mb-2"><strong>Due Amount:</strong> ${updatedPayment.dueAmount}</p>
                                                 <p className="mb-0">
                                                     <strong>Payment Status:</strong>
                                                     <span className={`ms-2 ${getStatusBadgeClass(updatedPayment.paymentStatus)}`}>

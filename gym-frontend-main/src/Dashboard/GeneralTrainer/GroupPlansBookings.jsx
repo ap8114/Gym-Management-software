@@ -916,7 +916,7 @@ const GroupPlansBookings = () => {
                     <div className="col-12 col-md-6">
                       <div className="mb-2">
                         <small className="text-muted d-block">Amount Paid</small>
-                        <span>₹{selectedCustomer.amountPaid}</span>
+                        <span>${selectedCustomer.amountPaid}</span>
                       </div>
                     </div>
                   </div>

@@ -9,6 +9,7 @@ const SessionBookingPage = () => {
   const adminId = GetAdminId();
   const [sessions, setSessions] = useState([]);
   const [branches, setBranches] = useState([]);
+  // Changed from static trainers to state that will be populated from API
   const [trainers, setTrainers] = useState([]);
 
   const [statusFilter, setStatusFilter] = useState('All');
@@ -21,7 +22,7 @@ const SessionBookingPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // ✅ Use trainerId, not trainerName
+  // Use trainerId, not trainerName
   const [newSession, setNewSession] = useState({
     sessionName: '',
     trainerId: '', // ← ID
@@ -41,17 +42,17 @@ const SessionBookingPage = () => {
       return;
     }
     fetchBranches();
-    fetchTrainers();
+    fetchTrainers(); // Added fetchTrainers() call
   }, [adminId]);
 
-  // Re-fetch sessions when branches or trainers load
+  // Re-fetch sessions when branches and trainers load
   useEffect(() => {
-    if (branches.length > 0 || trainers.length > 0) {
+    if (branches.length > 0 && trainers.length > 0) {
       fetchSessions();
     }
   }, [branches, trainers]);
 
-  // ✅ FIX: Fetch Sessions using branchId instead of adminId
+  // FIX: Fetch Sessions using branchId instead of adminId
   const fetchSessions = async () => {
     setLoading(true);
     try {
@@ -76,7 +77,7 @@ const SessionBookingPage = () => {
         return {
           ...sess,
           branchName: branch?.name || '—',
-          trainerName: trainer?.fullName || '—' // ✅ Fixed: Use fullName instead of name
+          trainerName: trainer?.fullName || '—' // Fixed: Use fullName instead of name
         };
       });
       
@@ -89,7 +90,7 @@ const SessionBookingPage = () => {
     }
   };
 
-  // ✅ FIX: Fetch Branches with the correct URL
+  // FIX: Fetch Branches with correct URL
   const fetchBranches = async () => {
     try {
       const res = await axiosInstance.get(`${BaseUrl}branches/by-admin/${adminId}`);
@@ -106,20 +107,15 @@ const SessionBookingPage = () => {
     }
   };
 
-  // ✅ FIX: Fetch Trainers with correct URL (removed extra slash)
+  // Added fetchTrainers function to get trainers from API
   const fetchTrainers = async () => {
     try {
-      const res = await axiosInstance.get(`${BaseUrl}class/trainers`); // ✅ Fixed: Removed extra slash
+      const res = await axiosInstance.get(`${BaseUrl}class/trainers/personal-general`);
       let trainerList = [];
-      if (res.data.success) {
-        if (res.data.trainers && Array.isArray(res.data.trainers)) {
-          trainerList = res.data.trainers;
-        } else if (Array.isArray(res.data)) {
-          trainerList = res.data;
-        }
+      if (res.data.success && res.data.trainers) {
+        trainerList = res.data.trainers;
       }
       setTrainers(trainerList);
-      console.log('Trainers loaded:', trainerList); // ✅ Added for debugging
     } catch (err) {
       console.error('Error fetching trainers:', err);
       setTrainers([]);
@@ -159,12 +155,12 @@ const SessionBookingPage = () => {
     }
 
     // Validate numbers
-    const numTrainerId = Number(trainerId);
+    const numTrainerId = Number(trainerId); // Convert to number since API returns numeric IDs
     const numBranchId = Number(branchId);
     const numDuration = Number(duration);
 
     if (isNaN(numTrainerId) || isNaN(numBranchId) || isNaN(numDuration) || numDuration <= 0) {
-      setError('Please fill valid values for trainer, branch, and duration.');
+      setError('Please fill valid values for trainer, branch and duration.');
       return;
     }
 
@@ -173,8 +169,8 @@ const SessionBookingPage = () => {
     try {
       const payload = {
         sessionName: sessionName.trim(),
-        trainerId: numTrainerId,   // ✅ Send ID
-        branchId: numBranchId,     // ✅ Send ID
+        trainerId: numTrainerId,   // Send ID as number
+        branchId: numBranchId,     // Send ID as number
         date,                      // "YYYY-MM-DD"
         time,                      // "HH:mm"
         duration: numDuration,
@@ -380,12 +376,12 @@ const SessionBookingPage = () => {
             </div>
             <div className="col-12 col-md-2 col-lg-5 d-flex justify-content-end mt-2 mt-md-0">
                 <button
-                className="btn text-white w-100 w-md-auto"
-                style={{ backgroundColor: customColor }}
-                onClick={() => setShowAddSessionModal(true)}
-              >
-                <FaPlus className="me-1" /> Add Session
-              </button>
+                  className="btn text-white w-100 w-md-auto"
+                  style={{ backgroundColor: customColor }}
+                  onClick={() => setShowAddSessionModal(true)}
+                >
+                  <FaPlus className="me-1" /> Add Session
+                </button>
             </div>
           </div>
         </div>
@@ -512,6 +508,11 @@ const SessionBookingPage = () => {
                 </div>
                 <div className="modal-body">
                   {error && <div className="alert alert-danger">{error}</div>}
+                  {trainers.length === 0 && (
+                    <div className="alert alert-warning">
+                      No trainers found. Please add trainers first before creating sessions.
+                    </div>
+                  )}
                   <div className="row g-3">
                     <div className="col-12 col-md-6">
                       <label className="form-label">Session Name *</label>
@@ -530,6 +531,7 @@ const SessionBookingPage = () => {
                         value={newSession.trainerId}
                         onChange={(e) => setNewSession({ ...newSession, trainerId: e.target.value })}
                         required
+                        disabled={trainers.length === 0}
                       >
                         <option value="">Select trainer</option>
                         {trainers.map(t => (
@@ -608,7 +610,7 @@ const SessionBookingPage = () => {
                     className="btn text-white"
                     style={{ backgroundColor: customColor }}
                     onClick={handleAddSession}
-                    disabled={loading}
+                    disabled={loading || trainers.length === 0}
                   >
                     {loading ? 'Creating...' : 'Add Session'}
                   </button>

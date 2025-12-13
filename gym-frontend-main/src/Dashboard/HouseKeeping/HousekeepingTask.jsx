@@ -1,34 +1,85 @@
 import axios from 'axios';
-import React, { useEffect } from 'react';
-import { ClipboardCheck, Clock, CheckCircle, PlayFill } from 'react-bootstrap-icons';
-import BaseUrl from '../../Api/BaseUrl';
+import React, { useState, useEffect } from 'react';
+import { ClipboardCheck, PlayFill } from 'react-bootstrap-icons';
+import axiosInstance from '../../Api/axiosInstance';
 
 const HousekeepingTask = () => {
-  const [tasks, setTasks] = React.useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [loadingTaskId, setLoadingTaskId] = useState(null); // For loading state on button
+  const userId = localStorage.getItem('userId'); // assignedTo = userId
 
-
-  const taskId = localStorage.getItem('userId');
   useEffect(() => {
-    // Fetch tasks from API (mocked here)
     const fetchTasks = async () => {
-      // Simulate API call
-      const fetchedTasks = await axios.get(`${BaseUrl}housekeepingtask/${taskId}`);
-      setTasks(fetchedTasks.data.data);
+      try {
+        const response = await axiosInstance.get(`housekeepingtask/asignedto/${userId}`);
+        setTasks(response.data.data || []);
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+        setTasks([]);
+      }
     };
 
-    fetchTasks();
-  }, []);
-  // const tasks = [
-  //   { id: 1, area: "Gym Floor", task: "Mop & Disinfect", time: "08:00 - 09:00", status: "Pending" },
-  //   { id: 2, area: "Locker Room", task: "Restock Towels", time: "10:00 - 10:30", status: "Completed" },
-  //   { id: 3, area: "Reception", task: "Clean Counters", time: "14:00 - 14:30", status: "Pending" }
-  // ];
+    if (userId) {
+      fetchTasks();
+    }
+  }, [userId]);
+
+  // Format time (08:00)
+  const formatTime = (isoString) => {
+    if (!isoString) return '—';
+    const date = new Date(isoString);
+    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Format date (04/12/2025)
+  const formatDate = (isoString) => {
+    if (!isoString) return '—';
+    const date = new Date(isoString);
+    return date.toLocaleDateString('en-GB');
+  };
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case 'Completed': return <span className="badge bg-success">Completed</span>;
-      case 'Pending': return <span className="badge bg-warning">Pending</span>;
-      default: return <span className="badge bg-secondary">Unknown</span>;
+    switch (status?.toLowerCase()) {
+      case 'completed':
+        return <span className="badge bg-success">Completed</span>;
+      case 'approved':
+        return <span className="badge bg-info">Approved</span>;
+      case 'pending':
+        return <span className="badge bg-warning">Pending</span>;
+      default:
+        return <span className="badge bg-secondary">{status || 'Unknown'}</span>;
+    }
+  };
+
+  // ✅ Handle task completion
+  const handleCompleteTask = async (taskId, originalStatus) => {
+    // Set loading
+    setLoadingTaskId(taskId);
+
+    // Optimistically update UI
+    const updatedTasks = tasks.map((task) =>
+      task.id === taskId ? { ...task, status: 'completed' } : task
+    );
+    setTasks(updatedTasks);
+
+    try {
+      // 🔁 Call your backend to mark as completed
+      // Adjust the endpoint if needed (e.g., /update, /status, etc.)
+      await axiosInstance.put(`housekeepingtask/${taskId}`, {
+        status: 'completed'
+      });
+      // Success: UI already updated
+    } catch (error) {
+      console.error('Failed to complete task:', error);
+      // ❌ Revert on error
+      const revertedTasks = tasks.map((task) =>
+        task.id === taskId ? { ...task, status: originalStatus } : task
+      );
+      setTasks(revertedTasks);
+      // Optional: show toast error
+      alert('Failed to update task. Please try again.');
+    } finally {
+      setLoadingTaskId(null);
     }
   };
 
@@ -43,41 +94,62 @@ const HousekeepingTask = () => {
               <h5 className="mb-0 d-flex align-items-center">
                 <ClipboardCheck className="me-2" /> My Cleaning Tasks (Today)
               </h5>
-              <span className="badge bg-info">3 Tasks</span>
+              <span className="badge bg-info">{tasks.length} Task{tasks.length !== 1 ? 's' : ''}</span>
             </div>
             <div className="card-body">
-              <div className="table-responsive">
-                <table className="table table-hover">
-                  <thead>
-                    <tr>
-                      <th>Area</th>
-                      <th>Task</th>
-                      <th>Time</th>
-                      <th>Status</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tasks.map(task => (
-                      <tr key={task.id}>
-                        <td>{task.area}</td>
-                        <td>{task.task}</td>
-                        <td className="text-nowrap">{task.time}</td>
-                        <td>{getStatusBadge(task.status)}</td>
-                        <td>
-                          {task.status === 'Pending' ? (
-                            <button className="btn btn-sm btn-success">
-                              <PlayFill size={12} className="me-1" /> Start
-                            </button>
-                          ) : (
-                            <span className="text-muted">—</span>
-                          )}
-                        </td>
+              {tasks.length === 0 ? (
+                <p className="text-muted text-center">No tasks assigned.</p>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>Task Title</th>
+                        <th>Description</th>
+                        <th>Due Time</th>
+                        <th>Status</th>
+                        <th>Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {tasks.map((task) => (
+                        <tr key={task.id}>
+                          <td>{task.taskTitle || '—'}</td>
+                          <td>{task.description || '—'}</td>
+                          <td className="text-nowrap">
+                            {formatDate(task.dueDate)} {formatTime(task.dueDate)}
+                          </td>
+                          <td>{getStatusBadge(task.status)}</td>
+                          <td>
+                            {task.status?.toLowerCase() !== 'completed' ? (
+                              <button
+                                className="btn btn-sm btn-success"
+                                onClick={() =>
+                                  handleCompleteTask(task.id, task.status)
+                                }
+                                disabled={loadingTaskId === task.id}
+                              >
+                                {loadingTaskId === task.id ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    Completing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <PlayFill size={12} className="me-1" /> Complete
+                                  </>
+                                )}
+                              </button>
+                            ) : (
+                              <span className="text-muted">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         </div>

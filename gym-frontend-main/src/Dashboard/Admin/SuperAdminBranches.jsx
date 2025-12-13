@@ -124,7 +124,7 @@ const SuperAdminBranches = () => {
 
     const fetchUserBranches = async () => {
       try {
-        const response = await axiosInstance.get(`/branches/by-admin/${userId}`);
+        const response = await axiosInstance.get(`/branches`);
         let branchesData = Array.isArray(response.data)
           ? response.data
           : response.data?.branches || response.data?.branch

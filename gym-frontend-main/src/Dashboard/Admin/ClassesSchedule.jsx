@@ -16,8 +16,8 @@ const ClassesSchedule = () => {
 
   const [classes, setClasses] = useState([]);
   const [branches, setBranches] = useState([]);
-  const [trainers, setTrainers] = useState([]);
   const [members, setMembers] = useState([]); // For member dropdown
+  const [trainers, setTrainers] = useState([]); // For trainers from API
 
   useEffect(() => {
     if (!adminId) {
@@ -49,19 +49,12 @@ const ClassesSchedule = () => {
       console.log('Processed branches:', branchList);
 
       // Fetch trainers
-      const trainersRes = await axiosInstance.get(`class/trainers`);
+      const trainersRes = await axiosInstance.get(`class/trainers/personal-general`);
       let trainerList = [];
       console.log('Trainers API response:', trainersRes.data);
       
       if (trainersRes.data.success) {
-        // Handle different response structures
-        if (trainersRes.data.trainers) {
-          trainerList = Array.isArray(trainersRes.data.trainers) ? trainersRes.data.trainers : [];
-        } else if (trainersRes.data.trainer) {
-          trainerList = Array.isArray(trainersRes.data.trainer) ? trainersRes.data.trainer : [trainersRes.data.trainer];
-        } else if (Array.isArray(trainersRes.data)) {
-          trainerList = trainersRes.data;
-        }
+        trainerList = Array.isArray(trainersRes.data.trainers) ? trainersRes.data.trainers : [];
       }
       setTrainers(trainerList);
       console.log('Processed trainers:', trainerList);
@@ -138,7 +131,7 @@ const ClassesSchedule = () => {
     setModalType('add');
     setSelectedClass({
       className: '',
-      trainerId: '',
+      trainerId: trainers.length > 0 ? trainers[0].id : '', // Default to first trainer
       branchId: branches.length > 0 ? branches[0].id : '',
       date: '',
       day: '',
@@ -165,14 +158,20 @@ const ClassesSchedule = () => {
       endTime = end.trim();
     }
     
-    // Find trainer and branch IDs from names
-    const trainer = trainers.find(t => (t.fullName || t.name) === gymClass.trainer);
+    // Find branch ID from name
     const branch = branches.find(b => b.name === gymClass.branch);
+    
+    // Find trainer ID from name
+    let trainerId = '';
+    if (gymClass.trainer) {
+      const trainer = trainers.find(t => t.fullName === gymClass.trainer);
+      trainerId = trainer ? trainer.id : '';
+    }
     
     setSelectedClass({ 
       ...gymClass, 
       members: [], // API doesn't return members, so leave empty
-      trainerId: trainer?.id || '',
+      trainerId,
       branchId: branch?.id || '',
       startTime,
       endTime
@@ -194,14 +193,20 @@ const ClassesSchedule = () => {
       endTime = end.trim();
     }
     
-    // Find trainer and branch IDs from names
-    const trainer = trainers.find(t => (t.fullName || t.name) === gymClass.trainer);
+    // Find branch ID from name
     const branch = branches.find(b => b.name === gymClass.branch);
+    
+    // Find trainer ID from name
+    let trainerId = '';
+    if (gymClass.trainer) {
+      const trainer = trainers.find(t => t.fullName === gymClass.trainer);
+      trainerId = trainer ? trainer.id : '';
+    }
     
     setSelectedClass({ 
       ...gymClass, 
       members: [], // No member editing from list
-      trainerId: trainer?.id || '',
+      trainerId,
       branchId: branch?.id || '',
       startTime,
       endTime
@@ -263,7 +268,7 @@ const ClassesSchedule = () => {
 
   const getTrainerName = (trainerId) => {
     const trainer = trainers.find(t => t.id === trainerId);
-    return trainer?.fullName || trainer?.name || '—';
+    return trainer?.fullName || '—';
   };
 
   const saveClass = async () => {
@@ -288,7 +293,7 @@ const ClassesSchedule = () => {
     try {
       const payload = {
         className,
-        trainerId: Number(trainerId),
+        trainerId: Number(trainerId), // Convert to number since API returns numeric IDs
         branchId: Number(branchId),
         date,
         day,
@@ -419,7 +424,6 @@ const ClassesSchedule = () => {
                       <th>TIME</th>
                       <th>DAY</th>
                       <th>STATUS</th>
-                      {/* <th>MEMBERS</th> */}
                       <th className="text-center">ACTIONS</th>
                     </tr>
                   </thead>
@@ -433,15 +437,6 @@ const ClassesSchedule = () => {
                         <td>{c.time}</td>
                         <td>{c.day}</td>
                         <td>{getStatusBadge(c.status)}</td>
-                        {/* <td>
-                          {c.membersCount !== undefined && c.membersCount > 0 ? (
-                            <span className="badge bg-light text-dark">
-                              {c.membersCount} {c.membersCount === 1 ? 'Member' : 'Members'}
-                            </span>
-                          ) : (
-                            <span className="text-muted">No members</span>
-                          )}
-                        </td> */}
                         <td className="text-center">
                           <div className="d-flex justify-content-center gap-1">
                             <button className="btn btn-sm btn-outline-secondary" title="View" onClick={() => handleView(c)}>
@@ -514,7 +509,7 @@ const ClassesSchedule = () => {
                     {modalType === 'view' ? (
                       <input
                         className="form-control rounded-3"
-                        value={selectedClass.trainer || ''}
+                        value={getTrainerName(selectedClass.trainerId)}
                         readOnly
                       />
                     ) : (
@@ -526,7 +521,7 @@ const ClassesSchedule = () => {
                       >
                         <option value="">Select trainer</option>
                         {trainers.map(t => (
-                          <option key={t.id} value={t.id}>{t.fullName || t.name}</option>
+                          <option key={t.id} value={t.id}>{t.fullName}</option>
                         ))}
                       </select>
                     )}

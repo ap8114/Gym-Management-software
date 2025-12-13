@@ -1,71 +1,112 @@
-import axios from 'axios';
-import React, { useEffect } from 'react';
-import BaseUrl from '../../Api/BaseUrl';
+import React, { useEffect, useState } from 'react';
+import axiosInstance from '../../Api/axiosInstance';
 
 const HousekeepingShiftView = () => {
+  const [shift, setShift] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [shifts, setShifts] = React.useState([]);
-  // const shifts = [
-  //   { id: 1, staffId: 1, date: "2023-10-15", startTime: "09:00", endTime: "17:00", type: "Morning", branch: "Main Branch", status: "Approved" },
-  //   { id: 2, staffId: 2, date: "2023-10-15", startTime: "12:00", endTime: "20:00", type: "Evening", branch: "Downtown Branch", status: "Pending" },
-  //   { id: 3, staffId: 3, date: "2023-10-16", startTime: "14:00", endTime: "22:00", type: "Evening", branch: "Main Branch", status: "Approved" },
-  //   { id: 4, staffId: 4, date: "2023-10-16", startTime: "22:00", endTime: "06:00", type: "Night", branch: "West Branch", status: "Approved" },
-  //   { id: 5, staffId: 5, date: "2023-10-17", startTime: "06:00", endTime: "14:00", type: "Morning", branch: "Downtown Branch", status: "Pending" }
-  // ];
-
-
-  const shiftId = localStorage.getItem('userId');
- useEffect(() => {
-  const fetchShifts = async () => {
-    const res = await axios.get(`${BaseUrl}shift/${shiftId}`);
-
-    console.log("API RESPONSE ===>", res.data); // DEBUG
-
-    let apiData = res.data;
-
-    if (Array.isArray(apiData)) {
-      setShifts(apiData);
-    } else if (apiData.data && Array.isArray(apiData.data)) {
-      setShifts(apiData.data);
-    } else if (apiData.shifts && Array.isArray(apiData.shifts)) {
-      setShifts(apiData.shifts);
-    } else {
-      setShifts([]);
+  // Helper to get user from localStorage
+  const getUserFromStorage = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (err) {
+      console.error('Error parsing user from localStorage:', err);
+      return null;
     }
   };
 
-  fetchShifts();
-}, []);
+  const user = getUserFromStorage();
+  const staffId = user?.staffId; // Make sure this exists in your user object
 
+  useEffect(() => {
+    const fetchShift = async () => {
+      // if (!shiftId) {
+      //   setError('No shift ID found in user data.');
+      //   setLoading(false);
+      //   return;
+      // }
 
+      try {
+        const res = await axiosInstance.get(`shift/bystaff/${staffId}`);
+        console.log('API RESPONSE ===>', res.data);
+
+        // Assuming response is { success: true, data: { ...single shift... } }
+        if (res.data?.success && res.data?.data) {
+          setShift(res.data.data);
+        } else {
+          setError('Unexpected API response format.');
+          setShift(null);
+        }
+      } catch (err) {
+        console.error('Error fetching shift:', err);
+        setError('Failed to load shift data.');
+        setShift(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchShift();
+  }, [staffId]);
 
   const getShiftColor = (type) => {
-    switch (type) {
-      case 'Morning': return 'warning';
-      case 'Evening': return 'info';
-      case 'Night': return 'primary';
-      default: return 'secondary';
-    }
+    if (!type) return 'secondary';
+    const normalized = type.toLowerCase();
+    if (normalized.includes('morning')) return 'warning';
+    if (normalized.includes('evening')) return 'info';
+    if (normalized.includes('night')) return 'primary';
+    return 'secondary';
   };
 
   const getStatusClass = (status) => {
-    switch (status) {
-      case 'Approved': return 'success';
-      case 'Pending': return 'warning';
-      case 'Rejected': return 'danger';
+    switch (status?.toLowerCase()) {
+      case 'approved': return 'success';
+      case 'pending': return 'warning';
+      case 'rejected': return 'danger';
       default: return 'secondary';
     }
   };
 
+  // Format ISO date like "2025-12-11T18:30:00.000Z" to "11/12/2025"
+  const formatDate = (isoString) => {
+    if (!isoString) return '—';
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return '—'; // invalid date
+    return date.toLocaleDateString('en-GB');
+  };
 
+  if (loading) {
+    return (
+      <div className="container-fluid py-4">
+        <h2 className="mb-4">Staff Management</h2>
+        <p>Loading shift details...</p>
+      </div>
+    );
+  }
 
-
+  if (error) {
   return (
     <div className="container-fluid py-4">
       <h2 className="mb-4">Staff Management</h2>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h3>Duty Roster</h3>
-      </div>
+    <p className="text-danger">Error: {error}</p>
+  </div>
+  );
+}
+
+// ✅ Only render table if shift is not null/undefined
+if (!shift) {
+  return (
+    <div className="container-fluid py-4">
+      <h2 className="mb-4">Staff Management</h2>
+      <p className="text-muted">No shift assigned.</p>
+    </div>
+  );
+}
+  return (
+    <div className="container-fluid py-4">
+      <h2 className="mb-4">Staff Management</h2>
       <div className="table-responsive mb-4">
         <table className="table table-striped">
           <thead>
@@ -74,25 +115,27 @@ const HousekeepingShiftView = () => {
               <th>Start Time</th>
               <th>End Time</th>
               <th>Shift Type</th>
-              <th>Branch</th>
+              <th>Branch ID</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody>
-            {shifts.length > 0 ? (
-              shifts.map(shift => (
-                <tr key={shift.id}>
-                  <td>{shift.date}</td>
-                  <td>{shift.startTime}</td>
-                  <td>{shift.endTime}</td>
-                  <td><span className={`badge bg-${getShiftColor(shift.type)}`}>{shift.type}</span></td>
-                  <td>{shift.branch}</td>
-                  <td><span className={`badge bg-${getStatusClass(shift.status)}`}>{shift.status}</span></td>
-                </tr>
-              ))
-            ) : (
-              <tr><td colSpan="6" className="text-center text-muted">No shifts assigned.</td></tr>
-            )}
+            <tr key={shift.id}>
+              <td>{formatDate(shift.shiftDate) || '—'}</td>
+              <td>{shift.startTime || '—'}</td>
+              <td>{shift.endTime || '—'}</td>
+              <td>
+                <span className={`badge bg-${getShiftColor(shift.shiftType)}`}>
+                  {shift.shiftType || '—'}
+                </span>
+              </td>
+              <td>{shift.branchId || '—'}</td>
+              <td>
+                <span className={`badge bg-${getStatusClass(shift.status)}`}>
+                  {shift.status || 'Unknown'}
+                </span>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>

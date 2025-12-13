@@ -17,7 +17,7 @@ const ReceptionistDashboard = () => {
   const [padLeft, setPadLeft] = useState(0); // px
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  
+
   // Initialize dashboardData with proper structure
   const [dashboardData, setDashboardData] = useState({
     todayCheckins: 0,
@@ -80,7 +80,7 @@ const ReceptionistDashboard = () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         // Get branchId from localStorage
         let branchId = 1; // Default fallback
         try {
@@ -94,19 +94,19 @@ const ReceptionistDashboard = () => {
         } catch (err) {
           console.error('Error parsing user from localStorage:', err);
         }
-        
+
         // Using axiosInstance to fetch data
         const response = await axiosInstance.get(`dashboard/recepitonishdsh?branchId=${branchId}`);
-        
+
         console.log('API Response:', response.data);
-        
+
         if (response.data && response.data.success) {
           const data = response.data.dashboard;
-          
+
           // Process weekly trend data
           const weeklyTrendData = data.weeklyTrend || [];
           const attendanceData = Array(7).fill(0);
-          
+
           // Sort by sortOrder and populate attendanceData
           if (weeklyTrendData.length > 0) {
             weeklyTrendData.forEach(item => {
@@ -116,7 +116,7 @@ const ReceptionistDashboard = () => {
               }
             });
           }
-          
+
           // Update dashboard data with API response
           setDashboardData(prevData => ({
             ...prevData,
@@ -138,7 +138,7 @@ const ReceptionistDashboard = () => {
           throw new Error('Invalid response format');
         }
       } catch (err) {
-        const errorMessage = err.response ? 
+        const errorMessage = err.response ?
           `Server responded with ${err.response.status}: ${err.response.data.message || err.response.statusText}` :
           err.message;
         setError(errorMessage);
@@ -200,39 +200,6 @@ const ReceptionistDashboard = () => {
 
   return (
     <div className="d-flex flex-column min-vh-100 bg-light overflow-hidden">
-      {/* Header (shifted right on md+ so it doesn't go under sidebar) */}
-      <header className="bg-white shadow-sm border-bottom"
-              style={{ paddingLeft: padLeft }}
-              >
-        <div className="container-fluid px-3 px-md-4 py-md-4">
-          <div className="row g-2 align-items-center">
-            <div className="col-12 col-md-auto d-flex align-items-center gap-2">
-              <h1 className="mb-0 fw-bold">Dashboard</h1>
-              <span className="text-muted d-none d-sm-inline">|</span>
-              <span className="text-muted">{currentDate}</span>
-            </div>
-
-            <div className="col-12 col-md d-flex align-items-center justify-content-md-end gap-2 flex-wrap">
-              <div className="position-relative flex-grow-1">
-                <input type="text" placeholder="Search members..." className="form-control ps-5 py-2" />
-                <RiSearchLine className="position-absolute top-50 start-0 translate-middle-y text-muted ms-2"
-                              style={{ pointerEvents: 'none' }} />
-              </div>
-
-              <button className="position-relative p-2 text-muted btn btn-link m-0 flex-shrink-0">
-                <RiNotificationLine />
-                <span className="position-absolute top-0 start-100 translate-middle p-1 bg-danger rounded-circle"></span>
-              </button>
-
-              <button className="btn btn-primary d-flex align-items-center flex-shrink-0">
-                <RiAddLine className="me-1" />
-                <span className="d-none d-sm-inline">New Member</span>
-                <span className="d-inline d-sm-none">Add</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
 
       {/* Content (also shifted right on md+) */}
       <main style={{ paddingLeft: padLeft }}>
@@ -242,10 +209,6 @@ const ReceptionistDashboard = () => {
               <div className="spinner-border text-primary" role="status">
                 <span className="visually-hidden">Loading...</span>
               </div>
-            </div>
-          ) : error ? (
-            <div className="alert alert-danger">
-              Error loading dashboard data: {error}
             </div>
           ) : (
             <>
@@ -260,14 +223,14 @@ const ReceptionistDashboard = () => {
                   <div className="card border-0 shadow-sm h-100 w-100">
                     <div className="card-body d-flex justify-content-between align-items-center">
                       <div>
-                            <p className="text-muted small mb-1">Today's Check-ins</p>
-                            <p className="fw-bold mb-1" style={{ fontSize: '1.75rem' }}>{dashboardData.todayCheckins}</p>
-                            <p className="text-success small mb-0">
-                              {dashboardData.checkinPercentage > 0 ? `+${dashboardData.checkinPercentage}%` : 'Same as yesterday'}
-                            </p>
+                        <p className="text-muted small mb-1">Today's Check-ins</p>
+                        <p className="fw-bold mb-1" style={{ fontSize: '1.75rem' }}>{dashboardData.todayCheckins}</p>
+                        <p className="text-success small mb-0">
+                          {dashboardData.checkinPercentage > 0 ? `+${dashboardData.checkinPercentage}%` : 'Same as yesterday'}
+                        </p>
                       </div>
                       <div className="d-flex align-items-center justify-content-center rounded-2"
-                           style={{ backgroundColor: 'rgba(110,178,204,0.2)', width: '3rem', height: '3rem' }}>
+                        style={{ backgroundColor: 'rgba(110,178,204,0.2)', width: '3rem', height: '3rem' }}>
                         <RiUserLine className="text-primary" style={{ fontSize: '1.5rem' }} />
                       </div>
                     </div>
@@ -278,12 +241,12 @@ const ReceptionistDashboard = () => {
                   <div className="card border-0 shadow-sm h-100 w-100">
                     <div className="card-body d-flex justify-content-between align-items-center">
                       <div>
-                            <p className="text-muted small mb-1">Yesterday's Check-ins</p>
-                            <p className="fw-bold mb-1" style={{ fontSize: '1.75rem' }}>{dashboardData.yesterdayCheckins}</p>
-                            <p className="text-muted small mb-0">Total check-ins</p>
+                        <p className="text-muted small mb-1">Yesterday's Check-ins</p>
+                        <p className="fw-bold mb-1" style={{ fontSize: '1.75rem' }}>{dashboardData.yesterdayCheckins}</p>
+                        <p className="text-muted small mb-0">Total check-ins</p>
                       </div>
                       <div className="d-flex align-items-center justify-content-center rounded-2"
-                           style={{ backgroundColor: 'rgba(47,106,135,0.2)', width: '3rem', height: '3rem' }}>
+                        style={{ backgroundColor: 'rgba(47,106,135,0.2)', width: '3rem', height: '3rem' }}>
                         <RiUserLine className="text-primary" style={{ fontSize: '1.5rem' }} />
                       </div>
                     </div>
@@ -294,12 +257,12 @@ const ReceptionistDashboard = () => {
                   <div className="card border-0 shadow-sm h-100 w-100">
                     <div className="card-body d-flex justify-content-between align-items-center">
                       <div>
-                            <p className="text-muted small mb-1">Total Members</p>
-                            <p className="fw-bold mb-1" style={{ fontSize: '1.75rem' }}>{dashboardData.totalMembers}</p>
-                            <p className="text-info small mb-0">Active members</p>
+                        <p className="text-muted small mb-1">Total Members</p>
+                        <p className="fw-bold mb-1" style={{ fontSize: '1.75rem' }}>{dashboardData.totalMembers}</p>
+                        <p className="text-info small mb-0">Active members</p>
                       </div>
                       <div className="d-flex align-items-center justify-content-center rounded-2"
-                           style={{ backgroundColor: 'rgba(251,191,114,0.2)', width: '3rem', height: '3rem' }}>
+                        style={{ backgroundColor: 'rgba(251,191,114,0.2)', width: '3rem', height: '3rem' }}>
                         <RiUserLine className="text-primary" style={{ fontSize: '1.5rem' }} />
                       </div>
                     </div>
@@ -310,12 +273,12 @@ const ReceptionistDashboard = () => {
                   <div className="card border-0 shadow-sm h-100 w-100">
                     <div className="card-body d-flex justify-content-between align-items-center">
                       <div>
-                            <p className="text-muted small mb-1">New Members</p>
-                            <p className="fw-bold mb-1" style={{ fontSize: '1.75rem' }}>{dashboardData.newMembers}</p>
-                            <p className="text-warning small mb-0">This month</p>
+                        <p className="text-muted small mb-1">New Members</p>
+                        <p className="fw-bold mb-1" style={{ fontSize: '1.75rem' }}>{dashboardData.newMembers}</p>
+                        <p className="text-warning small mb-0">This month</p>
                       </div>
                       <div className="d-flex align-items-center justify-content-center rounded-2"
-                           style={{ backgroundColor: 'rgba(252,141,98,0.2)', width: '3rem', height: '3rem' }}>
+                        style={{ backgroundColor: 'rgba(252,141,98,0.2)', width: '3rem', height: '3rem' }}>
                         <RiUserLine className="text-primary" style={{ fontSize: '1.5rem' }} />
                       </div>
                     </div>
@@ -327,23 +290,23 @@ const ReceptionistDashboard = () => {
               <div className="row g-3 mb-3 mb-md-4">
                 <div className="col-12 col-lg-6 d-flex">
                   <div className="card border-0 shadow-sm w-100">
-                        <div className="card-body">
-                          <h5 className="fw-bold mb-3">Daily Attendance Trend</h5>
-                          <div className="w-100" style={{ height: '300px' }}>
-                            <Line data={dashboardData.attendanceData} options={attendanceOptions} />
-                          </div>
-                        </div>
+                    <div className="card-body">
+                      <h5 className="fw-bold mb-3">Daily Attendance Trend</h5>
+                      <div className="w-100" style={{ height: '300px' }}>
+                        <Line data={dashboardData.attendanceData} options={attendanceOptions} />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 <div className="col-12 col-lg-6 d-flex">
                   <div className="card border-0 shadow-sm w-100">
-                        <div className="card-body">
-                          <h5 className="fw-bold mb-3">Revenue by Payment Method</h5>
-                          <div className="w-100" style={{ height: '300px' }}>
-                            <Pie data={dashboardData.revenueData} options={revenueOptions} />
-                          </div>
-                        </div>
+                    <div className="card-body">
+                      <h5 className="fw-bold mb-3">Revenue by Payment Method</h5>
+                      <div className="w-100" style={{ height: '300px' }}>
+                        <Pie data={dashboardData.revenueData} options={revenueOptions} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
