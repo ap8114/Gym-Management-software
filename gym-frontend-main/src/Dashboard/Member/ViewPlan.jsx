@@ -52,7 +52,7 @@ const ViewPlans = () => {
           // Store original price as number for booking; format only for display
           const formattedPlans = response.data.plans.map(plan => ({
             ...plan,
-            displayPrice: `₹${(plan.price || 0).toLocaleString()}`,
+            displayPrice: `$${(plan.price || 0).toLocaleString()}`,
             numericPrice: plan.price || 0,
           }));
           setAllPlans(formattedPlans);

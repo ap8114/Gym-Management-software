@@ -81,7 +81,7 @@ export default function DashboardHomePage() {
 
   // ----------- Alerts (Static, as not provided by API) -----------
   const alerts = [
-    { type: "danger", text: "12 invoices overdue (₹87,990)" },
+    { type: "danger", text: "12 invoices overdue ($87,990)" },
     { type: "success", text: "Razorpay webhook verified" },
     { type: "warning", text: "Diwali Promo scheduled (All branches)" },
     { type: "info", text: "New QR batch printed for Pune" },
@@ -224,9 +224,9 @@ export default function DashboardHomePage() {
 function fmtINR(n) {
   // Handle null or undefined values from the API
   if (n === null || n === undefined) {
-    return "₹ 0";
+    return "$ 0";
   }
-  return "₹ " + n.toLocaleString("en-IN");
+  return "$ " + n.toLocaleString("en-IN");
 }
 
 function badgeTone(type) {

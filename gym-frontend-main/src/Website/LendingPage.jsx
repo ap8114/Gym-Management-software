@@ -262,7 +262,7 @@ const LendingPage = () => {
           <div className="pricing-header">
             <h3>{plan.name}</h3>
             <div className="pricing-price">
-              <span className="price">₹{plan.price.toLocaleString()}</span>
+              <span className="price">${plan.price.toLocaleString()}</span>
               <span className="period">{period}</span>
             </div>
           </div>
@@ -337,9 +337,9 @@ const LendingPage = () => {
     revenue: {
       title: "Revenue Analytics",
       stats: [
-        { label: "Monthly Revenue", value: "₹2.4L", change: "+18%" },
-        { label: "Avg. Revenue/Member", value: "₹980", change: "+3%" },
-        { label: "Pending Payments", value: "₹24K", change: "-5%" }
+        { label: "Monthly Revenue", value: "$2.4L", change: "+18%" },
+        { label: "Avg. Revenue/Member", value: "$980", change: "+3%" },
+        { label: "Pending Payments", value: "$24K", change: "-5%" }
       ],
       chart: [28, 48, 40, 59, 66, 77, 80]
     },

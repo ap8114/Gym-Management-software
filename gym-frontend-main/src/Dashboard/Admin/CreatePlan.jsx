@@ -162,7 +162,7 @@ const CreatePlan = () => {
           name: plan.name,
           sessions: plan.sessions,
           validity: plan.validityDays,
-          price: `₹${plan.price.toLocaleString()}`,
+          price: `$${plan.price.toLocaleString()}`,
           active: plan.active ?? true,
           branchId: plan.branchId, // Store the branchId from API
           branch: plan.branchId ? getBranchNameById(plan.branchId) : "Unknown Branch", // Get branch name from ID
@@ -201,7 +201,7 @@ const CreatePlan = () => {
           memberName: request.memberName,
           planName: request.className || "Personal Training", // Use className if available, otherwise use default
           planType: request.className ? "group" : "personal", // Determine type based on className presence
-          price: `₹${parseFloat(request.price).toLocaleString()}`,
+          price: `$${parseFloat(request.price).toLocaleString()}`,
           sessions: "N/A", // Not provided in API, you might need to fetch this separately
           validity: "N/A", // Not provided in API, you might need to fetch this separately
           sessionsUsed: "N/A", // Not provided in API
@@ -263,7 +263,7 @@ const fetchRenewalRequests = async () => {
           currentPlanType: currentPlan.type ? currentPlan.type.toLowerCase() : 'unknown',
           requestedPlan: requestedPlan.name || 'Unknown',
           requestedPlanType: requestedPlan.type ? requestedPlan.type.toLowerCase() : 'unknown',
-          price: requestedPlan.price ? `₹${parseFloat(requestedPlan.price).toLocaleString()}` : 'N/A',
+          price: requestedPlan.price ? `$${parseFloat(requestedPlan.price).toLocaleString()}` : 'N/A',
           sessions: requestedPlan.sessions || 'N/A',
           validity: requestedPlan.validityDays || requestedPlan.validity || 'N/A',
           membershipFrom: renewal.membershipFrom || 'N/A',
@@ -300,7 +300,7 @@ const fetchRenewalRequests = async () => {
           name: plan.name,
           sessions: plan.sessions,
           validity: plan.validityDays,
-          price: `₹${plan.price.toLocaleString()}`,
+          price: `$${plan.price.toLocaleString()}`,
           active: plan.active ?? true,
           branchId: plan.branchId,
           branch: plan.branchId ? getBranchNameById(plan.branchId) : "Unknown Branch",
@@ -367,7 +367,7 @@ const fetchRenewalRequests = async () => {
           name: response.data.plan.name,
           sessions: response.data.plan.sessions,
           validity: response.data.plan.validityDays,
-          price: `₹${response.data.plan.price.toLocaleString()}`,
+          price: `$${response.data.plan.price.toLocaleString()}`,
           active: true,
           branchId: response.data.plan.branchId, // Store the branchId from API
           branch: response.data.plan.branchId
@@ -414,7 +414,7 @@ const fetchRenewalRequests = async () => {
       name: plan.name,
       sessions: plan.sessions.toString(),
       validity: plan.validity.toString(),
-      price: plan.price.replace("₹", "").replace(",", ""),
+      price: plan.price.replace("$", "").replace(",", ""),
       type: planType,
       branch: plan.branch,
       branchId: branchObj ? branchObj.id : plan.branchId, // Use the found branch ID or the existing one
@@ -457,7 +457,7 @@ const fetchRenewalRequests = async () => {
           name: response.data.plan.name,
           sessions: response.data.plan.sessions,
           validity: response.data.plan.validityDays,
-          price: `₹${response.data.plan.price.toLocaleString()}`,
+          price: `$${response.data.plan.price.toLocaleString()}`,
           branchId: response.data.plan.branchId, // Store the branchId from API
           branch: response.data.plan.branchId
             ? getBranchNameById(response.data.plan.branchId)
@@ -1833,7 +1833,7 @@ const fetchRenewalRequests = async () => {
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-4">
-                    <Form.Label className="fw-medium">Price (₹)</Form.Label>
+                    <Form.Label className="fw-medium">Price ($)</Form.Label>
                     <Form.Control
                       type="number"
                       placeholder="e.g., 5999"
@@ -1846,7 +1846,7 @@ const fetchRenewalRequests = async () => {
                   </Form.Group>
                 </Col>
               </Row>
-              <Row>
+              {/* <Row>
                 <Col md={12}>
                   <Form.Group className="mb-4">
                     <Form.Label className="fw-medium">Branch</Form.Label>
@@ -1877,7 +1877,7 @@ const fetchRenewalRequests = async () => {
                     )}
                   </Form.Group>
                 </Col>
-              </Row>
+              </Row> */}
             </Form>
           </Modal.Body>
           <Modal.Footer
@@ -1969,7 +1969,7 @@ const fetchRenewalRequests = async () => {
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-4">
-                    <Form.Label className="fw-medium">Price (₹)</Form.Label>
+                    <Form.Label className="fw-medium">Price ($)</Form.Label>
                     <Form.Control
                       type="number"
                       value={newPlan.price}
@@ -1980,7 +1980,7 @@ const fetchRenewalRequests = async () => {
                     />
                   </Form.Group>
                 </Col>
-                <Col md={6}>
+                {/* <Col md={6}>
                   <Form.Group className="mb-4">
                     <Form.Label
                       className="fw-medium"
@@ -2012,7 +2012,7 @@ const fetchRenewalRequests = async () => {
                       ))}
                     </Form.Select>
                   </Form.Group>
-                </Col>
+                </Col> */}
               </Row>
             </Form>
           </Modal.Body>

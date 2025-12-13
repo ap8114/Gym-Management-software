@@ -186,7 +186,7 @@ const fetchMembersByAdminId = async () => {
           name: plan.name,
           sessions: plan.sessions,
           validity: plan.validityDays,
-          price: `₹${plan.price.toLocaleString()}`,
+          price: `$${plan.price.toLocaleString()}`,
           active: true, // Assuming all plans from API are active by default
           branch: "Downtown", // Default branch since API doesn't provide it
           type: plan.type.toLowerCase(), // Convert to lowercase for our component

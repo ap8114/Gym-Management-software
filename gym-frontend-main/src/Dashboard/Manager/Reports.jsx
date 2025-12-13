@@ -151,7 +151,7 @@ const Reports = () => {
             </div>
           ))}
         </div>
-        <div style={{ textAlign: 'center', marginTop: '10px', fontWeight: 'bold' }}>Revenue by Branch (in ₹ thousands)</div>
+        <div style={{ textAlign: 'center', marginTop: '10px', fontWeight: 'bold' }}>Revenue by Branch (in $ thousands)</div>
       </div>
     );
   };
@@ -310,7 +310,7 @@ const Reports = () => {
                   <div className="card bg-primary bg-opacity-10 text-primary border-0">
                     <div className="card-body">
                       <h6 className="card-title text-dark">Total Sales</h6>
-                      <h3 className="card-text">₹{salesData.totalSales.toLocaleString()}</h3>
+                      <h3 className="card-text">${salesData.totalSales.toLocaleString()}</h3>
                       <div className="d-flex align-items-center text-dark">
                         <ArrowUpRight className="me-1 " />
                         <small>+5.2% from last period</small>
@@ -334,7 +334,7 @@ const Reports = () => {
                   <div className="card bg-info bg-opacity-10 text-info border-0">
                     <div className="card-body">
                       <h6 className="card-title text-dark">Avg Order Value</h6>
-                      <h3 className="card-text">₹{salesData.avgOrderValue}</h3>
+                      <h3 className="card-text">${salesData.avgOrderValue}</h3>
                       <div className="d-flex align-items-center text-dark">
                         <ArrowUpRight className="me-1" />
                         <small>+2.3% from last period</small>
@@ -361,7 +361,7 @@ const Reports = () => {
                   <div className="card bg-primary bg-opacity-10 text-dark">
                     <div className="card-body">
                       <h6 className="card-title">Total Revenue</h6>
-                      <h3 className="card-text text-primary">₹{revenueData.totalRevenue.toLocaleString()}</h3>
+                      <h3 className="card-text text-primary">${revenueData.totalRevenue.toLocaleString()}</h3>
                       <div className="d-flex align-items-center">
                         <ArrowUpRight className="me-1" />
                         <small>+{revenueData.revenueGrowth}% from last period</small>
@@ -388,7 +388,7 @@ const Reports = () => {
                       <h5 className="card-text text-info">{revenueData.highestEarningBranch}</h5>
                       <div className="d-flex align-items-center">
                         <Building className="me-1" />
-                        <small>₹78,500 revenue</small>
+                        <small>$78,500 revenue</small>
                       </div>
                     </div>
                   </div>
@@ -520,7 +520,7 @@ const Reports = () => {
                           <td>{transaction.customer}</td>
                           <td>{transaction.product}</td>
                           <td>{transaction.qty}</td>
-                          <td>₹{transaction.price.toLocaleString()}</td>
+                          <td>${transaction.price.toLocaleString()}</td>
                           <td>{transaction.payment}</td>
                           <td>{transaction.staff}</td>
                           <td>{transaction.branch}</td>
@@ -545,9 +545,9 @@ const Reports = () => {
                               {branch.name}
                             </button>
                           </td>
-                          <td>₹{branch.revenue.toLocaleString()}</td>
-                          <td>₹{branch.expenses.toLocaleString()}</td>
-                          <td>₹{branch.profit.toLocaleString()}</td>
+                          <td>${branch.revenue.toLocaleString()}</td>
+                          <td>${branch.expenses.toLocaleString()}</td>
+                          <td>${branch.profit.toLocaleString()}</td>
                           <td>{branch.contribution}%</td>
                           <td>
                             <button className="btn btn-sm btn-outline-primary me-1" title="View Details">

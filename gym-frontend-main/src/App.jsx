@@ -120,6 +120,7 @@ import DashboardHomePage from "./Dashboard/SuperAdmin/SuperAdminDashbaord";
 import ShiftManagement from "./Dashboard/Admin/ShiftMangamenet";
 import AdminTaskManagement from "./Dashboard/Admin/AdminTaskManagement";
 import PersonalAttendance from "./Dashboard/PersonalTrainer/PersonalAttendance";
+import AdminSetting from "./Dashboard/Admin/AdminSetting";
 
 
 
@@ -221,6 +222,7 @@ function App() {
                 {/* setting routes */}
                 <Route path="/admin/settings/BranchManagement" element={< BranchManagement />} />
                 <Route path="/admin/settings/RoleManagement" element={< RoleManagement />} />
+                <Route path="/admin/settings" element={< AdminSetting />} />
 
                 {/* admin dahsboard end */}
 

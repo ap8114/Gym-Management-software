@@ -129,7 +129,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         name: "Settings",
         icon: faGear,
         // path: "/admin/settings/RoleManagement"
-        path: "/member/account"
+        path: "/admin/settings"
       }
     ],
 

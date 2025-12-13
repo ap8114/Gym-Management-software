@@ -622,9 +622,9 @@ const ManageMember = () => {
                                             <label className="form-label">Select Membership Plan</label>
                                             <select className="form-select rounded-3" name="plan" required>
                                                 <option value="">-- Select Plan --</option>
-                                                <option value="Basic">Basic (₹29/month)</option>
-                                                <option value="Gold">Gold (₹59/month)</option>
-                                                <option value="Premium">Premium (₹99/month)</option>
+                                                <option value="Basic">Basic ($29/month)</option>
+                                                <option value="Gold">Gold ($59/month)</option>
+                                                <option value="Premium">Premium ($99/month)</option>
                                             </select>
                                         </div>
                                     </div>

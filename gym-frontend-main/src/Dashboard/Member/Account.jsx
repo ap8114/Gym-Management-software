@@ -587,7 +587,7 @@ const Account = () => {
                     type="number"
                     name="membership_fee"
                     className="form-control"
-                    placeholder="₹"
+                    placeholder="$"
                     value={membership.membership_fee}
                     onChange={handleMembershipChange}
                     min="0"

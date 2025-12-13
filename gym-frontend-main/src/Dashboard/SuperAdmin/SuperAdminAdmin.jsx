@@ -585,7 +585,7 @@ const AdminForm = ({
         planDuration: selectedPlan.duration,
         planDescription:
           selectedPlan.description ||
-          `Plan for ${selectedPlan.duration} @ ₹${selectedPlan.price}`,
+          `Plan for ${selectedPlan.duration} @ $${selectedPlan.price}`,
       }));
     } else {
       setFormData((prev) => ({
@@ -745,7 +745,7 @@ const AdminForm = ({
                 <option value="">-- Choose Plan --</option>
                 {plans.map((plan) => (
                   <option key={plan.id} value={plan.id}>
-                    {plan.name} (₹{plan.price}, {plan.duration})
+                    {plan.name} (${plan.price}, {plan.duration})
                   </option>
                 ))}
               </select>

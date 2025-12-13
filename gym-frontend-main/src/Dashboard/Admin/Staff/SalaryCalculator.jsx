@@ -883,7 +883,7 @@ const handleSubmit = async () => {
                         to {formatDate(salary.period_end)}
                       </small>
                     </td>
-                    <td className="text-end fw-bold">₹{salary.net_pay}</td>
+                    <td className="text-end fw-bold">${salary.net_pay}</td>
                     <td className="text-center d-none d-lg-table-cell">
                       {getStatusBadge(salary.status)}
                     </td>
