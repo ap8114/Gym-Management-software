@@ -62,7 +62,7 @@ const ShiftManagement = () => {
 
   const [shiftForm, setShiftForm] = useState({
     staffIds: [],
-    branchId: '',
+
     shiftDate: '',
     startTime: '',
     endTime: '',
@@ -142,7 +142,8 @@ const ShiftManagement = () => {
 
   const handleCreateShift = async () => {
     try {
-      if (!shiftForm.staffIds || !shiftForm.staffIds.length || !shiftForm.branchId || !shiftForm.shiftDate || 
+      console.log(shiftForm)
+      if (!shiftForm.staffIds || !shiftForm.staffIds.length ||  !shiftForm.shiftDate || 
           !shiftForm.startTime || !shiftForm.endTime || !shiftForm.shiftType) {
         alert('Please fill all required fields');
         return;
@@ -168,7 +169,6 @@ const ShiftManagement = () => {
         
         setShiftForm({
           staffIds: [],
-          branchId: '',
           shiftDate: '',
           startTime: '',
           endTime: '',
@@ -284,19 +284,24 @@ const ShiftManagement = () => {
                 <form>
                   <div className="row mb-3">
                     <div className="col-md-6">
-                      <label className="form-label">Select Staff</label>
-                      <div className="border rounded p-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                      <label className="form-label"> Staff</label>
+                       <select 
+                        className="form-select"
+                        name="staffIds"
+                        value={shiftForm.staffIds}
+                        onChange={handleShiftFormChange}
+                        disabled={loading}
+                      >
+                        <option value="">Select Branch</option>
+                        {staffMembers.map(staff => (
+                          <option key={staff.staffId} value={staff.staffId}>{staff.fullName}</option>
+                        ))}
+                      </select>
+                      {/* <div className="border rounded p-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
                         {staffMembers.length > 0 ? (
                           staffMembers.map(staff => (
                             <div className="form-check" key={staff.staffId}>
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                value={staff.staffId}
-                                id={`staff-${staff.staffId}`}
-                                checked={shiftForm.staffIds.includes(staff.staffId)}
-                                onChange={(e) => handleStaffCheckboxChange(staff.staffId, e.target.checked)}
-                              />
+                             
                               <label className="form-check-label" htmlFor={`staff-${staff.staffId}`}>
                                 {staff.fullName} - {getBranchName(staff.branchId)}
                               </label>
@@ -305,9 +310,9 @@ const ShiftManagement = () => {
                         ) : (
                           <p className="text-muted">No staff members available</p>
                         )}
-                      </div>
+                      </div> */}
                     </div>
-                    <div className="col-md-6">
+                    {/* <div className="col-md-6">
                       <label className="form-label">Branch</label>
                       <select 
                         className="form-select"
@@ -321,11 +326,8 @@ const ShiftManagement = () => {
                           <option key={branch.id} value={branch.id}>{branch.name}</option>
                         ))}
                       </select>
-                    </div>
-                  </div>
-
-                  <div className="row mb-3">
-                    <div className="col-md-4">
+                    </div> */}
+                     <div className="col-md-6">
                       <label className="form-label">Date</label>
                       <input 
                         type="date" 
@@ -335,7 +337,11 @@ const ShiftManagement = () => {
                         onChange={handleShiftFormChange}
                       />
                     </div>
-                    <div className="col-md-4">
+                  </div>
+
+                  <div className="row mb-3">
+                   
+                    <div className="col-md-6">
                       <label className="form-label">Start Time</label>
                       <input 
                         type="time" 
@@ -345,7 +351,7 @@ const ShiftManagement = () => {
                         onChange={handleShiftFormChange}
                       />
                     </div>
-                    <div className="col-md-4">
+                    <div className="col-md-6">
                       <label className="form-label">End Time</label>
                       <input 
                         type="time" 
@@ -439,7 +445,6 @@ const ShiftManagement = () => {
               <th>Start Time</th>
               <th>End Time</th>
               <th>Shift Type</th>
-              <th>Branch</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -457,7 +462,7 @@ const ShiftManagement = () => {
                     {shift.shiftType || 'Not Specified'}
                   </span>
                 </td>
-                <td>{getBranchName(shift.branchId)}</td>
+            
                 <td>
                   <span className={`badge bg-${getStatusClass(shift.status)}`}>
                     {shift.status}

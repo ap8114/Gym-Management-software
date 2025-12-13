@@ -263,7 +263,7 @@ const ReceptionistPaymentCollection = () => {
 
   // Format currency from cents to rupees
   const formatCurrency = (amountInCents) => {
-    return `$${(amountInCents / 100).toFixed(2)}`;
+    return `₹${(amountInCents / 100).toFixed(2)}`;
   };
 
   // Get status badge for payments
@@ -790,7 +790,7 @@ const ReceptionistPaymentCollection = () => {
                       />
                     </div>
                     <div className="col-12 col-md-6">
-                      <label className="form-label">Amount ($) <span className="text-danger">*</span></label>
+                      <label className="form-label">Amount (₹) <span className="text-danger">*</span></label>
                       <input
                         type="number"
                         className="form-control rounded-3"

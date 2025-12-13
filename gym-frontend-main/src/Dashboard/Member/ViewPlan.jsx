@@ -31,11 +31,11 @@ const ViewPlans = () => {
   const user = getUserFromStorage();
   const memberId = user?.id || null;
   const adminId = user?.adminId || null;
-  const branchId = user?.branchId || null;
+  // const branchId = user?.branchId || null;
 
   console.log('Member ID:', memberId);
   console.log('Admin ID:', adminId);
-  console.log('Branch ID:', branchId);
+  // console.log('Branch ID:', branchId);
 
   // Fetch plans
   useEffect(() => {
