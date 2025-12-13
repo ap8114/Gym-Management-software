@@ -768,12 +768,12 @@ const CreatePlan = () => {
           {req.planType}
         </span>
       </td>
-      <td className="d-none d-lg-table-cell">
+      {/* <td className="d-none d-lg-table-cell">
         {req.sessions} total
       </td>
       <td className="d-none d-lg-table-cell">
         {req.validity} days
-      </td>
+      </td> */}
       <td>{req.requestedAt}</td>
       <td>
         {req.status === "pending" && (
@@ -879,12 +879,12 @@ const CreatePlan = () => {
           {req.requestedPlanType}
         </span>
       </td>
-      <td className="d-none d-lg-table-cell">
+      {/* <td className="d-none d-lg-table-cell">
         {req.sessions} total
       </td>
       <td className="d-none d-lg-table-cell">
         {req.validity} days
-      </td>
+      </td> */}
       <td>{req.requestedAt}</td>
       <td>
         {req.status === "pending" && (
@@ -1505,8 +1505,8 @@ const CreatePlan = () => {
                           {activeRequestTab === "renewal" && <th>Current Plan</th>}
                           <th>{activeRequestTab === "renewal" ? "Requested Plan" : "Plan"}</th>
                           <th>Type</th>
-                          <th className="d-none d-lg-table-cell">Sessions</th>
-                          <th className="d-none d-lg-table-cell">Validity</th>
+                          {/* <th className="d-none d-lg-table-cell">Sessions</th>
+                          <th className="d-none d-lg-table-cell">Validity</th> */}
                           <th>Requested At</th>
                           <th>Status</th>
                           <th>Action</th>
