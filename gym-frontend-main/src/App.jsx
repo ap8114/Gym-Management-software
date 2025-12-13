@@ -122,6 +122,7 @@ import AdminTaskManagement from "./Dashboard/Admin/AdminTaskManagement";
 import PersonalAttendance from "./Dashboard/PersonalTrainer/PersonalAttendance";
 import AdminSetting from "./Dashboard/Admin/AdminSetting";
 import DynamicPage from "./Layout/DynamicPage";
+import RequestPlan from "./Dashboard/Member/RequestsPlan";
 
 
 
@@ -258,6 +259,7 @@ const hideLayout =
                 <Route path="/member/attendance-history" element={<AttendanceHistory />} />
                 <Route path="/member/qrcheckin" element={<MemberQrCheckin />} />
                 <Route path="/member/viewplan" element={<ViewPlan />} />
+                <Route path="/member/requestplan" element={<RequestPlan />} />
 
                 {/* <Route path="/member/memberbooking" element={<MemberBooking />} /> */}
                 <Route path="/receptionist/dashboard" element={<ReceptionistDashboard />} />
