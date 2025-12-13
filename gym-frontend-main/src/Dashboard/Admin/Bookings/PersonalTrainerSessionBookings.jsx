@@ -26,7 +26,7 @@ const SessionBookingPage = () => {
   const [newSession, setNewSession] = useState({
     sessionName: '',
     trainerId: '', // ← ID
-    branchId: '',
+    // branchId: '', // Commented out branch field
     date: '',
     time: '',
     duration: 60,
@@ -61,7 +61,7 @@ const SessionBookingPage = () => {
       // Fetch sessions for each branch
       for (const branch of branches) {
         try {
-          const res = await axiosInstance.get(`${BaseUrl}sessions/${branch.id}`);
+          const res = await axiosInstance.get(`${BaseUrl}sessions/${adminId}`);
           if (res.data.success && res.data.sessions) {
             allSessions = [...allSessions, ...res.data.sessions];
           }
@@ -147,20 +147,20 @@ const SessionBookingPage = () => {
   };
 
   const handleAddSession = async () => {
-    const { sessionName, trainerId, branchId, date, time, duration, description } = newSession;
+    const { sessionName, trainerId, date, time, duration, description } = newSession; // Removed branchId
 
-    if (!sessionName || !trainerId || !branchId || !date || !time || !description) {
+    if (!sessionName || !trainerId || !date || !time || !description) { // Removed branchId from validation
       setError('Please fill all required fields');
       return;
     }
 
     // Validate numbers
     const numTrainerId = Number(trainerId); // Convert to number since API returns numeric IDs
-    const numBranchId = Number(branchId);
+    // const numBranchId = Number(branchId); // Commented out branch field
     const numDuration = Number(duration);
 
-    if (isNaN(numTrainerId) || isNaN(numBranchId) || isNaN(numDuration) || numDuration <= 0) {
-      setError('Please fill valid values for trainer, branch and duration.');
+    if (isNaN(numTrainerId) || isNaN(numDuration) || numDuration <= 0) { // Removed branchId validation
+      setError('Please fill valid values for trainer and duration.'); // Removed branch from error message
       return;
     }
 
@@ -170,7 +170,7 @@ const SessionBookingPage = () => {
       const payload = {
         sessionName: sessionName.trim(),
         trainerId: numTrainerId,   // Send ID as number
-        branchId: numBranchId,     // Send ID as number
+        // branchId: numBranchId,     // Commented out branch field
         date,                      // "YYYY-MM-DD"
         time,                      // "HH:mm"
         duration: numDuration,
@@ -184,7 +184,7 @@ const SessionBookingPage = () => {
         setNewSession({
           sessionName: '',
           trainerId: '',
-          branchId: '',
+          // branchId: '', // Commented out branch field
           date: '',
           time: '',
           duration: 60,
@@ -282,7 +282,8 @@ const SessionBookingPage = () => {
           </div>
         </div>
         <div className="d-flex justify-content-between align-items-center mb-2">
-          <span className="badge bg-light text-dark">{session.branchName || '—'}</span>
+          {/* Commented out branch field */}
+          {/* <span className="badge bg-light text-dark">{session.branchName || '—'}</span> */}
           <div className="btn-group btn-group-sm" role="group">
             <button
               className="btn"
@@ -359,7 +360,8 @@ const SessionBookingPage = () => {
                 </select>
               </div>
             </div>
-            <div className="col-6 col-md-3 col-lg-2">
+            {/* Commented out branch filter */}
+            {/* <div className="col-6 col-md-3 col-lg-2">
               <div className="input-group">
                 <span className="input-group-text"><FaFilter /></span>
                 <select
@@ -373,7 +375,7 @@ const SessionBookingPage = () => {
                   ))}
                 </select>
               </div>
-            </div>
+            </div> */}
             <div className="col-12 col-md-2 col-lg-5 d-flex justify-content-end mt-2 mt-md-0">
                 <button
                   className="btn text-white w-100 w-md-auto"
@@ -404,7 +406,8 @@ const SessionBookingPage = () => {
                         <th>Session Name</th>
                         <th>Trainer</th>
                         <th>Date & Time</th>
-                        <th>Branch</th>
+                        {/* Commented out branch column */}
+                        {/* <th>Branch</th> */}
                         <th>Status</th>
                         <th>Actions</th>
                       </tr>
@@ -423,9 +426,10 @@ const SessionBookingPage = () => {
                             <div>{formatDate(s.date)}</div>
                             <div className="text-muted small">{formatTimeDisplay(s.time)}</div>
                           </td>
-                          <td>
+                          {/* Commented out branch column */}
+                          {/* <td>
                             <span className="badge bg-light text-dark">{s.branchName || '—'}</span>
-                          </td>
+                          </td> */}
                           <td>
                             <span className={`badge ${
                               s.status === 'Completed' ? 'bg-success' :
@@ -539,7 +543,8 @@ const SessionBookingPage = () => {
                         ))}
                       </select>
                     </div>
-                    <div className="col-12 col-md-6">
+                    {/* Commented out branch field */}
+                    {/* <div className="col-12 col-md-6">
                       <label className="form-label">Branch *</label>
                       <select
                         className="form-select"
@@ -552,7 +557,7 @@ const SessionBookingPage = () => {
                           <option key={b.id} value={b.id}>{b.name}</option>
                         ))}
                       </select>
-                    </div>
+                    </div> */}
                     <div className="col-12 col-md-6">
                       <label className="form-label">Date *</label>
                       <input
@@ -652,9 +657,10 @@ const SessionBookingPage = () => {
                       <div className="col-12 col-md-6">
                         <p><strong>Duration:</strong> {selectedSession.duration} minutes</p>
                       </div>
-                      <div className="col-12 col-md-6">
+                      {/* Commented out branch field */}
+                      {/* <div className="col-12 col-md-6">
                         <p><strong>Branch:</strong> {selectedSession.branchName || '—'}</p>
-                      </div>
+                      </div> */}
                       <div className="col-12 col-md-6">
                         <p>
                           <strong>Status:</strong>{" "}
@@ -732,7 +738,8 @@ const SessionBookingPage = () => {
                     <div className="row g-2">
                       <div className="col-12"><strong>Session:</strong> {selectedSession.sessionName}</div>
                       <div className="col-12"><strong>Trainer:</strong> {selectedSession.trainerName}</div>
-                      <div className="col-12"><strong>Branch:</strong> {selectedSession.branchName}</div>
+                      {/* Commented out branch field */}
+                      {/* <div className="col-12"><strong>Branch:</strong> {selectedSession.branchName}</div> */}
                       <div className="col-12"><strong>Date & Time:</strong> {formatDate(selectedSession.date)} at {formatTimeDisplay(selectedSession.time)}</div>
                     </div>
                   </div>

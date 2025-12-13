@@ -17,13 +17,13 @@ import { FaEdit } from "react-icons/fa";
 const tabs = ["All Payments", "Failed Transactions", "Payment Settings"];
 
 const transactions = [
-  { id: "TXN-23456", date: "Jun 27, 2025", customer: "John Smith", method: { name: "Credit Card" }, amount: "$1,299.99", status: "Success", reason: "" },
-  { id: "TXN-23455", date: "Jun 27, 2025", customer: "Emily Johnson", method: { name: "PayPal" }, amount: "$499.50", status: "Success", reason: "" },
-  { id: "TXN-23454", date: "Jun 26, 2025", customer: "Michael Brown", method: { name: "Credit Card" }, amount: "$899.00", status: "Failed", reason: "Insufficient funds" },
-  { id: "TXN-23453", date: "Jun 26, 2025", customer: "Sarah Williams", method: { name: "Bank Transfer" }, amount: "$149.99", status: "Success", reason: "" },
-  { id: "TXN-23452", date: "Jun 25, 2025", customer: "David Miller", method: { name: "Credit Card" }, amount: "$2,499.00", status: "Pending", reason: "" },
-  { id: "TXN-23451", date: "Jun 25, 2025", customer: "Jessica Davis", method: { name: "Digital Wallet" }, amount: "$349.95", status: "Success", reason: "" },
-  { id: "TXN-23450", date: "Jun 24, 2025", customer: "Robert Wilson", method: { name: "Credit Card" }, amount: "$799.50", status: "Failed", reason: "Expired card" },
+  { id: "TXN-23456", date: "Jun 27, 2025", customer: "John Smith", method: { name: "Credit Card" }, amount: "₹1,299.99", status: "Success", reason: "" },
+  { id: "TXN-23455", date: "Jun 27, 2025", customer: "Emily Johnson", method: { name: "PayPal" }, amount: "₹499.50", status: "Success", reason: "" },
+  { id: "TXN-23454", date: "Jun 26, 2025", customer: "Michael Brown", method: { name: "Credit Card" }, amount: "₹899.00", status: "Failed", reason: "Insufficient funds" },
+  { id: "TXN-23453", date: "Jun 26, 2025", customer: "Sarah Williams", method: { name: "Bank Transfer" }, amount: "₹149.99", status: "Success", reason: "" },
+  { id: "TXN-23452", date: "Jun 25, 2025", customer: "David Miller", method: { name: "Credit Card" }, amount: "₹2,499.00", status: "Pending", reason: "" },
+  { id: "TXN-23451", date: "Jun 25, 2025", customer: "Jessica Davis", method: { name: "Digital Wallet" }, amount: "₹349.95", status: "Success", reason: "" },
+  { id: "TXN-23450", date: "Jun 24, 2025", customer: "Robert Wilson", method: { name: "Credit Card" }, amount: "₹799.50", status: "Failed", reason: "Expired card" },
 ];
 
 const Payments = () => {
@@ -36,7 +36,7 @@ const Payments = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [transactionsList, setTransactionsList] = useState(transactions);
   const [paymentSettings, setPaymentSettings] = useState({
-    currency: "USD",
+    currency: "INR",
     autoRefund: true,
     notifications: true,
     paymentMethods: ["Credit Card", "PayPal", "Bank Transfer", "Digital Wallet"]
@@ -226,7 +226,7 @@ const Payments = () => {
                 <div className="icon-card bg-info text-white"><FaChartLine /></div>
                 <h6 className="text-muted mb-0">Total Revenue</h6>
               </div>
-              <h5 className="fw-bold">$12,345.67</h5>
+              <h5 className="fw-bold">₹12,345.67</h5>
               <p className="text-success small mb-0">↑ 12.5% from last month</p>
             </div>
           </div>
@@ -406,6 +406,7 @@ const Payments = () => {
                   value={paymentSettings.currency}
                   onChange={(e) => handleSettingChange('currency', e.target.value)}
                 >
+                  <option value="INR">INR - Indian Rupee</option>
                   <option value="USD">USD - US Dollar</option>
                   <option value="EUR">EUR - Euro</option>
                   <option value="GBP">GBP - British Pound</option>

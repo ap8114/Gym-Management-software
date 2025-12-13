@@ -92,7 +92,7 @@ const CreatePlan = () => {
           name: plan.name,
           sessions: plan.sessions,
           validity: plan.validityDays,
-          price: `$${plan.price.toLocaleString()}`,
+          price: `₹${plan.price.toLocaleString()}`,
           active: plan.active ?? true,
           type: plan.type.toLowerCase(),
         }));
@@ -123,7 +123,7 @@ const CreatePlan = () => {
           memberName: request.memberName,
           planName: request.className || "Personal Training",
           planType: request.className ? "group" : "personal",
-          price: `$${parseFloat(request.price).toLocaleString()}`,
+          price: `₹${parseFloat(request.price).toLocaleString()}`,
           sessions: "N/A",
           validity: "N/A",
           sessionsUsed: "N/A",
@@ -177,7 +177,7 @@ const CreatePlan = () => {
             currentPlanType: currentPlan.type ? currentPlan.type.toLowerCase() : 'unknown',
             requestedPlan: requestedPlan.name || 'Unknown',
             requestedPlanType: requestedPlan.type ? requestedPlan.type.toLowerCase() : 'unknown',
-            price: requestedPlan.price ? `$${parseFloat(requestedPlan.price).toLocaleString()}` : 'N/A',
+            price: requestedPlan.price ? `₹${parseFloat(requestedPlan.price).toLocaleString()}` : 'N/A',
             sessions: requestedPlan.sessions || 'N/A',
             validity: requestedPlan.validityDays || requestedPlan.validity || 'N/A',
             membershipFrom: renewal.membershipFrom || 'N/A',
@@ -211,7 +211,7 @@ const CreatePlan = () => {
           name: plan.name,
           sessions: plan.sessions,
           validity: plan.validityDays,
-          price: `$${plan.price.toLocaleString()}`,
+          price: `₹${plan.price.toLocaleString()}`,
           active: plan.active ?? true,
           type: plan.type.toLowerCase(),
           createdAt: plan.createdAt,
@@ -272,7 +272,7 @@ const CreatePlan = () => {
           name: response.data.plan.name,
           sessions: response.data.plan.sessions,
           validity: response.data.plan.validityDays,
-          price: `$${response.data.plan.price.toLocaleString()}`,
+          price: `₹${response.data.plan.price.toLocaleString()}`,
           active: true,
           type: response.data.plan.type.toLowerCase(),
         };
@@ -310,7 +310,7 @@ const CreatePlan = () => {
       name: plan.name,
       sessions: plan.sessions.toString(),
       validity: plan.validity.toString(),
-      price: plan.price.replace("$", "").replace(",", ""),
+      price: plan.price.replace("₹", "").replace(",", ""),
       type: planType,
     });
     setShowEditModal(true);
@@ -349,7 +349,7 @@ const CreatePlan = () => {
           name: response.data.plan.name,
           sessions: response.data.plan.sessions,
           validity: response.data.plan.validityDays,
-          price: `$${response.data.plan.price.toLocaleString()}`,
+          price: `₹${response.data.plan.price.toLocaleString()}`,
           type: response.data.plan.type.toLowerCase(),
         };
         const currentPlans = getPlansByType(selectedPlan.type);
@@ -1700,7 +1700,7 @@ const CreatePlan = () => {
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-4">
-                    <Form.Label className="fw-medium">Price ($)</Form.Label>
+                    <Form.Label className="fw-medium">Price (₹)</Form.Label>
                     <Form.Control
                       type="number"
                       placeholder="e.g., 5999"
@@ -1804,7 +1804,7 @@ const CreatePlan = () => {
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-4">
-                    <Form.Label className="fw-medium">Price ($)</Form.Label>
+                    <Form.Label className="fw-medium">Price (₹)</Form.Label>
                     <Form.Control
                       type="number"
                       value={newPlan.price}

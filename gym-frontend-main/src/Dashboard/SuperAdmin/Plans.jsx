@@ -125,14 +125,14 @@ const MembershipPlans = () => {
           const updatedPlans = plans.map((plan) =>
             plan.id === selectedPlan.id
               ? {
-                ...plan,
-                planName: response.data.plan.name,
-                basePrice: response.data.plan.price,
-                duration: response.data.plan.duration,
-                status: response.data.plan.status === "ACTIVE" ? "Active" : "Inactive",
-                description: response.data.plan.description || "",
-                category: response.data.plan.category || "PRO",
-              }
+                  ...plan,
+                  planName: response.data.plan.name,
+                  basePrice: response.data.plan.price,
+                  duration: response.data.plan.duration,
+                  status: response.data.plan.status === "ACTIVE" ? "Active" : "Inactive",
+                  description: response.data.plan.description || "",
+                  category: response.data.plan.category || "PRO",
+                }
               : plan
           );
           setPlans(updatedPlans);
@@ -220,7 +220,7 @@ const MembershipPlans = () => {
                 plans.map((plan) => (
                   <tr key={plan.id}>
                     <td>{plan.planName}</td>
-                    <td>${plan.basePrice}</td>
+                    <td>₹{plan.basePrice}</td>
                     <td>{plan.duration}</td>
                     <td>{plan.category}</td>
                     <td>
@@ -304,7 +304,7 @@ const MembershipPlans = () => {
                     <div className="col-12">
                       <div className="d-flex justify-content-between">
                         <strong className="text-muted">Price</strong>
-                        <span className="fw-bold">${selectedPlan?.basePrice || "—"}</span>
+                        <span className="fw-bold">₹{selectedPlan?.basePrice || "—"}</span>
                       </div>
                     </div>
                     <div className="col-12">
@@ -350,7 +350,7 @@ const MembershipPlans = () => {
                       onChange={(e) => setPlanName(e.target.value)}
                     />
 
-                    <label className="form-label">Price ($)</label>
+                    <label className="form-label">Price (₹)</label>
                     <input
                       className="form-control mb-2"
                       type="number"
