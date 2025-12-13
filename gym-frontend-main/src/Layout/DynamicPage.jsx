@@ -61,13 +61,13 @@ const DynamicPage = () => {
   if (!settings) {
     return (
       <div className="text-center mt-5">
-        <h3>Page Not Found</h3>
+        {/* <h3>Page Not Found</h3> */}
       </div>
     );
   }
 
   return (
-    <div style={{ background: "#f8f9fa", minHeight: "100vh" }}>
+    <div style={{ background: "#f8f9fa"}}>
       
       {/* ================= HERO SECTION ================= */}
       <div
@@ -97,17 +97,7 @@ const DynamicPage = () => {
                 {settings.description}
               </p>
 
-              <button
-                className="btn mt-4 px-4 py-2"
-                style={{
-                  background: "#ffffff",
-                  color: "#002d4d",
-                  fontWeight: "600",
-                  borderRadius: "8px",
-                }}
-              >
-                Join Now
-              </button>
+             
             </div>
 
             {/* RIGHT LOGO */}
@@ -204,4 +194,3 @@ const DynamicPage = () => {
 };
 
 export default DynamicPage;
-    
