@@ -17,7 +17,6 @@ const AdminTaskManagement = () => {
   const adminId = GetAdminId();
   const [taskForm, setTaskForm] = useState({
     staffId: '',
-    branchId: '',
     taskTitle: '',
     description: '',
     dueDate: '',
@@ -46,7 +45,6 @@ const AdminTaskManagement = () => {
           const transformedTasks = tasksResponse.data.data.map(task => ({
             id: task.id,
             staffId: task.assignedTo, // Map assignedTo to staffId
-            branchId: task.branchId,
             title: task.taskTitle, // Map taskTitle to title
             description: task.description,
             dueDate: task.dueDate,
@@ -168,7 +166,7 @@ const AdminTaskManagement = () => {
   const handleCreateTask = async () => {
     try {
       // Validate form
-      if (!taskForm.staffId || !taskForm.branchId || !taskForm.taskTitle || !taskForm.dueDate) {
+      if (!taskForm.staffId || !taskForm.taskTitle || !taskForm.dueDate) {
         alert('Please fill in all required fields');
         return;
       }
@@ -179,7 +177,7 @@ const AdminTaskManagement = () => {
 
       // Find the selected staff member to get their user ID
       const selectedStaff = staffMembers.find(staff => staff.staffId === parseInt(taskForm.staffId));
-      const userId = selectedStaff ? selectedStaff.userId : null;
+      const userId = selectedStaff ? selectedStaff.staffId : null;
 
       if (!userId) {
         alert('Invalid staff member selected');
@@ -189,7 +187,6 @@ const AdminTaskManagement = () => {
       // Prepare data for API
       const taskData = {
         assignedTo: userId, // Use user ID instead of staff ID
-        branchId: parseInt(taskForm.branchId),
         taskTitle: taskForm.taskTitle,
         description: taskForm.description,
         dueDate: taskForm.dueDate,
@@ -206,7 +203,6 @@ const AdminTaskManagement = () => {
         const newTask = {
           id: response.data.data.id,
           staffId: response.data.data.assignedTo,
-          branchId: response.data.data.branchId,
           title: response.data.data.taskTitle,
           description: response.data.data.description,
           dueDate: response.data.data.dueDate,
@@ -219,7 +215,6 @@ const AdminTaskManagement = () => {
         // Reset form and close modal
         setTaskForm({
           staffId: '',
-          branchId: '',
           taskTitle: '',
           description: '',
           dueDate: '',
@@ -272,7 +267,7 @@ const AdminTaskManagement = () => {
                         ))}
                       </select>
                     </div>
-                    <div className="col-md-6">
+                    {/* <div className="col-md-6">
                       <label className="form-label">Branch</label>
                       <select
                         className="form-select"
@@ -287,11 +282,8 @@ const AdminTaskManagement = () => {
                           </option>
                         ))}
                       </select>
-                    </div>
-                  </div>
-
-                  <div className="row mb-3">
-                    <div className="col-md-12">
+                    </div> */}
+                     <div className="col-md-6">
                       <label className="form-label">Task Title</label>
                       <input
                         type="text"
@@ -303,6 +295,8 @@ const AdminTaskManagement = () => {
                       />
                     </div>
                   </div>
+
+                 
 
                   <div className="row mb-3">
                     <div className="col-md-12">
@@ -397,7 +391,6 @@ const AdminTaskManagement = () => {
               <th>Due Date</th>
               <th>Description</th>
               <th>Priority</th>
-              <th>Branch</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -414,7 +407,6 @@ const AdminTaskManagement = () => {
                     {task.priority}
                   </span>
                 </td>
-                <td>{getBranchName(task.branchId)}</td>
                 <td>
                   <span className={`badge bg-${getStatusClass(task.status)}`}>
                     {task.status}
@@ -446,7 +438,6 @@ const AdminTaskManagement = () => {
                 <th>Task</th>
                 <th>Due Date</th>
                 <th>Description</th>
-                <th>Branch</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -460,7 +451,6 @@ const AdminTaskManagement = () => {
                     <td>{task.title}</td>
                     <td>{new Date(task.dueDate).toLocaleDateString()}</td>
                     <td>{task.description}</td>
-                    <td>{getBranchName(task.branchId)}</td>
                     <td>
                       <span className={`badge bg-${getStatusClass(task.status)}`}>
                         {task.status}

@@ -238,7 +238,7 @@ const PersonalPlansBookings = () => {
                           </div>
                           <div>
                             <div className="fw-bold" style={{ fontSize: '0.9rem' }}>
-                              Price: ${(plan.price || 0).toLocaleString()}
+                              Price: ₹{(plan.price || 0).toLocaleString()}
                             </div>
                           </div>
                         </li>

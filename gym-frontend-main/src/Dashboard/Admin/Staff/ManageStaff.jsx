@@ -26,7 +26,7 @@ const ManageStaff = () => {
     phone: '',
     password: '',
     role: 'Receptionist',
-    branch: '',
+    // branch: '', // Commented out branch field
     gender: 'Male',
     dateOfBirth: '',
     joinDate: new Date().toISOString().split('T')[0],
@@ -66,7 +66,7 @@ const ManageStaff = () => {
       email: item.email ?? '',
       phone: item.phone ?? '',
       roleId: item.roleId ?? null,
-      branchId: item.branchId ?? null,
+      branchId: item.branchId ?? null, // Keep branchId for data consistency but not display
       adminId: item.adminId ?? null,
       gender: item.gender ?? null,
       dateOfBirth: item.dateOfBirth ?? item.dob ?? null,
@@ -134,7 +134,7 @@ const ManageStaff = () => {
         } else if (response.data?.branches && Array.isArray(response.data.branches)) {
           branchList = response.data.branches;
         } else {
-          // Fallback: assume the whole response is a single branch object
+          // Fallback: assume whole response is a single branch object
           branchList = [response.data];
         }
         
@@ -170,8 +170,8 @@ const ManageStaff = () => {
     member.email && member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     member.phone && member.phone.includes(searchQuery.toLowerCase())) &&
     (roleFilter === 'All' || member.roleId === roleIds[roleFilter]) &&
-    (statusFilter === 'All' || member.status === statusFilter) &&
-    (branchFilter === 'All' || member.branchId === parseInt(branchFilter))
+    (statusFilter === 'All' || member.status === statusFilter)
+    // Removed branch filter: (branchFilter === 'All' || member.branchId === parseInt(branchFilter))
   );
   
   const handleAddNew = () => {
@@ -185,7 +185,7 @@ const ManageStaff = () => {
       phone: '',
       password: '',
       role: 'Receptionist',
-      branch: branches.length > 0 ? branches[0].id.toString() : '',
+      // branch: branches.length > 0 ? branches[0].id.toString() : '', // Commented out branch field
       gender: 'Male',
       dateOfBirth: '',
       joinDate: new Date().toISOString().split('T')[0],
@@ -205,7 +205,7 @@ const ManageStaff = () => {
       phone: staffMember.phone || '',
       password: '',
       role: getRoleName(staffMember.roleId) || 'Receptionist',
-      branch: staffMember.branchId?.toString() || '',
+      // branch: staffMember.branchId?.toString() || '', // Commented out branch field
       gender: staffMember.gender || 'Male',
       dateOfBirth: staffMember.dateOfBirth ? new Date(staffMember.dateOfBirth).toISOString().split('T')[0] : '',
       joinDate: staffMember.joinDate ? new Date(staffMember.joinDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -225,7 +225,7 @@ const ManageStaff = () => {
       phone: staffMember.phone || '',
       password: '',
       role: getRoleName(staffMember.roleId) || 'Receptionist',
-      branch: staffMember.branchId?.toString() || '',
+      // branch: staffMember.branchId?.toString() || '', // Commented out branch field
       gender: staffMember.gender || 'Male',
       dateOfBirth: staffMember.dateOfBirth ? new Date(staffMember.dateOfBirth).toISOString().split('T')[0] : '',
       joinDate: staffMember.joinDate ? new Date(staffMember.joinDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -370,11 +370,11 @@ const ManageStaff = () => {
   const clearFilters = () => {
     setRoleFilter('All');
     setStatusFilter('All');
-    setBranchFilter('All');
+    // setBranchFilter('All'); // Commented out branch filter
   };
   
   const exportData = () => {
-    const headers = ['ID', 'Full Name', 'Email', 'Phone', 'Role', 'Status', 'Branch'];
+    const headers = ['ID', 'Full Name', 'Email', 'Phone', 'Role', 'Status'];
     const csvContent = [
       headers.join(','),
       ...filteredStaff.map(member => [
@@ -383,8 +383,8 @@ const ManageStaff = () => {
         member.email,
         member.phone,
         getRoleName(member.roleId),
-        member.status || 'Active',
-        getBranchName(member.branchId)
+        member.status || 'Active'
+        // Removed branch: getBranchName(member.branchId)
       ].join(','))
     ].join('\n');
     
@@ -412,7 +412,7 @@ const ManageStaff = () => {
         phone: formData.phone,
         password: formData.password,
         roleId: roleIds[formData.role],
-        branchId: parseInt(formData.branch),
+        // branchId: parseInt(formData.branch), // Commented out branch field
         adminId: parseInt(adminId),
         gender: formData.gender,
         dateOfBirth: formData.dateOfBirth,
@@ -424,8 +424,8 @@ const ManageStaff = () => {
       
       // Handle profile photo if provided (this would need to be uploaded separately)
       if (fileInputRef.current && fileInputRef.current.files[0]) {
-        // In a real implementation, you would first upload the file
-        // and then use the returned path in the payload
+        // In a real implementation, you would first upload file
+        // and then use returned path in payload
         // For now, we'll use a placeholder
         payload.profilePhoto = "uploads/staff/custom.png";
       }
@@ -438,7 +438,7 @@ const ManageStaff = () => {
         });
         
         if (response.data && response.data.success) {
-          // Add the new staff member to the list
+          // Add new staff member to list
           const newStaff = normalizeStaffItem(response.data.staff);
           setStaff(prev => [...prev, newStaff]);
           alert("Staff member added successfully!");
@@ -460,7 +460,7 @@ const ManageStaff = () => {
         });
         
         if (response.data && response.data.success) {
-          // Update the staff member in the list
+          // Update staff member in list
           const updatedStaff = normalizeStaffItem(response.data.staff);
           setStaff(prev => prev.map(s => s.id === selectedStaff.id ? updatedStaff : s));
           alert("Staff member updated successfully!");
@@ -577,6 +577,7 @@ const ManageStaff = () => {
               </div>
             </div>
             
+            {/* Commented out branch filter
             <div className="branch-filter-dropdown">
               <button 
                 className="btn btn-outline-secondary btn-sm dropdown-toggle" 
@@ -607,6 +608,7 @@ const ManageStaff = () => {
                 ))}
               </div>
             </div>
+            */}
             
             <button 
               className="btn btn-outline-secondary btn-sm" 
@@ -630,7 +632,7 @@ const ManageStaff = () => {
                   <th>ROLE</th>
                   <th className="d-none d-lg-table-cell">EMAIL</th>
                   <th className="d-none d-lg-table-cell">PHONE</th>
-                  <th>BRANCH</th>
+                  {/* <th>BRANCH</th> Commented out branch column */}
                   <th>STATUS</th>
                   <th className="text-center">ACTIONS</th>
                 </tr>
@@ -654,7 +656,7 @@ const ManageStaff = () => {
                     <td>{getRoleBadge(member.roleId)}</td>
                     <td className="d-none d-lg-table-cell">{member.email}</td>
                     <td className="d-none d-lg-table-cell">{member.phone}</td>
-                    <td><span className="badge bg-light text-dark">{getBranchName(member.branchId)}</span></td>
+                    {/* <td><span className="badge bg-light text-dark">{getBranchName(member.branchId)}</span></td> Commented out branch column */}
                     <td>{getStatusBadge(member.status || 'Active')}</td>
                     <td className="text-center">
                       <div className="d-flex justify-content-center flex-nowrap" style={{ gap: '4px' }}>
@@ -693,7 +695,7 @@ const ManageStaff = () => {
               <div className="row g-2 mb-3">
                 <div className="col-12"><small className="text-muted d-block">Email</small><span>{member.email}</span></div>
                 <div className="col-12"><small className="text-muted d-block">Phone</small><span>{member.phone}</span></div>
-                <div className="col-12"><small className="text-muted d-block">Branch</small><span className="badge bg-light text-dark">{getBranchName(member.branchId)}</span></div>
+                {/* <div className="col-12"><small className="text-muted d-block">Branch</small><span className="badge bg-light text-dark">{getBranchName(member.branchId)}</span></div> Commented out branch field */}
               </div>
               <div className="d-flex justify-content-end gap-2">
                 <button className="btn btn-sm btn-outline-secondary" onClick={() => handleView(member)}><FaEye size={14} /></button>
@@ -831,7 +833,7 @@ const ManageStaff = () => {
                       </select>
                     </div>
                     
-                    {/* ✅ DYNAMIC BRANCH DROPDOWN */}
+                    {/* Commented out branch field
                     <div className="col-12 col-md-6">
                       <label className="form-label">Branch <span className="text-danger">*</span></label>
                       <select
@@ -853,6 +855,7 @@ const ManageStaff = () => {
                         )}
                       </select>
                     </div>
+                    */}
                     
                     <div className="col-12 col-md-6">
                       <label className="form-label">Join Date <span className="text-danger">*</span></label>
