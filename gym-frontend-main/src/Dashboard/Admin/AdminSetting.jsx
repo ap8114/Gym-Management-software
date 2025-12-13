@@ -128,7 +128,7 @@ const AdminSetting = () => {
 
   const generatedUrl =
     formData.companyWebsite && adminId
-      ? `/${formData.companyWebsite}/${adminId}`
+      ? `https://gym-latest-new.netlify.app/${formData.companyWebsite}/${adminId}`
       : "";
 
   return (
@@ -215,7 +215,7 @@ const AdminSetting = () => {
                     {/* URL SLUG */}
                     <Form.Group className="mb-3">
                       <Form.Label className="fw-bold">
-                        Website Slug
+                        Website Url
                       </Form.Label>
                       <Form.Control
                         type="text"
