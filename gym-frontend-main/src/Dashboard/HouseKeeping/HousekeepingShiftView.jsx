@@ -18,7 +18,7 @@ const HousekeepingShiftView = () => {
   };
 
   const user = getUserFromStorage();
-  const shiftId = user?.shiftId; // Make sure this exists in your user object
+  const staffId = user?.staffId; // Make sure this exists in your user object
 
   useEffect(() => {
     const fetchShift = async () => {
@@ -29,7 +29,7 @@ const HousekeepingShiftView = () => {
       // }
 
       try {
-        const res = await axiosInstance.get(`shift/bystaff/${shiftId}`);
+        const res = await axiosInstance.get(`shift/bystaff/${staffId}`);
         console.log('API RESPONSE ===>', res.data);
 
         // Assuming response is { success: true, data: { ...single shift... } }
@@ -49,7 +49,7 @@ const HousekeepingShiftView = () => {
     };
 
     fetchShift();
-  }, [shiftId]);
+  }, [staffId]);
 
   const getShiftColor = (type) => {
     if (!type) return 'secondary';

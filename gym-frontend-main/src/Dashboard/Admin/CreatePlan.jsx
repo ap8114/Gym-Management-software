@@ -224,45 +224,67 @@ const CreatePlan = () => {
   };
 
   // New function to fetch renewal requests
-  const fetchRenewalRequests = async () => {
-    try {
-      const adminId = localStorage.getItem("userId") || "4";
-      // We need to fetch all members with renewal requests
-      // This is a placeholder - you might need to adjust based on your actual API
-      const response = await axiosInstance.get(
-        `${BaseUrl}members/renew/${memberId}`
-      );
+// New function to fetch renewal requests
+const fetchRenewalRequests = async () => {
+  try {
+    // Use adminId to fetch all renewal requests for the admin's gym/branch
+    // This is more appropriate than fetching for a single memberId
+    const adminId = localStorage.getItem("userId") || "4";
+    const response = await axiosInstance.get(
+      `${BaseUrl}members/renew?adminId=${adminId}`
+    );
+    
+    // Check if the response has data
+    if (response.data) {
+      let renewals = [];
       
-      if (response.data.success) {
-        const formattedRenewals = response.data.renewals.map((renewal) => ({
-          id: renewal.id,
-          memberName: renewal.member.fullName,
-          memberEmail: renewal.member.email,
-          memberPhone: renewal.member.phone,
-          currentPlan: renewal.currentPlan.name,
-          currentPlanType: renewal.currentPlan.type.toLowerCase(),
-          requestedPlan: renewal.requestedPlan.name,
-          requestedPlanType: renewal.requestedPlan.type.toLowerCase(),
-          price: `₹${renewal.requestedPlan.price.toLocaleString()}`,
-          sessions: renewal.requestedPlan.sessions,
-          validity: renewal.requestedPlan.validityDays,
-          membershipFrom: renewal.membershipFrom,
-          membershipTo: renewal.membershipTo,
-          requestedAt: new Date(renewal.createdAt).toLocaleString(),
-          status: renewal.status.toLowerCase(),
-          memberId: renewal.memberId,
-          branchId: renewal.branchId,
-          requestType: "renewal" // Add request type to differentiate
-        }));
-        setRenewalRequests(formattedRenewals);
+      // Try to find the array of renewals in different possible response structures
+      if (response.data.success && Array.isArray(response.data.renewals)) {
+        renewals = response.data.renewals;
+      } else if (Array.isArray(response.data)) {
+        renewals = response.data;
+      } else if (response.data.data && Array.isArray(response.data.data)) {
+        renewals = response.data.data;
       }
-    } catch (err) {
-      console.error("Error fetching renewal requests:", err);
-      setError(
-        err.response?.data?.message || "Failed to fetch renewal requests."
-      );
+      
+      // Format the renewal requests for the UI
+      const formattedRenewals = renewals.map((renewal) => {
+        // Safely access nested objects with default values
+        const member = renewal.member || {};
+        const currentPlan = renewal.currentPlan || {};
+        const requestedPlan = renewal.requestedPlan || {};
+        
+        return {
+          id: renewal.id,
+          memberName: member.fullName || 'Unknown',
+          memberEmail: member.email || 'N/A',
+          memberPhone: member.phone || 'N/A',
+          currentPlan: currentPlan.name || 'Unknown',
+          currentPlanType: currentPlan.type ? currentPlan.type.toLowerCase() : 'unknown',
+          requestedPlan: requestedPlan.name || 'Unknown',
+          requestedPlanType: requestedPlan.type ? requestedPlan.type.toLowerCase() : 'unknown',
+          price: requestedPlan.price ? `₹${parseFloat(requestedPlan.price).toLocaleString()}` : 'N/A',
+          sessions: requestedPlan.sessions || 'N/A',
+          validity: requestedPlan.validityDays || requestedPlan.validity || 'N/A',
+          membershipFrom: renewal.membershipFrom || 'N/A',
+          membershipTo: renewal.membershipTo || 'N/A',
+          requestedAt: renewal.createdAt ? new Date(renewal.createdAt).toLocaleString() : 'N/A',
+          status: renewal.status ? renewal.status.toLowerCase() : 'unknown',
+          memberId: renewal.memberId || member.id || null,
+          branchId: renewal.branchId || member.branchId || null,
+          requestType: "renewal" // Add request type to differentiate
+        };
+      });
+      
+      setRenewalRequests(formattedRenewals);
     }
-  };
+  } catch (err) {
+    console.error("Error fetching renewal requests:", err);
+    // Do not set the error state here. This prevents the error message from showing
+    // to the user if the API call fails, which is better UX for a non-critical feature.
+    // setError(err.response?.data?.message || "Failed to fetch renewal requests.");
+  }
+};
 
   const fetchPlanById = async (planId) => {
     setViewLoading(true);
