@@ -115,7 +115,7 @@ if (!shift) {
               <th>Start Time</th>
               <th>End Time</th>
               <th>Shift Type</th>
-              <th>Branch ID</th>
+              {/* <th>Branch ID</th> */}
               <th>Status</th>
             </tr>
           </thead>
@@ -129,7 +129,7 @@ if (!shift) {
                   {shift.shiftType || '—'}
                 </span>
               </td>
-              <td>{shift.branchId || '—'}</td>
+              {/* <td>{shift.branchId || '—'}</td> */}
               <td>
                 <span className={`badge bg-${getStatusClass(shift.status)}`}>
                   {shift.status || 'Unknown'}

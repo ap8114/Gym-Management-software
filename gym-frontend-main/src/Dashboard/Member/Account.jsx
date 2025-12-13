@@ -87,7 +87,6 @@ const Account = () => {
             address_state: profile.address_state || "",
             address_zip: profile.address_zip || "",
             profile_picture: null,
-            profile_preview: "https://randomuser.me/api/portraits/men/32.jpg", // Default image
           });
           
           // Update membership information
@@ -324,39 +323,8 @@ const Account = () => {
 
               {/* Profile Picture Section - Enhanced */}
               <div className="text-center mb-4">
-                <div className="position-relative d-inline-block">
-                  {personal.profile_preview ? (
-                    <img
-                      src={personal.profile_preview}
-                      alt="Profile"
-                      className="rounded-circle border border-3 border-primary shadow-sm"
-                      style={{ width: 150, height: 150, objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <div
-                      className="rounded-circle bg-light border border-3 border-primary d-flex align-items-center justify-content-center"
-                      style={{ width: 150, height: 150 }}
-                    >
-                      <span className="text-muted fs-4">No Photo</span>
-                    </div>
-                  )}
-                  <div className="position-absolute bottom-0 end-0 bg-primary rounded-circle p-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="white" className="bi bi-camera-fill" viewBox="0 0 16 16">
-                      <path d="M10.5 8.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/>
-                      <path d="M2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4H2zm.5 2a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1zm9 2.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0z"/>
-                    </svg>
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <input
-                    type="file"
-                    name="profile_picture"
-                    className="form-control d-inline-block w-auto"
-                    accept="image/*"
-                    onChange={handlePersonalChange}
-                    disabled={!isEditMode}
-                  />
-                </div>
+         
+               
               </div>
 
               <form onSubmit={handleUpdateProfile}>
