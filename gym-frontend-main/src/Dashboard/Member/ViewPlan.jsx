@@ -864,7 +864,7 @@ const ViewPlans = () => {
       return;
     }
 
-    if (!memberId || !adminId || !branchId || !selectedPlan) {
+    if (!memberId || !adminId || !selectedPlan) {
       setBookingMessage('Missing user or plan details. Please log in again.');
       return;
     }
