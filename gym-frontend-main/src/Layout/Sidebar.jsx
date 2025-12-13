@@ -74,6 +74,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
   const allMenus = {
     SUPERADMIN: [
       { name: "Dashboard", icon: faChartBar, path: "/superadmin/dashboard" },
+      { name: "Branches", icon: faGear, path: "/admin/AdminBranches" },
       { name: "Admin", icon: faUsers, path: "/superadmin/Admin" },
       { name: "Request Plan", icon:  faClipboardCheck, path: "/superadmin/request-plan" },
       { name: "Plans & Pricing", icon: faChartLine, path: "/superadmin/Plans&Pricing" },
@@ -84,10 +85,8 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
 
     ADMIN: [
       { name: "Dashboard", icon: faChartBar, path: "/admin/admin-dashboard" },
-      { name: "Branches", icon: faGear, path: "/admin/AdminBranches" },
       { name: "Members", icon: faUsers, path: "/admin/AdminMember" },
       { name: "Create Plan", icon: faUsers, path: "/admin/createplan" },
-
       { name: "Classes Schedule", icon: faUsers, path: "/admin/classesSchedule" },
       { name: "Session Bookings", icon: faCalendarAlt, path: "/admin/bookings" },
 

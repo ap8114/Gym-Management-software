@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { FaEye, FaEdit, FaTrashAlt } from 'react-icons/fa';
+import React, { useState, useEffect } from "react";
+import { FaEye, FaEdit, FaTrashAlt } from "react-icons/fa";
 import axiosInstance from "../../Api/axiosInstance";
 
 const SuperAdminAdmin = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [modalType, setModalType] = useState('add');
+  const [modalType, setModalType] = useState("add");
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true); // for admins list
@@ -13,6 +13,10 @@ const SuperAdminAdmin = () => {
   // ✅ FETCH PLANS FOR DROPDOWN
   const [plans, setPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
+
+  // ✅ FETCH BRANCHES FOR DROPDOWN
+  const [branches, setBranches] = useState([]);
+  const [loadingBranches, setLoadingBranches] = useState(true);
 
   // 🔁 FETCH ADMINS FROM REAL API
   useEffect(() => {
@@ -57,20 +61,48 @@ const SuperAdminAdmin = () => {
     fetchPlans();
   }, []);
 
+  // 🔁 FETCH BRANCHES
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const response = await axiosInstance.get("/branches");
+        if (response.data.success && Array.isArray(response.data.branches)) {
+          setBranches(response.data.branches);
+        } else {
+          setBranches([]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch branches:", error);
+        setBranches([]);
+        alert("Failed to load branches.");
+      } finally {
+        setLoadingBranches(false);
+      }
+    };
+    fetchBranches();
+  }, []);
+
+  // Helper function to get branch name by ID
+  const getBranchNameById = (branchId) => {
+    if (!branchId) return "Not Assigned";
+    const branch = branches.find((b) => b.id === branchId);
+    return branch ? branch.name : "Unknown Branch";
+  };
+
   const handleAddNew = () => {
-    setModalType('add');
+    setModalType("add");
     setSelectedAdmin(null);
     setIsModalOpen(true);
   };
 
   const handleView = (admin) => {
-    setModalType('view');
+    setModalType("view");
     setSelectedAdmin(admin);
     setIsModalOpen(true);
   };
 
   const handleEdit = (admin) => {
-    setModalType('edit');
+    setModalType("edit");
     setSelectedAdmin(admin);
     setIsModalOpen(true);
   };
@@ -84,14 +116,18 @@ const SuperAdminAdmin = () => {
   const confirmDelete = async () => {
     if (selectedAdmin) {
       try {
-        const response = await axiosInstance.delete(`/auth/user/${selectedAdmin.id}`);
-        
+        const response = await axiosInstance.delete(
+          `/auth/user/${selectedAdmin.id}`
+        );
+
         if (response.data.success) {
-          // Remove the admin from the list
-          setAdmins(admins.filter(admin => admin.id !== selectedAdmin.id));
-          alert(`Admin "${selectedAdmin.fullName}" has been deleted successfully.`);
+          // Remove admin from the list
+          setAdmins(admins.filter((admin) => admin.id !== selectedAdmin.id));
+          alert(
+            `Admin "${selectedAdmin.fullName}" has been deleted successfully.`
+          );
         } else {
-          throw new Error('Failed to delete admin');
+          throw new Error("Failed to delete admin");
         }
       } catch (error) {
         console.error("Error deleting admin:", error);
@@ -114,12 +150,15 @@ const SuperAdminAdmin = () => {
   };
 
   useEffect(() => {
-    document.body.style.overflow = (isModalOpen || isDeleteModalOpen) ? 'hidden' : 'unset';
-    return () => { document.body.style.overflow = 'unset'; };
+    document.body.style.overflow =
+      isModalOpen || isDeleteModalOpen ? "hidden" : "unset";
+    return () => {
+      document.body.style.overflow = "unset";
+    };
   }, [isModalOpen, isDeleteModalOpen]);
 
   const getStatusBadge = (status) => {
-    const normalized = (status || 'inactive').toLowerCase();
+    const normalized = (status || "inactive").toLowerCase();
     return (
       <span
         className="badge rounded-pill px-2 py-1 d-inline-block"
@@ -127,7 +166,7 @@ const SuperAdminAdmin = () => {
           backgroundColor: normalized === "active" ? "#D1F4E1" : "#F8D7DA",
           color: normalized === "active" ? "#157347" : "#B02A37",
           fontWeight: "500",
-          fontSize: "0.75rem"
+          fontSize: "0.75rem",
         }}
       >
         {normalized === "active" ? "Active" : "Inactive"}
@@ -137,17 +176,21 @@ const SuperAdminAdmin = () => {
 
   const getModalTitle = () => {
     switch (modalType) {
-      case 'add': return 'Add New Admin';
-      case 'edit': return 'Edit Admin';
-      case 'view': return 'Admin Details';
-      default: return 'Admin Management';
+      case "add":
+        return "Add New Admin";
+      case "edit":
+        return "Edit Admin";
+      case "view":
+        return "Admin Details";
+      default:
+        return "Admin Management";
     }
   };
 
   // ✅ UPDATED: Real API integration for Add and Edit
   const handleFormSubmit = async (payload) => {
     try {
-      if (modalType === 'add') {
+      if (modalType === "add") {
         // Add new admin
         const response = await axiosInstance.post("/auth/register", {
           fullName: payload.fullName,
@@ -155,55 +198,62 @@ const SuperAdminAdmin = () => {
           phone: payload.phone,
           password: payload.password,
           roleId: 2, // Admin role
-          branchId: null,
+          branchId: payload.branchId, // Use the selected branchId
           gymName: payload.gymName,
           address: payload.address,
           planName: payload.planName,
           price: payload.planPrice,
           duration: payload.planDuration,
           description: payload.planDescription,
-          status: payload.status.toLowerCase()
+          status: payload.status.toLowerCase(),
         });
-        
+
         if (response.data.success) {
           // Add the new admin to the list
           setAdmins([...admins, response.data.user]);
-          alert('New admin added successfully!');
+          alert("New admin added successfully!");
         } else {
-          throw new Error('Failed to add admin');
+          throw new Error("Failed to add admin");
         }
-      } else if (modalType === 'edit' && selectedAdmin) {
+      } else if (modalType === "edit" && selectedAdmin) {
         // Update existing admin
-        const response = await axiosInstance.put(`/auth/user/${selectedAdmin.id}`, {
-          fullName: payload.fullName,
-          email: payload.email,
-          phone: payload.phone,
-          roleId: 2, // Admin role
-          branchId: null,
-          gymName: payload.gymName,
-          address: payload.address,
-          planName: payload.planName,
-          price: payload.planPrice,
-          duration: payload.planDuration,
-          description: payload.planDescription,
-          status: payload.status.toLowerCase()
-        });
-        
+        const response = await axiosInstance.put(
+          `/auth/user/${selectedAdmin.id}`,
+          {
+            fullName: payload.fullName,
+            email: payload.email,
+            phone: payload.phone,
+            roleId: 2, // Admin role
+            branchId: payload.branchId, // Use the selected branchId
+            gymName: payload.gymName,
+            address: payload.address,
+            planName: payload.planName,
+            price: payload.planPrice,
+            duration: payload.planDuration,
+            description: payload.planDescription,
+            status: payload.status.toLowerCase(),
+          }
+        );
+
         if (response.data.success) {
           // Update the admin in the list
-          const updatedAdmins = admins.map(admin => 
+          const updatedAdmins = admins.map((admin) =>
             admin.id === selectedAdmin.id ? response.data.user : admin
           );
           setAdmins(updatedAdmins);
-          alert('Admin updated successfully!');
+          alert("Admin updated successfully!");
         } else {
-          throw new Error('Failed to update admin');
+          throw new Error("Failed to update admin");
         }
       }
       closeModal();
     } catch (error) {
       console.error("Error saving admin:", error);
-      alert(`Failed to ${modalType === 'add' ? 'add' : 'update'} admin. Please try again.`);
+      alert(
+        `Failed to ${
+          modalType === "add" ? "add" : "update"
+        } admin. Please try again.`
+      );
     }
   };
 
@@ -213,18 +263,20 @@ const SuperAdminAdmin = () => {
       <div className="row mb-3 mb-md-4 align-items-center">
         <div className="col-12 col-md-8 mb-3 mb-md-0">
           <h2 className="fw-bold fs-4 fs-md-3">Admin Management</h2>
-          <p className="text-muted fs-6">Manage all gym admins and their profile details.</p>
+          <p className="text-muted fs-6">
+            Manage all gym admins and their profile details.
+          </p>
         </div>
         <div className="col-12 col-md-4 text-md-end">
           <button
             className="btn w-100 w-md-auto"
             style={{
-              backgroundColor: '#6EB2CC',
-              color: '#fff',
-              borderRadius: '10px',
-              padding: '10px 20px',
-              fontWeight: '600',
-              fontSize: '0.9rem'
+              backgroundColor: "#6EB2CC",
+              color: "#fff",
+              borderRadius: "10px",
+              padding: "10px 20px",
+              fontWeight: "600",
+              fontSize: "0.9rem",
             }}
             onClick={handleAddNew}
             disabled={loading}
@@ -252,6 +304,7 @@ const SuperAdminAdmin = () => {
                     <th className="py-3">ADMIN NAME</th>
                     <th className="py-3">PLAN NAME</th>
                     <th className="py-3">GYM NAME</th>
+                    <th className="py-3">BRANCH</th> {/* NEW BRANCH COLUMN */}
                     <th className="py-3">ADDRESS</th>
                     <th className="py-3">CONTACT</th>
                     <th className="py-3">STATUS</th>
@@ -261,31 +314,57 @@ const SuperAdminAdmin = () => {
                 <tbody>
                   {admins.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="text-center text-muted py-4">No admins found</td>
+                      <td colSpan="8" className="text-center text-muted py-4"> {/* UPDATED COLSPAN */}
+                        No admins found
+                      </td>
                     </tr>
                   ) : (
                     admins.map((admin) => (
                       <tr
                         key={admin.id}
                         style={{ transition: "0.3s ease" }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "#F1FBFF")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.background = "#F1FBFF")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.background = "transparent")
+                        }
                       >
-                        <td><strong>{admin.fullName}</strong></td>
-                        <td>{admin.planName || <span className="text-muted">No Plan</span>}</td>
-                        <td>{admin.gymName || '-'}</td>
-                        <td><small className="text-muted">{admin.address || '-'}</small></td>
-                        <td>{admin.phone || '-'}</td>
+                        <td>
+                          <strong>{admin.fullName}</strong>
+                        </td>
+                        <td>
+                          {admin.planName || (
+                            <span className="text-muted">No Plan</span>
+                          )}
+                        </td>
+                        <td>{admin.gymName || "-"}</td>
+                        <td>{getBranchNameById(admin.branchId)}</td> {/* NEW BRANCH DATA */}
+                        <td>
+                          <small className="text-muted">
+                            {admin.address || "-"}
+                          </small>
+                        </td>
+                        <td>{admin.phone || "-"}</td>
                         <td>{getStatusBadge(admin.status)}</td>
                         <td className="text-center">
                           <div className="d-flex justify-content-center gap-2">
-                            <button className="btn btn-sm btn-outline-secondary" onClick={() => handleView(admin)}>
+                            <button
+                              className="btn btn-sm btn-outline-secondary"
+                              onClick={() => handleView(admin)}
+                            >
                               <FaEye size={14} />
                             </button>
-                            <button className="btn btn-sm btn-outline-primary" onClick={() => handleEdit(admin)}>
+                            <button
+                              className="btn btn-sm btn-outline-primary"
+                              onClick={() => handleEdit(admin)}
+                            >
                               <FaEdit size={14} />
                             </button>
-                            <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteClick(admin)}>
+                            <button
+                              className="btn btn-sm btn-outline-danger"
+                              onClick={() => handleDeleteClick(admin)}
+                            >
                               <FaTrashAlt size={14} />
                             </button>
                           </div>
@@ -300,41 +379,68 @@ const SuperAdminAdmin = () => {
             {/* Mobile View */}
             <div className="d-md-none p-3">
               {admins.length === 0 ? (
-                <div className="text-center text-muted py-4">No admins found</div>
+                <div className="text-center text-muted py-4">
+                  No admins found
+                </div>
               ) : (
                 admins.map((admin) => (
-                  <div key={admin.id} className="card mb-3 shadow-sm" style={{ borderRadius: "12px" }}>
+                  <div
+                    key={admin.id}
+                    className="card mb-3 shadow-sm"
+                    style={{ borderRadius: "12px" }}
+                  >
                     <div className="card-body p-3">
                       <div className="d-flex justify-content-between align-items-start mb-2">
-                        <h5 className="card-title mb-0 fw-bold">{admin.fullName}</h5>
+                        <h5 className="card-title mb-0 fw-bold">
+                          {admin.fullName}
+                        </h5>
                         {getStatusBadge(admin.status)}
                       </div>
                       <div className="row g-2 mb-2">
                         <div className="col-6">
                           <small className="text-muted d-block">Gym</small>
-                          <span>{admin.gymName || '-'}</span>
+                          <span>{admin.gymName || "-"}</span>
                         </div>
                         <div className="col-6">
                           <small className="text-muted d-block">Plan</small>
-                          <span>{admin.planName || <span className="text-muted">No Plan</span>}</span>
+                          <span>
+                            {admin.planName || (
+                              <span className="text-muted">No Plan</span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="row g-2 mb-2">
+                        <div className="col-12">
+                          <small className="text-muted d-block">Branch</small>
+                          <span>{getBranchNameById(admin.branchId)}</span>
                         </div>
                       </div>
                       <div className="mb-2">
                         <small className="text-muted d-block">Address</small>
-                        <span>{admin.address || '-'}</span>
+                        <span>{admin.address || "-"}</span>
                       </div>
                       <div className="mb-2">
                         <small className="text-muted d-block">Phone</small>
-                        <span>{admin.phone || '-'}</span>
+                        <span>{admin.phone || "-"}</span>
                       </div>
                       <div className="d-flex justify-content-end gap-2">
-                        <button className="btn btn-sm btn-outline-secondary" onClick={() => handleView(admin)}>
+                        <button
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={() => handleView(admin)}
+                        >
                           <FaEye size={14} />
                         </button>
-                        <button className="btn btn-sm btn-outline-primary" onClick={() => handleEdit(admin)}>
+                        <button
+                          className="btn btn-sm btn-outline-primary"
+                          onClick={() => handleEdit(admin)}
+                        >
                           <FaEdit size={14} />
                         </button>
-                        <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteClick(admin)}>
+                        <button
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => handleDeleteClick(admin)}
+                        >
                           <FaTrashAlt size={14} />
                         </button>
                       </div>
@@ -357,6 +463,8 @@ const SuperAdminAdmin = () => {
             onSubmit={handleFormSubmit}
             plans={plans}
             loadingPlans={loadingPlans}
+            branches={branches} // Pass branches to form
+            loadingBranches={loadingBranches} // Pass loading state for branches
           />
         </ModalWrapper>
       )}
@@ -366,11 +474,19 @@ const SuperAdminAdmin = () => {
           <div className="text-center py-4">
             <h5>Are you sure?</h5>
             <p className="text-muted">
-              This will permanently delete <strong>{selectedAdmin?.fullName}</strong>.
+              This will permanently delete{" "}
+              <strong>{selectedAdmin?.fullName}</strong>.
             </p>
             <div className="d-flex justify-content-center gap-3 mt-4">
-              <button className="btn btn-outline-secondary px-4" onClick={closeDeleteModal}>Cancel</button>
-              <button className="btn btn-danger px-4" onClick={confirmDelete}>Delete</button>
+              <button
+                className="btn btn-outline-secondary px-4"
+                onClick={closeDeleteModal}
+              >
+                Cancel
+              </button>
+              <button className="btn btn-danger px-4" onClick={confirmDelete}>
+                Delete
+              </button>
             </div>
           </div>
         </ModalWrapper>
@@ -394,7 +510,11 @@ const ModalWrapper = ({ title, children, onClose }) => (
       <div className="modal-content p-0" style={{ borderRadius: "14px" }}>
         <div className="modal-header border-0 py-2 px-3">
           <h5 className="modal-title fw-bold fs-5">{title}</h5>
-          <button type="button" className="btn-close" onClick={onClose}></button>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={onClose}
+          ></button>
         </div>
         <div className="modal-body p-3">{children}</div>
       </div>
@@ -403,7 +523,16 @@ const ModalWrapper = ({ title, children, onClose }) => (
 );
 
 /* --------------------------- ADMIN FORM -------------------------- */
-const AdminForm = ({ mode, admin, onCancel, onSubmit, plans, loadingPlans }) => {
+const AdminForm = ({
+  mode,
+  admin,
+  onCancel,
+  onSubmit,
+  plans,
+  loadingPlans,
+  branches, // Receive branches prop
+  loadingBranches, // Receive loadingBranches prop
+}) => {
   const isView = mode === "view";
   const isAdd = mode === "add";
 
@@ -414,25 +543,27 @@ const AdminForm = ({ mode, admin, onCancel, onSubmit, plans, loadingPlans }) => 
     phone: admin?.phone || "",
     email: admin?.email || "",
     password: "",
-    status: (admin?.status || "active"),
+    status: admin?.status || "active",
     selectedPlanId: "", // will be set if plan matches
     planName: admin?.planName || "",
     planPrice: admin?.price || "",
     planDuration: admin?.duration || "",
-    planDescription: admin?.description || ""
+    planDescription: admin?.description || "",
+    branchId: admin?.branchId || "", // Add branchId to state
   });
 
   // On initial load, try to match plan by name/price to set selectedPlanId
   useEffect(() => {
     if (admin && plans.length > 0 && admin.planName) {
-      const matchedPlan = plans.find(p =>
-        p.name === admin.planName &&
-        p.price.toString() === (admin.price || "").toString()
+      const matchedPlan = plans.find(
+        (p) =>
+          p.name === admin.planName &&
+          p.price.toString() === (admin.price || "").toString()
       );
       if (matchedPlan) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
-          selectedPlanId: matchedPlan.id
+          selectedPlanId: matchedPlan.id,
         }));
       }
     }
@@ -440,36 +571,38 @@ const AdminForm = ({ mode, admin, onCancel, onSubmit, plans, loadingPlans }) => 
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handlePlanChange = (planId) => {
-    const selectedPlan = plans.find(p => p.id == planId);
+    const selectedPlan = plans.find((p) => p.id == planId);
     if (selectedPlan) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         selectedPlanId: planId,
         planName: selectedPlan.name,
         planPrice: selectedPlan.price.toString(),
         planDuration: selectedPlan.duration,
-        planDescription: selectedPlan.description || `Plan for ${selectedPlan.duration} @ ₹${selectedPlan.price}`
+        planDescription:
+          selectedPlan.description ||
+          `Plan for ${selectedPlan.duration} @ ₹${selectedPlan.price}`,
       }));
     } else {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         selectedPlanId: "",
         planName: "",
         planPrice: "",
         planDuration: "",
-        planDescription: ""
+        planDescription: "",
       }));
     }
   };
 
   const handleStatusToggle = () => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      status: prev.status === "active" ? "inactive" : "active"
+      status: prev.status === "active" ? "inactive" : "active",
     }));
   };
 
@@ -478,7 +611,7 @@ const AdminForm = ({ mode, admin, onCancel, onSubmit, plans, loadingPlans }) => 
     if (isView) return onCancel();
 
     const payload = {
-      ...formData
+      ...formData,
     };
     onSubmit(payload);
   };
@@ -491,57 +624,81 @@ const AdminForm = ({ mode, admin, onCancel, onSubmit, plans, loadingPlans }) => 
         <div className="row g-2 mb-3">
           <div className="col-12">
             <label className="form-label fs-6">Full Name *</label>
-            <input 
-              name="fullName" 
-              className="form-control form-control-sm" 
-              value={formData.fullName} 
-              onChange={handleInputChange} 
-              readOnly={isView} 
-              required
-            />
-          </div>
-          <div className="col-12">
-            <label className="form-label fs-6">Gym Name *</label>
-            <input 
-              name="gymName" 
-              className="form-control form-control-sm" 
-              value={formData.gymName}
+            <input
+              name="fullName"
+              className="form-control form-control-sm"
+              value={formData.fullName}
               onChange={handleInputChange}
-              readOnly={isView} 
-              required
-            />
-          </div>
-          <div className="col-12">
-            <label className="form-label fs-6">Address *</label>
-            <input 
-              name="address" 
-              className="form-control form-control-sm" 
-              value={formData.address} 
-              onChange={handleInputChange}
-              readOnly={isView} 
+              readOnly={isView}
               required
             />
           </div>
           <div className="col-12 col-md-6">
-            <label className="form-label fs-6">Phone *</label>
-            <input 
-              name="phone" 
-              className="form-control form-control-sm" 
-              value={formData.phone} 
+            <label className="form-label fs-6">Gym Name *</label>
+            <input
+              name="gymName"
+              className="form-control form-control-sm"
+              value={formData.gymName}
               onChange={handleInputChange}
-              readOnly={isView} 
+              readOnly={isView}
+              required
+            />
+          </div>
+          <div className="col-12 col-md-6">
+            <label className="form-label fs-6">Branch Name *</label>
+            {loadingBranches ? (
+              <div className="form-control form-control-sm" disabled>
+                Loading branches...
+              </div>
+            ) : (
+              <select
+                name="branchId" // Add name to the select
+                className="form-select form-select-sm"
+                value={formData.branchId}
+                onChange={handleInputChange} // Use handleInputChange for consistency
+                disabled={isView}
+                required
+              >
+                <option value="">-- Select Branch --</option>
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div className="col-12 col-md-6">
+            <label className="form-label fs-6">Phone *</label>
+            <input
+              name="phone"
+              className="form-control form-control-sm"
+              value={formData.phone}
+              onChange={handleInputChange}
+              readOnly={isView}
               required
             />
           </div>
           <div className="col-12 col-md-6">
             <label className="form-label fs-6">Email *</label>
-            <input 
-              name="email" 
+            <input
+              name="email"
               type="email"
-              className="form-control form-control-sm" 
-              value={formData.email} 
+              className="form-control form-control-sm"
+              value={formData.email}
               onChange={handleInputChange}
-              readOnly={isView} 
+              readOnly={isView}
+              required
+            />
+          </div>
+          <div className="col-12">
+            <label className="form-label fs-6">Address *</label>
+            <input
+              name="address"
+              className="form-control form-control-sm"
+              value={formData.address}
+              onChange={handleInputChange}
+              readOnly={isView}
               required
             />
           </div>
@@ -555,10 +712,10 @@ const AdminForm = ({ mode, admin, onCancel, onSubmit, plans, loadingPlans }) => 
           <div className="row g-2 mb-3">
             <div className="col-12">
               <label className="form-label fs-6">Password *</label>
-              <input 
-                name="password" 
-                type="password" 
-                className="form-control form-control-sm" 
+              <input
+                name="password"
+                type="password"
+                className="form-control form-control-sm"
                 value={formData.password}
                 onChange={handleInputChange}
                 required
@@ -575,7 +732,9 @@ const AdminForm = ({ mode, admin, onCancel, onSubmit, plans, loadingPlans }) => 
           <div className="col-12">
             <label className="form-label fs-6">Select Plan</label>
             {loadingPlans ? (
-              <div className="form-control form-control-sm" disabled>Loading plans...</div>
+              <div className="form-control form-control-sm" disabled>
+                Loading plans...
+              </div>
             ) : (
               <select
                 className="form-select form-select-sm"
@@ -584,7 +743,7 @@ const AdminForm = ({ mode, admin, onCancel, onSubmit, plans, loadingPlans }) => 
                 disabled={isView}
               >
                 <option value="">-- Choose Plan --</option>
-                {plans.map(plan => (
+                {plans.map((plan) => (
                   <option key={plan.id} value={plan.id}>
                     {plan.name} (₹{plan.price}, {plan.duration})
                   </option>
@@ -597,17 +756,17 @@ const AdminForm = ({ mode, admin, onCancel, onSubmit, plans, loadingPlans }) => 
             <>
               <div className="col-12 col-md-6">
                 <label className="form-label fs-6">Price</label>
-                <input 
-                  className="form-control form-control-sm" 
-                  value={formData.planPrice} 
+                <input
+                  className="form-control form-control-sm"
+                  value={formData.planPrice}
                   readOnly
                 />
               </div>
               <div className="col-12 col-md-6">
                 <label className="form-label fs-6">Duration</label>
-                <input 
-                  className="form-control form-control-sm" 
-                  value={formData.planDuration} 
+                <input
+                  className="form-control form-control-sm"
+                  value={formData.planDuration}
                   readOnly
                 />
               </div>
@@ -638,17 +797,27 @@ const AdminForm = ({ mode, admin, onCancel, onSubmit, plans, loadingPlans }) => 
             onChange={handleStatusToggle}
             disabled={isView}
           />
-          <span className="ms-2">{formData.status === "active" ? "Active" : "Inactive"}</span>
+          <span className="ms-2">
+            {formData.status === "active" ? "Active" : "Inactive"}
+          </span>
         </div>
       </div>
 
       {/* Buttons */}
       <div className="d-flex justify-content-end gap-2">
-        <button type="button" className="btn btn-outline-secondary btn-sm px-3" onClick={onCancel}>
+        <button
+          type="button"
+          className="btn btn-outline-secondary btn-sm px-3"
+          onClick={onCancel}
+        >
           Close
         </button>
         {!isView && (
-          <button type="submit" className="btn btn-sm px-3" style={{ background: "#6EB2CC", color: "#fff" }}>
+          <button
+            type="submit"
+            className="btn btn-sm px-3"
+            style={{ background: "#6EB2CC", color: "#fff" }}
+          >
             {mode === "add" ? "Save Admin" : "Update Admin"}
           </button>
         )}
