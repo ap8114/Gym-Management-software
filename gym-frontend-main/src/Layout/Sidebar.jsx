@@ -183,6 +183,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       { name: "Dashboard", icon: faChartBar, path: "/member/dashboard" },
       { name: "QR Check-in", icon: faGear, path: "/member/qrcheckin" },
       { name: "View Plan", icon: faEye, path: "/member/viewplan" },
+      { name: "Requests Plan", icon: faEye, path: "/member/requestplan" },
       { name: "Class Schedule", icon: faClapperboard, path: "/member/classSchedule" },
       { name: "My Account", icon: faMoneyBillAlt, path: "/member/account" }
     ],
