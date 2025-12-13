@@ -239,7 +239,7 @@ const RequestPlan = () => {
                         <th>Created At</th>
                         <th>Updated At</th>
                         <th>Admin</th>
-                        <th>Actions</th>
+                        
                       </tr>
                     </thead>
                     <tbody>
@@ -276,16 +276,7 @@ const RequestPlan = () => {
                               ID: {request.adminId}
                             </div>
                           </td>
-                          <td>
-                            <ButtonGroup size="sm">
-                              <Button variant="outline-info" size="sm">
-                                <i className="bi bi-eye"></i>
-                              </Button>
-                              <Button variant="outline-primary" size="sm">
-                                <i className="bi bi-pencil"></i>
-                              </Button>
-                            </ButtonGroup>
-                          </td>
+                        
                         </tr>
                       ))}
                     </tbody>
