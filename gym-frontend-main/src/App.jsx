@@ -121,6 +121,7 @@ import ShiftManagement from "./Dashboard/Admin/ShiftMangamenet";
 import AdminTaskManagement from "./Dashboard/Admin/AdminTaskManagement";
 import PersonalAttendance from "./Dashboard/PersonalTrainer/PersonalAttendance";
 import AdminSetting from "./Dashboard/Admin/AdminSetting";
+import DynamicPage from "./Layout/DynamicPage";
 
 
 
@@ -141,22 +142,31 @@ function App() {
 
   const location = useLocation();
 
-  const hideLayout =
-    location.pathname === "/" ||
-    location.pathname === "/login" ||
-    location.pathname === "/signup" ||
-    location.pathname === "/forgot-password";
+const isDynamicPage =
+  /^\/[^\/]+\/\d+$/.test(location.pathname) ||  // /gym/90
+  /^\/\d+$/.test(location.pathname);             // /90
+
+const hideLayout =
+  location.pathname === "/" ||
+  location.pathname === "/login" ||
+  location.pathname === "/signup" ||
+  location.pathname === "/forgot-password" ||
+  isDynamicPage;
+
 
 
   return (
     <>
-
+   <Routes>
+      <Route path=":slug?/:adminId" element={<DynamicPage />} />
+    </Routes>
       {hideLayout ? (
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/" element={<LendingPage />} />
+
         </Routes>
       ) : (
         <>
@@ -171,7 +181,7 @@ function App() {
                 }`}
             >
                 <Routes>
-
+              
                 <Route path="/superadmin/dashboard" element={<DashboardHomePage />} />
                 <Route path="/superadmin/Admin" element={<SuperAdminOwner />} />
                 <Route path="/superadmin/Plans&Pricing" element={<Plans />} />
