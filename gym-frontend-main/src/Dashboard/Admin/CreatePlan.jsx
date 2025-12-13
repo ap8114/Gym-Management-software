@@ -35,15 +35,12 @@ const CreatePlan = () => {
   const [planToDelete, setPlanToDelete] = useState({ id: null, type: null });
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [requestToProcess, setRequestToProcess] = useState(null);
-  const [selectedBranch, setSelectedBranch] = useState("all");
   const [newPlan, setNewPlan] = useState({
     name: "",
     sessions: "",
     validity: "",
     price: "",
     type: "group",
-    branch: "", // Will be set after branches load
-    branchId: null, // Store branch ID separately
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -52,10 +49,7 @@ const CreatePlan = () => {
   const [viewLoading, setViewLoading] = useState(false);
   const [bookingRequests, setBookingRequests] = useState([]);
   const [renewalRequests, setRenewalRequests] = useState([]);
-  const [branches, setBranches] = useState([]);
-  const [branchDetails, setBranchDetails] = useState([]); // Store full branch objects with ID and name
-  const [branchesLoading, setBranchesLoading] = useState(true); // Separate loading for branches
-  const [activeRequestTab, setActiveRequestTab] = useState("booking"); // New state for request tabs
+  const [activeRequestTab, setActiveRequestTab] = useState("booking");
 
   const customColor = "#6EB2CC";
 
@@ -77,76 +71,12 @@ const CreatePlan = () => {
   const branchId = user?.branchId || null;
   const name = user?.fullName || null;
 
-  // Fetch branches first, then plans and booking requests
+  // Fetch plans and booking requests
   useEffect(() => {
-    const fetchBranches = async () => {
-      setBranchesLoading(true);
-      try {
-        const response = await fetch(`${BaseUrl}branches/by-admin/${adminId}`);
-        if (!response.ok) throw new Error("Failed to fetch branches");
-        const result = await response.json();
-
-        let branchList = [];
-        let branchDetailsList = [];
-
-        // Case 1: API returns { success: true, branches: [...] }
-        if (result.success && Array.isArray(result.branches)) {
-          branchDetailsList = result.branches;
-          branchList = result.branches.map((b) => b.name);
-        }
-        // Case 2: API returns just an array of branch objects
-        else if (
-          Array.isArray(result) &&
-          result.length > 0 &&
-          typeof result[0] === "object"
-        ) {
-          branchDetailsList = result;
-          branchList = result.map((b) => b.name);
-        }
-        // Case 3: API returns single branch object
-        else if (result.branch && result.branch.name) {
-          branchDetailsList = [result.branch];
-          branchList = [result.branch.name];
-        }
-        // Fallback: if it's plain string array
-        else if (Array.isArray(result)) {
-          branchList = result;
-          // Create objects with ID and name
-          branchDetailsList = result.map((name, index) => ({
-            id: index + 1,
-            name,
-          }));
-        }
-
-        setBranches(branchList);
-        setBranchDetails(branchDetailsList);
-        if (branchList.length > 0) {
-          setNewPlan((prev) => ({
-            ...prev,
-            branch: branchList[0],
-            branchId: branchDetailsList[0]?.id || null,
-          }));
-        }
-      } catch (error) {
-        console.error("Error fetching branches:", error);
-        setBranches([]);
-        setBranchDetails([]);
-      } finally {
-        setBranchesLoading(false);
-      }
-    };
-
-    fetchBranches();
-  }, [adminId]);
-
-  // Fetch plans and booking requests after branches are loaded
-  useEffect(() => {
-    if (!branchesLoading) {
-      fetchPlansFromAPI();
-      fetchBookingRequests();
-      fetchRenewalRequests();
-    }
-  }, [branchesLoading]);
+    fetchPlansFromAPI();
+    fetchBookingRequests();
+    fetchRenewalRequests();
+  }, []);
 
   const fetchPlansFromAPI = async () => {
     setLoading(true);
@@ -164,8 +94,6 @@ const CreatePlan = () => {
           validity: plan.validityDays,
           price: `$${plan.price.toLocaleString()}`,
           active: plan.active ?? true,
-          branchId: plan.branchId, // Store the branchId from API
-          branch: plan.branchId ? getBranchNameById(plan.branchId) : "Unknown Branch", // Get branch name from ID
           type: plan.type.toLowerCase(),
         }));
         setApiPlans(formattedPlans);
@@ -183,12 +111,6 @@ const CreatePlan = () => {
     }
   };
 
-  // Helper function to get branch name by ID
-  const getBranchNameById = (branchId) => {
-    const branch = branchDetails.find((b) => b.id === parseInt(branchId));
-    return branch ? branch.name : "Unknown Branch";
-  };
-
   const fetchBookingRequests = async () => {
     try {
       const adminId = localStorage.getItem("userId") || "4";
@@ -199,19 +121,19 @@ const CreatePlan = () => {
         const formattedRequests = response.data.requests.map((request) => ({
           id: request.id,
           memberName: request.memberName,
-          planName: request.className || "Personal Training", // Use className if available, otherwise use default
-          planType: request.className ? "group" : "personal", // Determine type based on className presence
+          planName: request.className || "Personal Training",
+          planType: request.className ? "group" : "personal",
           price: `$${parseFloat(request.price).toLocaleString()}`,
-          sessions: "N/A", // Not provided in API, you might need to fetch this separately
-          validity: "N/A", // Not provided in API, you might need to fetch this separately
-          sessionsUsed: "N/A", // Not provided in API
+          sessions: "N/A",
+          validity: "N/A",
+          sessionsUsed: "N/A",
           requestedAt: new Date(request.createdAt).toLocaleString(),
           status: request.status.toLowerCase(),
           upiId: request.upiId,
           classId: request.classId,
           memberId: request.memberId,
           branchId: request.branchId,
-          requestType: "booking" // Add request type to differentiate
+          requestType: "booking"
         }));
         setBookingRequests(formattedRequests);
       }
@@ -223,68 +145,57 @@ const CreatePlan = () => {
     }
   };
 
-  // New function to fetch renewal requests
-// New function to fetch renewal requests
-const fetchRenewalRequests = async () => {
-  try {
-    // Use adminId to fetch all renewal requests for the admin's gym/branch
-    // This is more appropriate than fetching for a single memberId
-    const adminId = localStorage.getItem("userId") || "4";
-    const response = await axiosInstance.get(
-      `${BaseUrl}members/renew?adminId=${adminId}`
-    );
-    
-    // Check if the response has data
-    if (response.data) {
-      let renewals = [];
+  const fetchRenewalRequests = async () => {
+    try {
+      const adminId = localStorage.getItem("userId") || "4";
+      const response = await axiosInstance.get(
+        `${BaseUrl}members/renew?adminId=${adminId}`
+      );
       
-      // Try to find the array of renewals in different possible response structures
-      if (response.data.success && Array.isArray(response.data.renewals)) {
-        renewals = response.data.renewals;
-      } else if (Array.isArray(response.data)) {
-        renewals = response.data;
-      } else if (response.data.data && Array.isArray(response.data.data)) {
-        renewals = response.data.data;
-      }
-      
-      // Format the renewal requests for the UI
-      const formattedRenewals = renewals.map((renewal) => {
-        // Safely access nested objects with default values
-        const member = renewal.member || {};
-        const currentPlan = renewal.currentPlan || {};
-        const requestedPlan = renewal.requestedPlan || {};
+      if (response.data) {
+        let renewals = [];
         
-        return {
-          id: renewal.id,
-          memberName: member.fullName || 'Unknown',
-          memberEmail: member.email || 'N/A',
-          memberPhone: member.phone || 'N/A',
-          currentPlan: currentPlan.name || 'Unknown',
-          currentPlanType: currentPlan.type ? currentPlan.type.toLowerCase() : 'unknown',
-          requestedPlan: requestedPlan.name || 'Unknown',
-          requestedPlanType: requestedPlan.type ? requestedPlan.type.toLowerCase() : 'unknown',
-          price: requestedPlan.price ? `$${parseFloat(requestedPlan.price).toLocaleString()}` : 'N/A',
-          sessions: requestedPlan.sessions || 'N/A',
-          validity: requestedPlan.validityDays || requestedPlan.validity || 'N/A',
-          membershipFrom: renewal.membershipFrom || 'N/A',
-          membershipTo: renewal.membershipTo || 'N/A',
-          requestedAt: renewal.createdAt ? new Date(renewal.createdAt).toLocaleString() : 'N/A',
-          status: renewal.status ? renewal.status.toLowerCase() : 'unknown',
-          memberId: renewal.memberId || member.id || null,
-          branchId: renewal.branchId || member.branchId || null,
-          requestType: "renewal" // Add request type to differentiate
-        };
-      });
-      
-      setRenewalRequests(formattedRenewals);
+        if (response.data.success && Array.isArray(response.data.renewals)) {
+          renewals = response.data.renewals;
+        } else if (Array.isArray(response.data)) {
+          renewals = response.data;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          renewals = response.data.data;
+        }
+        
+        const formattedRenewals = renewals.map((renewal) => {
+          const member = renewal.member || {};
+          const currentPlan = renewal.currentPlan || {};
+          const requestedPlan = renewal.requestedPlan || {};
+          
+          return {
+            id: renewal.id,
+            memberName: member.fullName || 'Unknown',
+            memberEmail: member.email || 'N/A',
+            memberPhone: member.phone || 'N/A',
+            currentPlan: currentPlan.name || 'Unknown',
+            currentPlanType: currentPlan.type ? currentPlan.type.toLowerCase() : 'unknown',
+            requestedPlan: requestedPlan.name || 'Unknown',
+            requestedPlanType: requestedPlan.type ? requestedPlan.type.toLowerCase() : 'unknown',
+            price: requestedPlan.price ? `$${parseFloat(requestedPlan.price).toLocaleString()}` : 'N/A',
+            sessions: requestedPlan.sessions || 'N/A',
+            validity: requestedPlan.validityDays || requestedPlan.validity || 'N/A',
+            membershipFrom: renewal.membershipFrom || 'N/A',
+            membershipTo: renewal.membershipTo || 'N/A',
+            requestedAt: renewal.createdAt ? new Date(renewal.createdAt).toLocaleString() : 'N/A',
+            status: renewal.status ? renewal.status.toLowerCase() : 'unknown',
+            memberId: renewal.memberId || member.id || null,
+            branchId: renewal.branchId || member.branchId || null,
+            requestType: "renewal"
+          };
+        });
+        
+        setRenewalRequests(formattedRenewals);
+      }
+    } catch (err) {
+      console.error("Error fetching renewal requests:", err);
     }
-  } catch (err) {
-    console.error("Error fetching renewal requests:", err);
-    // Do not set the error state here. This prevents the error message from showing
-    // to the user if the API call fails, which is better UX for a non-critical feature.
-    // setError(err.response?.data?.message || "Failed to fetch renewal requests.");
-  }
-};
+  };
 
   const fetchPlanById = async (planId) => {
     setViewLoading(true);
@@ -302,8 +213,6 @@ const fetchRenewalRequests = async () => {
           validity: plan.validityDays,
           price: `$${plan.price.toLocaleString()}`,
           active: plan.active ?? true,
-          branchId: plan.branchId,
-          branch: plan.branchId ? getBranchNameById(plan.branchId) : "Unknown Branch",
           type: plan.type.toLowerCase(),
           createdAt: plan.createdAt,
           updatedAt: plan.updatedAt,
@@ -323,9 +232,7 @@ const fetchRenewalRequests = async () => {
 
   const getPlansByType = (type) => {
     const plans = type === "group" ? groupPlans : personalPlans;
-    return selectedBranch === "all"
-      ? plans
-      : plans.filter((plan) => plan.branch === selectedBranch);
+    return plans;
   };
 
   const updatePlansByType = (type, updatedPlans) => {
@@ -338,8 +245,7 @@ const fetchRenewalRequests = async () => {
       !newPlan.name ||
       !newPlan.sessions ||
       !newPlan.validity ||
-      !newPlan.price ||
-      !newPlan.branchId
+      !newPlan.price
     ) {
       setError("Please fill all fields");
       return;
@@ -355,7 +261,6 @@ const fetchRenewalRequests = async () => {
         price: parseInt(newPlan.price),
         adminId: parseInt(adminId),
         type: newPlan.type.toUpperCase(),
-        branchId: newPlan.branchId,
       };
       const response = await axiosInstance.post(
         `${BaseUrl}MemberPlan`,
@@ -369,10 +274,6 @@ const fetchRenewalRequests = async () => {
           validity: response.data.plan.validityDays,
           price: `$${response.data.plan.price.toLocaleString()}`,
           active: true,
-          branchId: response.data.plan.branchId, // Store the branchId from API
-          branch: response.data.plan.branchId
-            ? getBranchNameById(response.data.plan.branchId)
-            : "Unknown Branch", // Get branch name from ID
           type: response.data.plan.type.toLowerCase(),
         };
         const currentPlans =
@@ -385,8 +286,6 @@ const fetchRenewalRequests = async () => {
           validity: "",
           price: "",
           type: activeTab === "personal" ? "personal" : "group",
-          branch: branches.length > 0 ? branches[0] : "",
-          branchId: branchDetails.length > 0 ? branchDetails[0]?.id : null,
         });
         setShowCreateModal(false);
         alert(
@@ -406,9 +305,6 @@ const fetchRenewalRequests = async () => {
   };
 
   const handleEditPlan = (plan, planType) => {
-    // Find the branch object from branchDetails using the branch name
-    const branchObj = branchDetails.find(b => b.name === plan.branch);
-    
     setSelectedPlan({ ...plan, type: planType });
     setNewPlan({
       name: plan.name,
@@ -416,8 +312,6 @@ const fetchRenewalRequests = async () => {
       validity: plan.validity.toString(),
       price: plan.price.replace("$", "").replace(",", ""),
       type: planType,
-      branch: plan.branch,
-      branchId: branchObj ? branchObj.id : plan.branchId, // Use the found branch ID or the existing one
     });
     setShowEditModal(true);
   };
@@ -427,8 +321,7 @@ const fetchRenewalRequests = async () => {
       !newPlan.name ||
       !newPlan.sessions ||
       !newPlan.validity ||
-      !newPlan.price ||
-      !newPlan.branchId
+      !newPlan.price
     ) {
       setError("Please fill all fields");
       return;
@@ -444,7 +337,6 @@ const fetchRenewalRequests = async () => {
         price: parseInt(newPlan.price),
         adminId: parseInt(adminId),
         type: newPlan.type.toUpperCase(),
-        branchId: newPlan.branchId,
       };
       const response = await axiosInstance.put(
         `${BaseUrl}MemberPlan/${adminId}/${selectedPlan.id}`,
@@ -458,10 +350,6 @@ const fetchRenewalRequests = async () => {
           sessions: response.data.plan.sessions,
           validity: response.data.plan.validityDays,
           price: `$${response.data.plan.price.toLocaleString()}`,
-          branchId: response.data.plan.branchId, // Store the branchId from API
-          branch: response.data.plan.branchId
-            ? getBranchNameById(response.data.plan.branchId)
-            : "Unknown Branch", // Get branch name from ID
           type: response.data.plan.type.toLowerCase(),
         };
         const currentPlans = getPlansByType(selectedPlan.type);
@@ -478,8 +366,6 @@ const fetchRenewalRequests = async () => {
           validity: "",
           price: "",
           type: "group",
-          branch: branches.length > 0 ? branches[0] : "",
-          branchId: branchDetails.length > 0 ? branchDetails[0]?.id : null,
         });
         setShowEditModal(false);
         setSelectedPlan(null);
@@ -589,7 +475,6 @@ const fetchRenewalRequests = async () => {
       };
 
       if (isRenewal) {
-        // Handle renewal request approval/rejection
         const endpoint = status === "approved" 
           ? `${BaseUrl}members/renew/approve/${requestToProcess.id}`
           : `${BaseUrl}members/renew/reject/${requestToProcess.id}`;
@@ -604,7 +489,6 @@ const fetchRenewalRequests = async () => {
           );
         }
       } else {
-        // Handle booking request approval/rejection
         const endpoint = status === "approved"
           ? `${BaseUrl}booking/approve/${requestToProcess.id}`
           : `${BaseUrl}booking/reject/${requestToProcess.id}`;
@@ -640,7 +524,6 @@ const fetchRenewalRequests = async () => {
   };
 
   const handleToggleRequestStatus = async (requestId) => {
-    // Find the request in both booking and renewal requests
     const bookingRequest = bookingRequests.find((req) => req.id === requestId);
     const renewalRequest = renewalRequests.find((req) => req.id === requestId);
     
@@ -662,7 +545,6 @@ const fetchRenewalRequests = async () => {
       };
 
       if (isRenewal) {
-        // Handle renewal request toggle
         const endpoint = newStatus === "approved"
           ? `${BaseUrl}members/renew/approve/${requestId}`
           : `${BaseUrl}members/renew/reject/${requestId}`;
@@ -677,7 +559,6 @@ const fetchRenewalRequests = async () => {
           );
         }
       } else {
-        // Handle booking request toggle
         const endpoint = newStatus === "approved"
           ? `${BaseUrl}booking/approve/${requestId}`
           : `${BaseUrl}booking/reject/${requestId}`;
@@ -829,12 +710,6 @@ const fetchRenewalRequests = async () => {
                 Price: {plan.price}
               </strong>
             </li>
-            <li className="mb-2 d-flex align-items-center gap-2">
-              <span className="text-muted" style={{ fontSize: "0.9rem" }}>
-                📍
-              </span>
-              <strong style={{ fontSize: "0.9rem" }}>{plan.branch}</strong>
-            </li>
           </ul>
           <div className="d-flex gap-2 mt-auto">
             {plan.active ? (
@@ -874,7 +749,6 @@ const fetchRenewalRequests = async () => {
     </Col>
   );
 
-  // Function to render booking request row
   const renderBookingRequestRow = (req, index) => (
     <tr key={req.id}>
       <td>{index + 1}</td>
@@ -978,7 +852,6 @@ const fetchRenewalRequests = async () => {
     </tr>
   );
 
-  // Function to render renewal request row
   const renderRenewalRequestRow = (req, index) => (
     <tr key={req.id}>
       <td>{index + 1}</td>
@@ -1090,7 +963,6 @@ const fetchRenewalRequests = async () => {
     </tr>
   );
 
-  // Function to render booking request card for mobile view
   const renderBookingRequestCard = (req, index) => (
     <Card
       key={req.id}
@@ -1217,7 +1089,6 @@ const fetchRenewalRequests = async () => {
     </Card>
   );
 
-  // Function to render renewal request card for mobile view
   const renderRenewalRequestCard = (req, index) => (
     <Card
       key={req.id}
@@ -1352,7 +1223,6 @@ const fetchRenewalRequests = async () => {
     </Card>
   );
 
-  // Define the statistics arrays outside the render function
   const bookingStats = [
     {
       label: "Pending Requests",
@@ -1446,9 +1316,6 @@ const fetchRenewalRequests = async () => {
                 validity: "",
                 price: "",
                 type: activeTab === "personal" ? "personal" : "group",
-                branch: branches.length > 0 ? branches[0] : "",
-                branchId:
-                  branchDetails.length > 0 ? branchDetails[0]?.id : null,
               });
               setShowCreateModal(true);
             }}
@@ -1846,38 +1713,6 @@ const fetchRenewalRequests = async () => {
                   </Form.Group>
                 </Col>
               </Row>
-              {/* <Row>
-                <Col md={12}>
-                  <Form.Group className="mb-4">
-                    <Form.Label className="fw-medium">Branch</Form.Label>
-                    {branchesLoading ? (
-                      <div>Loading branches...</div>
-                    ) : (
-                      <Form.Select
-                        value={newPlan.branch}
-                        onChange={(e) => {
-                          const selectedBranchName = e.target.value;
-                          const selectedBranch = branchDetails.find(
-                            (b) => b.name === selectedBranchName
-                          );
-                          setNewPlan({
-                            ...newPlan,
-                            branch: selectedBranchName,
-                            branchId: selectedBranch?.id || null,
-                          });
-                        }}
-                        style={{ padding: "12px", fontSize: "1rem" }}
-                      >
-                        {branches.map((branch) => (
-                          <option key={branch} value={branch}>
-                            {branch}
-                          </option>
-                        ))}
-                      </Form.Select>
-                    )}
-                  </Form.Group>
-                </Col>
-              </Row> */}
             </Form>
           </Modal.Body>
           <Modal.Footer
@@ -1980,39 +1815,6 @@ const fetchRenewalRequests = async () => {
                     />
                   </Form.Group>
                 </Col>
-                {/* <Col md={6}>
-                  <Form.Group className="mb-4">
-                    <Form.Label
-                      className="fw-medium"
-                      style={{ color: "#333" }}
-                    >
-                      Branch
-                    </Form.Label>
-                    <Form.Select
-                      value={newPlan.branch}
-                      onChange={(e) => {
-                        const selectedBranchName = e.target.value;
-                        const selectedBranch = branchDetails.find(
-                          (b) => b.name === selectedBranchName
-                        );
-                        setNewPlan({
-                          ...newPlan,
-                          branch: selectedBranchName,
-                          branchId: selectedBranch?.id || null,
-                        });
-                      }}
-                      required
-                      style={{ padding: "12px", fontSize: "1rem" }}
-                    >
-                      <option value="">Select a branch</option>
-                      {branches.map((branchName) => (
-                        <option key={branchName} value={branchName}>
-                          {branchName}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
-                </Col> */}
               </Row>
             </Form>
           </Modal.Body>
@@ -2092,7 +1894,6 @@ const fetchRenewalRequests = async () => {
                       icon: "📅",
                     },
                     { label: "Price", value: selectedPlan.price, icon: "💰" },
-                    { label: "Branch", value: selectedPlan.branch, icon: "📍" },
                     {
                       label: "Status",
                       value: selectedPlan.active ? "Active" : "Inactive",
