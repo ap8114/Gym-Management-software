@@ -1,25 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import GetAdminId from "../../Api/GetAdminId";
-import axiosInstance from "../../Api/axiosInstance"; // Import your axios instance
+import axiosInstance from "../../Api/axiosInstance";
 
-/**
- * MemberProfile
- * React + Vite + Bootstrap + fully responsive
- * UI-only: wire submit handlers to your API later.
- */
 const Account = () => {
-  // --------------------- Personal Information ------------------------------
   const adminId = GetAdminId();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showErrorAlert, setShowErrorAlert] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false); // New state for edit mode
-  const [saving, setSaving] = useState(false); // State for saving
-  const [updatingPassword, setUpdatingPassword] = useState(false); // State for password update
-  
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+
   const [personal, setPersonal] = useState({
-    member_id: "M23456789", // Sample member ID
+    member_id: "M23456789",
     first_name: "",
     last_name: "",
     gender: "",
@@ -31,20 +25,17 @@ const Account = () => {
     address_state: "",
     address_zip: "",
     profile_picture: null,
-    profile_preview: "https://randomuser.me/api/portraits/men/32.jpg", // Sample profile image
+    profile_preview: "https://randomuser.me/api/portraits/men/32.jpg",
   });
 
-  // --------------------- Membership Information ----------------------------
   const [membership, setMembership] = useState({
     membership_plan: "",
     plan_start_date: "",
     plan_end_date: "",
-    status: "",
-    membership_type: "",
+    status: "", // maps to membership_status
     membership_fee: "",
   });
 
-  // --------------------- Password Change Section ---------------------------
   const [password, setPassword] = useState({
     current: "",
     new: "",
@@ -56,7 +47,6 @@ const Account = () => {
     minLength: "",
   });
 
-  // --------------------- API Fetching -------------------------------------
   useEffect(() => {
     const fetchProfileData = async () => {
       if (!adminId) {
@@ -69,17 +59,17 @@ const Account = () => {
       try {
         setLoading(true);
         const response = await axiosInstance.get(`member-self/profile/${adminId}`);
-        
+
         if (response.data.success && response.data.profile) {
           const profile = response.data.profile;
-          
-          // Update personal information
+
+          // ✅ CORRECT FIELD MAPPING FROM API RESPONSE
           setPersonal({
-            member_id: `M${profile.userId}`, // Using userId as member ID
+            member_id: `M${profile.userId}`,
             first_name: profile.first_name || "",
-            last_name: profile.first_name || "",
+            last_name: profile.last_name || "", // ✅ Fixed: was profile.first_name!
             gender: profile.gender || "",
-            dob: profile.dateOfBirth ? profile.dateOfBirth.split('T')[0] : "",
+            dob: profile.date_of_birth || "", // ✅ API field is date_of_birth
             email: profile.email || "",
             phone: profile.phone || "",
             address_street: profile.address_street || "",
@@ -87,18 +77,18 @@ const Account = () => {
             address_state: profile.address_state || "",
             address_zip: profile.address_zip || "",
             profile_picture: null,
+            profile_preview: "https://randomuser.me/api/portraits/men/32.jpg",
           });
-          
-          // Update membership information
+
+          // ✅ Membership: only use fields that exist
           setMembership({
             membership_plan: profile.membership_plan || "",
             plan_start_date: profile.plan_start_date || "",
             plan_end_date: profile.plan_end_date || "",
-            status: profile.memberStatus || "",
-            membership_type: profile.membership_type || "",
+            status: profile.membership_status || "", // ✅ Correct field
             membership_fee: profile.membership_fee || "",
           });
-          
+
           setError(null);
           setShowErrorAlert(false);
         } else {
@@ -107,7 +97,7 @@ const Account = () => {
         }
       } catch (err) {
         console.error("Error fetching profile data:", err);
-        setError("Data not found");
+        setError("Failed to load profile");
         setShowErrorAlert(true);
       } finally {
         setLoading(false);
@@ -117,7 +107,6 @@ const Account = () => {
     fetchProfileData();
   }, [adminId]);
 
-  // --------------------- Handlers -----------------------------------------
   const handlePersonalChange = (e) => {
     const { name, value, files } = e.target;
     if (name === "profile_picture" && files?.[0]) {
@@ -141,7 +130,6 @@ const Account = () => {
     const { name, value } = e.target;
     setPassword((p) => ({ ...p, [name]: value }));
 
-    // Validation on the fly
     if (name === "new") {
       setPasswordErrors((prev) => ({
         ...prev,
@@ -158,45 +146,40 @@ const Account = () => {
     }
   };
 
-  // Handle edit mode toggle
   const handleEditModeToggle = () => {
     setIsEditMode(!isEditMode);
   };
 
-  // Handle save/update profile
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
-    
+
     if (isEditMode) {
-      // Save changes
       setSaving(true);
       try {
-        // Transform data to match API expectations
+        // ✅ Send correct field names (snake_case as per API)
         const payload = {
           first_name: personal.first_name,
           last_name: personal.last_name,
           email: personal.email,
           phone: personal.phone,
           gender: personal.gender,
-          dateOfBirth: personal.dob,
+          date_of_birth: personal.dob, // ✅ snake_case
           address_street: personal.address_street,
           address_city: personal.address_city,
           address_state: personal.address_state,
           address_zip: personal.address_zip,
         };
-        
-        // Make API call to update profile
+
         const response = await axiosInstance.put(`member-self/profile/${adminId}`, payload);
-        
+
         if (response.data.success) {
-          // Update local state with response data
           const updatedProfile = response.data.profile;
           setPersonal({
             member_id: `M${updatedProfile.userId}`,
             first_name: updatedProfile.first_name || "",
             last_name: updatedProfile.last_name || "",
             gender: updatedProfile.gender || "",
-            dob: updatedProfile.dateOfBirth ? updatedProfile.dateOfBirth.split('T')[0] : "",
+            dob: updatedProfile.date_of_birth || "", // ✅
             email: updatedProfile.email || "",
             phone: updatedProfile.phone || "",
             address_street: updatedProfile.address_street || "",
@@ -206,16 +189,15 @@ const Account = () => {
             profile_picture: personal.profile_picture,
             profile_preview: personal.profile_preview,
           });
-          
+
           setMembership({
             membership_plan: updatedProfile.membership_plan || "",
             plan_start_date: updatedProfile.plan_start_date || "",
             plan_end_date: updatedProfile.plan_end_date || "",
-            status: updatedProfile.memberStatus || "",
-            membership_type: updatedProfile.membership_type || "",
+            status: updatedProfile.membership_status || "", // ✅
             membership_fee: updatedProfile.membership_fee || "",
           });
-          
+
           alert("Profile updated successfully!");
           setIsEditMode(false);
         } else {
@@ -228,15 +210,13 @@ const Account = () => {
         setSaving(false);
       }
     } else {
-      // Enter edit mode
       setIsEditMode(true);
     }
   };
 
-  // Handle password update
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
-    
+
     if (!password.new || !password.confirm || passwordErrors.minLength || passwordErrors.newMatch) {
       alert("Please fix password errors before saving.");
       return;
@@ -249,21 +229,19 @@ const Account = () => {
       alert("Current password is required!");
       return;
     }
-    
+
     try {
       setUpdatingPassword(true);
-      // Updated payload to match API expectations
       const payload = {
         current: password.current,
         new: password.new,
       };
-      
-      // Make API call to update password
+
       const response = await axiosInstance.put(`member-self/password/${adminId}`, payload);
-      
+
       if (response.data.success) {
         alert("Password updated successfully!");
-        setPassword({ current: "", new: "", confirm: "" }); // Clear form after success
+        setPassword({ current: "", new: "", confirm: "" });
       } else {
         alert("Failed to update password. Please try again.");
       }
@@ -275,10 +253,8 @@ const Account = () => {
     }
   };
 
-  // --------------------- Derived / helpers ---------------------------------
   const todayISO = format(new Date(), "yyyy-MM-dd");
 
-  // --------------------- Loading State -------------------------
   if (loading) {
     return (
       <div className="container py-5 text-center">
@@ -292,7 +268,6 @@ const Account = () => {
 
   return (
     <div className="container py-2">
-      {/* Error Alert */}
       {showErrorAlert && (
         <div className="alert alert-warning alert-dismissible fade show mb-4" role="alert">
           <strong>Warning!</strong> {error || "Data not found"}.
@@ -306,9 +281,7 @@ const Account = () => {
       )}
       
       <div className="row g-4">
-        {/* Full width column: Personal + Membership + Password */}
         <div className="col-12">
-          {/* Personal Info */}
           <div className="card border-0 shadow-sm mb-4">
             <div className="card-body">
               <div className="d-flex justify-content-between align-items-center mb-3">
@@ -321,15 +294,8 @@ const Account = () => {
                 </button>
               </div>
 
-              {/* Profile Picture Section - Enhanced */}
-              <div className="text-center mb-4">
-         
-               
-              </div>
-
               <form onSubmit={handleUpdateProfile}>
                 <div className="row g-3">
-                  {/* Member ID (readonly) */}
                   <div className="col-12 col-sm-6">
                     <label className="form-label">Member ID</label>
                     <input
@@ -483,90 +449,6 @@ const Account = () => {
             </div>
           </div>
 
-          {/* Membership Info */}
-          {/* <div className="card border-0 shadow-sm mb-4">
-            <div className="card-body">
-              <h5 className="fw-bold mb-3">Membership Information</h5>
-              <div className="row g-3">
-                <div className="col-12 col-sm-6">
-                  <label className="form-label">Membership Plan</label>
-                  <input
-                    name="membership_plan"
-                    className="form-control"
-                    placeholder="e.g. Gold 12 Months"
-                    value={membership.membership_plan}
-                    onChange={handleMembershipChange}
-                    readOnly
-                  />
-                </div>
-                <div className="col-6 col-sm-3">
-                  <label className="form-label">Start Date</label>
-                  <input
-                    type="date"
-                    name="plan_start_date"
-                    className="form-control"
-                    value={membership.plan_start_date}
-                    onChange={handleMembershipChange}
-                    readOnly
-                  />
-                </div>
-                <div className="col-6 col-sm-3">
-                  <label className="form-label">End Date</label>
-                  <input
-                    type="date"
-                    name="plan_end_date"
-                    className="form-control"
-                    value={membership.plan_end_date}
-                    onChange={handleMembershipChange}
-                    readOnly
-                  />
-                </div>
-                <div className="col-6 col-sm-3">
-                  <label className="form-label">Status</label>
-                  <select
-                    name="status"
-                    className="form-select"
-                    value={membership.status}
-                    onChange={handleMembershipChange}
-                    disabled
-                  >
-                    <option>Active</option>
-                    <option>Inactive</option>
-                    <option>Expired</option>
-                  </select>
-                </div>
-                <div className="col-6 col-sm-3">
-                  <label className="form-label">Membership Type</label>
-                  <select
-                    name="membership_type"
-                    className="form-select"
-                    value={membership.membership_type}
-                    onChange={handleMembershipChange}
-                    disabled
-                  >
-                    <option>Standard</option>
-                    <option>Premium</option>
-                    <option>VIP</option>
-                  </select>
-                </div>
-                <div className="col-12 col-sm-3">
-                  <label className="form-label">Membership Fee</label>
-                  <input
-                    type="number"
-                    name="membership_fee"
-                    className="form-control"
-                    placeholder="₹"
-                    value={membership.membership_fee}
-                    onChange={handleMembershipChange}
-                    min="0"
-                    step="0.01"
-                    readOnly
-                  />
-                </div>
-              </div>
-            </div>
-          </div> */}
-
           {/* Password Change Section */}
           <div className="card border-0 shadow-sm">
             <div className="card-body">
@@ -645,11 +527,5 @@ const Account = () => {
     </div>
   );
 };
-
-/* ----------------------- helpers ----------------------- */
-function autoMemberId() {
-  const y = new Date().getFullYear().toString().slice(-2);
-  return `M${y}${Math.floor(100000 + Math.random() * 900000)}`;
-}
 
 export default Account;

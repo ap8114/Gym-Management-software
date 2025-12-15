@@ -537,14 +537,14 @@ const StaffAttendance = () => {
               <FaFileExport className="me-1" /> 
               <span className="d-none d-sm-inline">Export</span>
             </button>
-            <button 
+            {/* <button 
               className="btn flex-fill" 
               style={{ backgroundColor: customColor, borderColor: customColor, color: 'white', fontSize: '0.875rem' }}
               onClick={handleAddNew}
             >
               <FaPlus className="me-1" /> 
               <span className="d-none d-sm-inline">Add Record</span>
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
@@ -635,7 +635,7 @@ const StaffAttendance = () => {
                     <th className="fw-semibold text-nowrap d-none d-lg-table-cell" style={{ fontSize: '0.75rem', padding: '0.5rem' }}>MODE</th>
                     <th className="fw-semibold text-nowrap d-none d-md-table-cell" style={{ fontSize: '0.75rem', padding: '0.5rem' }}>SHIFT</th>
                     <th className="fw-semibold text-nowrap" style={{ fontSize: '0.75rem', padding: '0.5rem' }}>STATUS</th>
-                    <th className="fw-semibold text-center text-nowrap" style={{ fontSize: '0.75rem', padding: '0.5rem' }}>ACTIONS</th>
+                    {/* <th className="fw-semibold text-center text-nowrap" style={{ fontSize: '0.75rem', padding: '0.5rem' }}>ACTIONS</th> */}
                   </tr>
                 </thead>
                 <tbody>
@@ -663,7 +663,7 @@ const StaffAttendance = () => {
                           <span style={{ fontSize: '0.75rem' }}>{record.shift_name}</span>
                         </td>
                         <td className="text-nowrap" style={{ padding: '0.5rem' }}>{getStatusBadge(record.status)}</td>
-                        <td className="text-center text-nowrap" style={{ padding: '0.5rem' }}>
+                        {/* <td className="text-center text-nowrap" style={{ padding: '0.5rem' }}>
                           <div className="d-flex justify-content-center gap-1">
                             <button
                               className="btn btn-sm action-btn"
@@ -689,7 +689,7 @@ const StaffAttendance = () => {
                               <FaTrashAlt size={12} />
                             </button>
                           </div>
-                        </td>
+                        </td> */}
                       </tr>
                     ))
                   ) : (
