@@ -29,8 +29,8 @@ const AdminTaskManagement = () => {
       try {
         setLoading(true);
 
-        // Fetch staff data
-        const staffResponse = await axios.get(`${BaseUrl}staff/all`);
+        // Fetch staff data based on admin ID
+        const staffResponse = await axios.get(`${BaseUrl}staff/admin/${adminId}`);
         setStaffMembers(staffResponse.data.staff);
 
         // Fetch branches data
@@ -66,7 +66,7 @@ const AdminTaskManagement = () => {
     };
 
     fetchData();
-  }, []);
+  }, [adminId]); // Added adminId to dependency array
 
   const getStaffName = (id) => {
     const staff = staffMembers.find(s => s.staffId === id);

@@ -583,7 +583,7 @@ const getPlanNameById = (planId) => {
                     <th>Gender</th>
                     {/* <th>Branch</th> Commented out Branch column */}
                     <th>Plan</th>
-                    <th>Expiry</th>
+                    <th>Start Date</th>
                     <th>Status</th>
                     <th className="text-center">Actions</th>
                   </tr>
