@@ -123,6 +123,8 @@ import PersonalAttendance from "./Dashboard/PersonalTrainer/PersonalAttendance";
 import AdminSetting from "./Dashboard/Admin/AdminSetting";
 import DynamicPage from "./Layout/DynamicPage";
 import RequestPlan from "./Dashboard/Member/RequestsPlan";
+import PersonalTrainerClassesSchedule from "./Dashboard/PersonalTrainer/PersonalTrainerClassesSchedule";
+import GeneralClassesSchedule from "./Dashboard/GeneralTrainer/GeneralClassesSchedule";
 
 
 
@@ -143,24 +145,24 @@ function App() {
 
   const location = useLocation();
 
-const isDynamicPage =
-  /^\/[^\/]+\/\d+$/.test(location.pathname) ||  // /gym/90
-  /^\/\d+$/.test(location.pathname);             // /90
+  const isDynamicPage =
+    /^\/[^\/]+\/\d+$/.test(location.pathname) ||  // /gym/90
+    /^\/\d+$/.test(location.pathname);             // /90
 
-const hideLayout =
-  location.pathname === "/" ||
-  location.pathname === "/login" ||
-  location.pathname === "/signup" ||
-  location.pathname === "/forgot-password" ||
-  isDynamicPage;
+  const hideLayout =
+    location.pathname === "/" ||
+    location.pathname === "/login" ||
+    location.pathname === "/signup" ||
+    location.pathname === "/forgot-password" ||
+    isDynamicPage;
 
 
 
   return (
     <>
-   <Routes>
-      <Route path=":slug?/:adminId" element={<DynamicPage />} />
-    </Routes>
+      <Routes>
+        <Route path=":slug?/:adminId" element={<DynamicPage />} />
+      </Routes>
       {hideLayout ? (
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -181,8 +183,8 @@ const hideLayout =
               className={`right-side-content ${isSidebarCollapsed ? "collapsed" : ""
                 }`}
             >
-                <Routes>
-              
+              <Routes>
+
                 <Route path="/superadmin/dashboard" element={<DashboardHomePage />} />
                 <Route path="/superadmin/Admin" element={<SuperAdminOwner />} />
                 <Route path="/superadmin/Plans&Pricing" element={<Plans />} />
@@ -228,8 +230,8 @@ const hideLayout =
                 <Route path="/admin/staff/attendance" element={<StaffAttendance />} />
                 <Route path="/admin/staff/duty-roster" element={<DutyRoster />} />
                 <Route path="/admin/staff/salary-calculator" element={<SalaryCalculator />} />
-                <Route path="/admin/shift-managment" element={<ShiftManagement/>} />
-                <Route path="/admin/task-managment" element={<AdminTaskManagement/>} />
+                <Route path="/admin/shift-managment" element={<ShiftManagement />} />
+                <Route path="/admin/task-managment" element={<AdminTaskManagement />} />
                 {/* setting routes */}
                 <Route path="/admin/settings/BranchManagement" element={< BranchManagement />} />
                 <Route path="/admin/settings/RoleManagement" element={< RoleManagement />} />
@@ -246,13 +248,15 @@ const hideLayout =
                 <Route path="/manager/reports" element={<Reports />} />
                 <Route path="/manager/communication" element={<Communication />} />
                 <Route path="/housekeeping/dashboard" element={<HouseKeepingDashboard />} />
+
                 <Route path="/generaltrainer/dashboard" element={<GeneralTrainerDashboard />} />
+                <Route path="/generaltrainer/classesschedule" element={<GeneralClassesSchedule />} />
                 <Route path="/GeneralTrainer/attendance" element={<Attendance />} />
                 {/* <Route path="/GeneralTrainer/MemberInteraction" element={<MemberInteraction />} /> */}
                 <Route path="/GeneralTrainer/qrcheckin" element={<GeneralQrCheckin />} />
                 <Route path="/GeneralTrainer/Reports" element={<Report />} />
                 <Route path="/GeneralTrainer/DailyScedule" element={< DailyScedule />} />
-                <Route path="/GeneralTrainer/GroupPlansBookings" element={ <GroupPlansBookings />} />
+                <Route path="/GeneralTrainer/GroupPlansBookings" element={<GroupPlansBookings />} />
                 <Route path="/member/dashboard" element={<MemberDashboard />} />
                 <Route path="/member/account" element={<Account />} />
                 <Route path="/member/classschedule" element={<ClassSchedule />} />
@@ -270,25 +274,19 @@ const hideLayout =
                 <Route path="/receptionist/book-classes-sessions" element={<ReceptionistBookGroupClasses />} />
                 <Route path="/receptionist/payemnet" element={<ReceptionistPaymentCollection />} />
 
-
-
                 <Route path="/personaltrainer/dashboard" element={<PersonalTrainerDashboard />} />
-                
-              
+                <Route path="/personaltrainer/classesschedule" element={<PersonalTrainerClassesSchedule />} />
                 <Route path="/personaltrainer/messages" element={<PersonalTrainerMessages />} />
                 <Route path="/personaltrainer/group-classes" element={<PersonalTrainerGroupClasses />} />
-
-               
-
                 <Route path="/personaltrainer/qrcheckin" element={<PersonalTrainerQrCheckin />} />
-                  <Route path="/personaltrainer/personalattendance" element={<PersonalAttendance />} />
+                <Route path="/personaltrainer/personalattendance" element={<PersonalAttendance />} />
                 <Route path="/personaltrainer/personalplansbookings" element={<PersonalPlansBookings />} />
 
                 <Route path="/housekeeping/dashboard" element={<HouseKeepingDashboard />} />
                 <Route path="/housekeeping/qrcheckin" element={<HouseKeepingQrCheckin />} />
                 <Route path="//housekeeping/members" element={<HousekeepingShiftView />} />
                 <Route path="/housekeeping/membership-plan" element={<HouseKeepingAttendance />} />
-                <Route path="/housekeeping/duty-roster" element={<HousekeepingTask/>} />
+                <Route path="/housekeeping/duty-roster" element={<HousekeepingTask />} />
                 <Route path="/housekeeping/class-schedule" element={<HouseKeepingNotifications />} />
 
               </Routes>
