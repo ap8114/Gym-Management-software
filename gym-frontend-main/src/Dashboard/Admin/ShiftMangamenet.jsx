@@ -20,8 +20,8 @@ const ShiftManagement = () => {
       try {
         setLoading(true);
         
-        // Fetch staff data
-        const staffResponse = await fetch(`${BaseUrl}staff/all`);
+        // Fetch staff data based on admin ID
+        const staffResponse = await fetch(`${BaseUrl}staff/admin/${adminId}`);
         const staffData = await staffResponse.json();
         
         // Fetch branches data
@@ -58,11 +58,10 @@ const ShiftManagement = () => {
     };
     
     fetchData();
-  }, [BaseUrl]);
+  }, [BaseUrl, adminId]);
 
   const [shiftForm, setShiftForm] = useState({
     staffIds: [],
-
     shiftDate: '',
     startTime: '',
     endTime: '',
@@ -284,24 +283,18 @@ const ShiftManagement = () => {
                 <form>
                   <div className="row mb-3">
                     <div className="col-md-6">
-                      <label className="form-label"> Staff</label>
-                       <select 
-                        className="form-select"
-                        name="staffIds"
-                        value={shiftForm.staffIds}
-                        onChange={handleShiftFormChange}
-                        disabled={loading}
-                      >
-                        <option value="">Select Branch</option>
-                        {staffMembers.map(staff => (
-                          <option key={staff.staffId} value={staff.staffId}>{staff.fullName}</option>
-                        ))}
-                      </select>
-                      {/* <div className="border rounded p-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                      <label className="form-label">Staff</label>
+                      <div className="border rounded p-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
                         {staffMembers.length > 0 ? (
                           staffMembers.map(staff => (
                             <div className="form-check" key={staff.staffId}>
-                             
+                              <input 
+                                className="form-check-input" 
+                                type="checkbox" 
+                                id={`staff-${staff.staffId}`}
+                                checked={shiftForm.staffIds.includes(staff.staffId)}
+                                onChange={(e) => handleStaffCheckboxChange(staff.staffId, e.target.checked)}
+                              />
                               <label className="form-check-label" htmlFor={`staff-${staff.staffId}`}>
                                 {staff.fullName} - {getBranchName(staff.branchId)}
                               </label>
@@ -310,24 +303,9 @@ const ShiftManagement = () => {
                         ) : (
                           <p className="text-muted">No staff members available</p>
                         )}
-                      </div> */}
+                      </div>
                     </div>
-                    {/* <div className="col-md-6">
-                      <label className="form-label">Branch</label>
-                      <select 
-                        className="form-select"
-                        name="branchId"
-                        value={shiftForm.branchId}
-                        onChange={handleShiftFormChange}
-                        disabled={loading}
-                      >
-                        <option value="">Select Branch</option>
-                        {branches.map(branch => (
-                          <option key={branch.id} value={branch.id}>{branch.name}</option>
-                        ))}
-                      </select>
-                    </div> */}
-                     <div className="col-md-6">
+                    <div className="col-md-6">
                       <label className="form-label">Date</label>
                       <input 
                         type="date" 
@@ -340,7 +318,6 @@ const ShiftManagement = () => {
                   </div>
 
                   <div className="row mb-3">
-                   
                     <div className="col-md-6">
                       <label className="form-label">Start Time</label>
                       <input 

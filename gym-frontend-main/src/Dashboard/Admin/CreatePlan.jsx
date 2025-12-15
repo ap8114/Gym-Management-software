@@ -31,6 +31,7 @@ const CreatePlan = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [membershipPlans, setMembershipPlans] = useState([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [planToDelete, setPlanToDelete] = useState({ id: null, type: null });
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -98,8 +99,11 @@ const CreatePlan = () => {
         }));
         setApiPlans(formattedPlans);
         setPlansLoaded(true);
+
+        // Properly filter all plan types
         setGroupPlans(formattedPlans.filter((p) => p.type === "group"));
         setPersonalPlans(formattedPlans.filter((p) => p.type === "personal"));
+        setMembershipPlans(formattedPlans.filter((p) => p.type === "member")); // यह सुनिश्चित करें
       } else {
         setError("Failed to fetch plans.");
       }
@@ -151,10 +155,10 @@ const CreatePlan = () => {
       const response = await axiosInstance.get(
         `${BaseUrl}members/renew?adminId=${adminId}`
       );
-      
+
       if (response.data) {
         let renewals = [];
-        
+
         if (response.data.success && Array.isArray(response.data.renewals)) {
           renewals = response.data.renewals;
         } else if (Array.isArray(response.data)) {
@@ -162,12 +166,12 @@ const CreatePlan = () => {
         } else if (response.data.data && Array.isArray(response.data.data)) {
           renewals = response.data.data;
         }
-        
+
         const formattedRenewals = renewals.map((renewal) => {
           const member = renewal.member || {};
           const currentPlan = renewal.currentPlan || {};
           const requestedPlan = renewal.requestedPlan || {};
-          
+
           return {
             id: renewal.id,
             memberName: member.fullName || 'Unknown',
@@ -189,7 +193,7 @@ const CreatePlan = () => {
             requestType: "renewal"
           };
         });
-        
+
         setRenewalRequests(formattedRenewals);
       }
     } catch (err) {
@@ -231,13 +235,16 @@ const CreatePlan = () => {
   };
 
   const getPlansByType = (type) => {
-    const plans = type === "group" ? groupPlans : personalPlans;
-    return plans;
+    if (type === "group") return groupPlans;
+    if (type === "personal") return personalPlans;
+    if (type === "member") return membershipPlans; // यह add करें
+    return [];
   };
 
   const updatePlansByType = (type, updatedPlans) => {
     if (type === "group") setGroupPlans(updatedPlans);
-    else setPersonalPlans(updatedPlans);
+    else if (type === "personal") setPersonalPlans(updatedPlans);
+    else if (type === "member") setMembershipPlans(updatedPlans); // यह add करें
   };
 
   const handleCreatePlan = async () => {
@@ -289,8 +296,7 @@ const CreatePlan = () => {
         });
         setShowCreateModal(false);
         alert(
-          `✅ ${
-            newPlan.type === "group" ? "Group" : "Personal"
+          `✅ ${newPlan.type === "group" ? "Group" : "Personal"
           } Plan Created: ${plan.name}`
         );
       } else {
@@ -469,18 +475,18 @@ const CreatePlan = () => {
     try {
       let response;
       const isRenewal = requestToProcess.requestType === "renewal";
-      
+
       const payload = {
         adminId: parseInt(adminId),
       };
 
       if (isRenewal) {
-        const endpoint = status === "approved" 
+        const endpoint = status === "approved"
           ? `${BaseUrl}members/renew/approve/${requestToProcess.id}`
           : `${BaseUrl}members/renew/reject/${requestToProcess.id}`;
-          
+
         response = await axiosInstance.put(endpoint, payload);
-        
+
         if (response.data.success) {
           setRenewalRequests(
             renewalRequests.map((req) =>
@@ -492,9 +498,9 @@ const CreatePlan = () => {
         const endpoint = status === "approved"
           ? `${BaseUrl}booking/approve/${requestToProcess.id}`
           : `${BaseUrl}booking/reject/${requestToProcess.id}`;
-          
+
         response = await axiosInstance.put(endpoint, payload);
-        
+
         if (response.data.success) {
           setBookingRequests(
             bookingRequests.map((req) =>
@@ -526,12 +532,12 @@ const CreatePlan = () => {
   const handleToggleRequestStatus = async (requestId) => {
     const bookingRequest = bookingRequests.find((req) => req.id === requestId);
     const renewalRequest = renewalRequests.find((req) => req.id === requestId);
-    
+
     const request = bookingRequest || renewalRequest;
     if (!request) return;
-    
+
     const isRenewal = request.requestType === "renewal";
-    
+
     if (request.status === "pending") {
       handleOpenStatusModal(request);
       return;
@@ -548,9 +554,9 @@ const CreatePlan = () => {
         const endpoint = newStatus === "approved"
           ? `${BaseUrl}members/renew/approve/${requestId}`
           : `${BaseUrl}members/renew/reject/${requestId}`;
-          
+
         response = await axiosInstance.put(endpoint, payload);
-        
+
         if (response.data.success) {
           setRenewalRequests(
             renewalRequests.map((req) =>
@@ -562,9 +568,9 @@ const CreatePlan = () => {
         const endpoint = newStatus === "approved"
           ? `${BaseUrl}booking/approve/${requestId}`
           : `${BaseUrl}booking/reject/${requestId}`;
-          
+
         response = await axiosInstance.put(endpoint, payload);
-        
+
         if (response.data.success) {
           setBookingRequests(
             bookingRequests.map((req) =>
@@ -631,7 +637,12 @@ const CreatePlan = () => {
                   fontSize: "0.7rem",
                 }}
               >
-                {planType === "group" ? "GROUP" : "PERSONAL"}
+                {planType === "group"
+                  ? "GROUP"
+                  : planType === "personal"
+                    ? "PERSONAL"
+                    : "MEMBER"}
+
               </div>
               <h5
                 className="fw-bold mb-0"
@@ -1307,6 +1318,21 @@ const CreatePlan = () => {
             >
               Personal Training Plans
             </Button>
+            <Button
+              variant={activeTab === "member" ? "primary" : "outline-primary"}
+              onClick={() => setActiveTab("member")}
+              className="px-3 px-md-4 py-2 fw-medium d-flex align-items-center justify-content-center"
+              style={{
+                backgroundColor:
+                  activeTab === "member" ? customColor : "transparent",
+                borderColor: customColor,
+                color: activeTab === "member" ? "white" : customColor,
+                width: "100%",
+                maxWidth: "300px",
+              }}
+            >
+              MemberShip Plans
+            </Button>
           </div>
           <Button
             onClick={() => {
@@ -1387,6 +1413,31 @@ const CreatePlan = () => {
                     </Row>
                   )}
                 </Tab.Pane>
+                <Tab.Pane eventKey="member">
+                  {loading && !plansLoaded ? (
+                    <div className="text-center py-5">
+                      <div
+                        className="spinner-border text-primary"
+                        role="status"
+                        style={{ color: customColor }}
+                      >
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                      <p className="mt-3">Loading plans...</p>
+                    </div>
+                  ) : membershipPlans.length === 0 ? (
+                    <div className="text-center py-5">
+                      <div className="display-4 mb-3">📋</div>
+                      <p className="fs-5">No membership plans found.</p>
+                    </div>
+                  ) : (
+                    <Row className="g-2 g-md-3">
+                      {getPlansByType("member").map((plan) =>
+                        renderPlanCard(plan, "member")
+                      )}
+                    </Row>
+                  )}
+                </Tab.Pane>
               </Tab.Content>
             </Col>
           </Row>
@@ -1403,7 +1454,7 @@ const CreatePlan = () => {
           >
             Member Requests
           </h3>
-          
+
           {/* Request Type Tabs */}
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 mb-4 p-3 bg-white rounded shadow-sm border">
             <div className="d-flex flex-column flex-md-row gap-3 w-100 w-md-auto">
@@ -1513,7 +1564,7 @@ const CreatePlan = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {activeRequestTab === "booking" 
+                        {activeRequestTab === "booking"
                           ? bookingRequests.map((req, index) => renderBookingRequestRow(req, index))
                           : renewalRequests.map((req, index) => renderRenewalRequestRow(req, index))
                         }
@@ -1523,7 +1574,7 @@ const CreatePlan = () => {
 
                   {/* Mobile View */}
                   <div className="d-md-none p-3">
-                    {activeRequestTab === "booking" 
+                    {activeRequestTab === "booking"
                       ? bookingRequests.map((req, index) => renderBookingRequestCard(req, index))
                       : renewalRequests.map((req, index) => renderRenewalRequestCard(req, index))
                     }
@@ -1577,7 +1628,7 @@ const CreatePlan = () => {
                     </div>
                   )}
                   <div className="text-muted small">
-                    {requestToProcess.requestType === "renewal" 
+                    {requestToProcess.requestType === "renewal"
                       ? `${requestToProcess.currentPlan} → ${requestToProcess.requestedPlan}`
                       : requestToProcess.planName
                     }
@@ -1647,6 +1698,7 @@ const CreatePlan = () => {
                 >
                   <option value="personal">Personal Training Plan</option>
                   <option value="group">Group Class Plan</option>
+                  <option value="member">MemberShip Plan</option>
                 </Form.Select>
               </Form.Group>
               <Row>

@@ -49,7 +49,7 @@ const ManageStaff = () => {
   
   // Role ID mappings - Updated to match API expectations
   const roleIds = {
-    'Manager': 2,
+    // 'Manager': 2,
     'generaltrainer': 6,
     'personaltrainer': 5,
     'Receptionist': 7,
@@ -88,7 +88,7 @@ const ManageStaff = () => {
   useEffect(() => {
     const fetchStaff = async () => {
       try {
-        const response = await axiosInstance.get('/staff/all');
+        const response = await axiosInstance.get(`/staff/admin/${adminId}`);
         if (response.data && response.data.success && response.data.staff) {
           const staffArr = Array.isArray(response.data.staff) ? response.data.staff : [response.data.staff];
           const normalized = staffArr.map(normalizeStaffItem);
