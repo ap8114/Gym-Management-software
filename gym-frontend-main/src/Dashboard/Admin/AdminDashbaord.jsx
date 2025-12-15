@@ -284,7 +284,7 @@ const AdminDashboard = () => {
         {/* Stats Cards - Responsive Grid */}
         <div className="row g-3 mb-4">
           {/* Total Branches Card */}
-          <div className="col-6 col-md-4 col-lg">
+          {/* <div className="col-6 col-md-4 col-lg">
             <div className="card shadow-sm h-100" data-testid="total-branches-card">
               <div className="card-body d-flex justify-content-between align-items-start">
                 <div>
@@ -298,7 +298,7 @@ const AdminDashboard = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Total Members Card */}
           <div className="col-6 col-md-4 col-lg">

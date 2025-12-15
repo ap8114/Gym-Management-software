@@ -43,45 +43,27 @@ const SessionBookingPage = () => {
     }
     fetchBranches();
     fetchTrainers(); // Added fetchTrainers() call
+    fetchSessions(); // Added direct fetchSessions() call
   }, [adminId]);
 
-  // Re-fetch sessions when branches and trainers load
-  useEffect(() => {
-    if (branches.length > 0 && trainers.length > 0) {
-      fetchSessions();
-    }
-  }, [branches, trainers]);
-
-  // FIX: Fetch Sessions using branchId instead of adminId
+  // FIX: Fetch Sessions using adminId directly
   const fetchSessions = async () => {
     setLoading(true);
     try {
-      let allSessions = [];
-      
-      // Fetch sessions for each branch
-      for (const branch of branches) {
-        try {
-          const res = await axiosInstance.get(`${BaseUrl}sessions/${adminId}`);
-          if (res.data.success && res.data.sessions) {
-            allSessions = [...allSessions, ...res.data.sessions];
-          }
-        } catch (err) {
-          console.error(`Error fetching sessions for branch ${branch.id}:`, err);
-        }
+      const res = await axiosInstance.get(`${BaseUrl}sessions/${adminId}`);
+      if (res.data.success && res.data.sessions) {
+        // Enrich with trainerName
+        const enrichedSessions = res.data.sessions.map(sess => {
+          const trainer = trainers.find(t => t.id === sess.trainerId);
+          return {
+            ...sess,
+            trainerName: trainer?.fullName || trainer?.name || '—' // Handle both fullName and name
+          };
+        });
+        setSessions(enrichedSessions);
+      } else {
+        setError('Failed to load sessions');
       }
-      
-      // Enrich with branchName and trainerName
-      const enrichedSessions = allSessions.map(sess => {
-        const branch = branches.find(b => b.id === sess.branchId);
-        const trainer = trainers.find(t => t.id === sess.trainerId);
-        return {
-          ...sess,
-          branchName: branch?.name || '—',
-          trainerName: trainer?.fullName || '—' // Fixed: Use fullName instead of name
-        };
-      });
-      
-      setSessions(enrichedSessions);
     } catch (err) {
       console.error('Error fetching sessions:', err);
       setError('Unable to load sessions');
@@ -121,6 +103,13 @@ const SessionBookingPage = () => {
       setTrainers([]);
     }
   };
+
+  // Re-fetch sessions when trainers load to get trainer names
+  useEffect(() => {
+    if (trainers.length > 0 && adminId) {
+      fetchSessions();
+    }
+  }, [trainers]);
 
   const filteredSessions = sessions.filter(session => {
     const matchesStatus = statusFilter === 'All' || session.status === statusFilter;
@@ -175,7 +164,8 @@ const SessionBookingPage = () => {
         time,                      // "HH:mm"
         duration: numDuration,
         description: description.trim(),
-        status: 'Upcoming'
+        status: 'Upcoming',
+        adminId: adminId           // Added adminId to the payload
       };
 
       const res = await axiosInstance.post(`${BaseUrl}sessions/create`, payload);
@@ -539,7 +529,7 @@ const SessionBookingPage = () => {
                       >
                         <option value="">Select trainer</option>
                         {trainers.map(t => (
-                          <option key={t.id} value={t.id}>{t.fullName}</option>
+                          <option key={t.id} value={t.id}>{t.fullName || t.name}</option>
                         ))}
                       </select>
                     </div>
