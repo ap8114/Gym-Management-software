@@ -190,7 +190,9 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
 
     MEMBER: [
       { name: "Dashboard", icon: faChartBar, path: "/member/dashboard" },
+      // { name: "Task Checklist", icon: faCalendarAlt, path: "/housekeeping/duty-roster" },
       { name: "QR Check-in", icon: faGear, path: "/member/qrcheckin" },
+      { name: "Attendance", icon: faGear, path: "/member/memberattendance" },
       { name: "View Plan", icon: faEye, path: "/member/viewplan" },
       { name: "Requests Plan", icon: faEye, path: "/member/requestplan" },
       { name: "Class Schedule", icon: faClapperboard, path: "/member/classSchedule" },

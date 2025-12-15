@@ -130,6 +130,7 @@ import GeneralSessionBooking from "./Dashboard/GeneralTrainer/GeneralSessionBook
 import PersonsalTrainerShiftManagement from "./Dashboard/PersonalTrainer/PersonsalTrainerShiftManagement";
 import GeneralTrainerShiftManagement from "./Dashboard/GeneralTrainer/GeneralTrainerShiftManagement";
 import HouseKeepingShiftManagement from "./Dashboard/HouseKeeping/HouseKeepingShiftManagement";
+import MemberAttendance from "./Dashboard/Member/MemberAttendance";
 
 
 
@@ -259,17 +260,18 @@ function App() {
                 <Route path="/generaltrainer/bookings" element={<GeneralSessionBooking />} />
                 <Route path="/GeneralTrainer/attendance" element={<Attendance />} />
                 <Route path="/GeneralTrainer/shift-managment" element={<GeneralTrainerShiftManagement />} />
-
                 {/* <Route path="/GeneralTrainer/MemberInteraction" element={<MemberInteraction />} /> */}
                 <Route path="/GeneralTrainer/qrcheckin" element={<GeneralQrCheckin />} />
                 <Route path="/GeneralTrainer/Reports" element={<Report />} />
                 <Route path="/GeneralTrainer/DailyScedule" element={< DailyScedule />} />
                 <Route path="/GeneralTrainer/GroupPlansBookings" element={<GroupPlansBookings />} />
+
                 <Route path="/member/dashboard" element={<MemberDashboard />} />
                 <Route path="/member/account" element={<Account />} />
                 <Route path="/member/classschedule" element={<ClassSchedule />} />
                 <Route path="/member/attendance-history" element={<AttendanceHistory />} />
                 <Route path="/member/qrcheckin" element={<MemberQrCheckin />} />
+                <Route path="/member/memberattendance" element={<MemberAttendance />} />
                 <Route path="/member/viewplan" element={<ViewPlan />} />
                 <Route path="/member/requestplan" element={<RequestPlan />} />
 
