@@ -86,25 +86,26 @@ const StaffAttendance = () => {
   const fetchAttendanceRecords = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get(`${BaseUrl}admin-staff-attendance`);
+      const response = await axiosInstance.get(`${BaseUrl}memberattendence/admin?adminId=${adminId}`);
       console.log('Attendance API response:', response.data);
       
-      if (response.data && Array.isArray(response.data)) {
-        // Transform API response to match the component's expected format
-        const transformedRecords = response.data.map(record => ({
+      if (response.data && response.data.success && Array.isArray(response.data.attendance)) {
+        // Transform API response to match component's expected format
+        const transformedRecords = response.data.attendance.map(record => ({
           attendance_id: record.id,
           staff_id: record.staffId,
-          staff_name: record.staffName,
-          role: getRoleNameFromStaff(record.staffId),
-          branch: record.branchName,
-          date: record.date,
-          checkin_time: record.checkInTime,
-          checkout_time: record.checkOutTime,
+          staff_name: record.staffId ? getStaffName(record.staffId) : record.memberName || 'Unknown',
+          role: record.staffId ? getRoleNameFromStaff(record.staffId) : 'Member',
+          branch: getBranchName(record.branchId),
+          date: record.checkIn ? record.checkIn.split('T')[0] : '',
+          checkin_time: record.checkIn,
+          checkout_time: record.checkOut,
           mode: record.mode,
           shift_id: record.shiftId,
           shift_name: getShiftName(record.shiftId),
           status: record.status,
-          notes: record.notes
+          notes: record.notes,
+          member_id: record.memberId
         }));
         setRecords(transformedRecords);
       } else {
@@ -126,7 +127,7 @@ const StaffAttendance = () => {
       console.log('Attendance by branch API response:', response.data);
       
       if (response.data && Array.isArray(response.data)) {
-        // Transform API response to match the component's expected format
+        // Transform API response to match component's expected format
         const transformedRecords = response.data.map(record => ({
           attendance_id: record.id,
           staff_id: record.staffId,
@@ -152,6 +153,12 @@ const StaffAttendance = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to get staff name from staffId
+  const getStaffName = (staffId) => {
+    const staff = staffMembers.find(s => s.staffId === staffId);
+    return staff ? staff.name : 'Unknown';
   };
 
   // Helper function to get role name from roleId - Updated with all role IDs
@@ -210,11 +217,9 @@ const StaffAttendance = () => {
   const filteredRecords = records.filter(record =>
     (record.staff_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
      record.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     record.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     record.branch.toLowerCase().includes(searchTerm.toLowerCase())) &&
+     record.status.toLowerCase().includes(searchTerm.toLowerCase())) &&
     (roleFilter === 'All' || record.role === roleFilter) &&
-    (statusFilter === 'All' || record.status === statusFilter) &&
-    (branchFilter === 'All' || record.branch === branchFilter)
+    (statusFilter === 'All' || record.status === statusFilter)
   );
 
   const handleAddNew = () => {
@@ -299,20 +304,12 @@ const StaffAttendance = () => {
       "Personal Trainer": "bg-primary",
       "Receptionist": "bg-info",
       "Housekeeping": "bg-secondary",
-      "General Trainer": "bg-success"
+      "General Trainer": "bg-success",
+      "Member": "bg-dark"
     };
     return (
       <span className={`badge rounded-pill ${colors[role] || 'bg-light'} text-dark px-2 py-1`} style={{ fontSize: '0.65rem', whiteSpace: 'nowrap' }}>
         {role}
-      </span>
-    );
-  };
-
-  // Branch badge without background color
-  const getBranchBadge = (branch) => {
-    return (
-      <span className="badge rounded-pill text-dark px-2 py-1 border" style={{ fontSize: '0.65rem', backgroundColor: 'transparent' }}>
-        {branch}
       </span>
     );
   };
@@ -327,6 +324,7 @@ const StaffAttendance = () => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString('en-US', options);
   };
@@ -443,12 +441,11 @@ const StaffAttendance = () => {
 
   // Export CSV with Role and Branch
   const exportCSV = () => {
-    const header = ["Date", "Staff Name", "Role", "Branch", "Check-in", "Check-out", "Mode", "Shift", "Status", "Notes"];
+    const header = ["Date", "Staff Name", "Role", "Check-in", "Check-out", "Mode", "Shift", "Status", "Notes"];
     const rows = filteredRecords.map(record => [
       record.date,
       record.staff_name,
       record.role,
-      record.branch,
       formatTime(record.checkin_time),
       formatTime(record.checkout_time),
       record.mode,
@@ -484,7 +481,7 @@ const StaffAttendance = () => {
     }
   }, [branchFilter]);
 
-  // Mobile Card View Component
+  // Mobile Card View Component - Removed branch badge
   const MobileAttendanceCard = ({ record }) => (
     <div className="card mb-3 shadow-sm" style={{ borderRadius: '0.5rem' }}>
       <div className="card-body p-3">
@@ -493,7 +490,6 @@ const StaffAttendance = () => {
             <h6 className="mb-1 fw-bold" style={{ fontSize: '0.95rem' }}>{record.staff_name}</h6>
             <div className="d-flex gap-1 flex-wrap">
               {getRoleBadge(record.role)}
-              {getBranchBadge(record.branch)}
             </div>
           </div>
           {getStatusBadge(record.status)}
@@ -584,7 +580,7 @@ const StaffAttendance = () => {
         </div>
       </div>
 
-      {/* Filters Section */}
+      {/* Filters Section - Removed branch filter */}
       <div className="card shadow-sm border-0 mb-3 mb-md-4">
         <div className="card-body p-2 p-md-3">
           {/* Mobile Filter Toggle */}
@@ -599,7 +595,7 @@ const StaffAttendance = () => {
           </div>
 
           <div className={`row g-2 ${showMobileFilters ? 'd-block' : 'd-none d-md-flex'}`}>
-            <div className="col-12 col-md-4">
+            <div className="col-12 col-md-5">
               <div className="input-group input-group-sm">
                 <span className="input-group-text bg-light border">
                   <FaSearch className="text-muted" style={{ fontSize: '0.875rem' }} />
@@ -615,7 +611,7 @@ const StaffAttendance = () => {
               </div>
             </div>
 
-            <div className="col-6 col-md-2">
+            <div className="col-6 col-md-3">
               <select
                 className="form-select form-select-sm"
                 value={roleFilter}
@@ -628,7 +624,7 @@ const StaffAttendance = () => {
               </select>
             </div>
 
-            <div className="col-6 col-md-2">
+            <div className="col-6 col-md-3">
               <select
                 className="form-select form-select-sm"
                 value={statusFilter}
@@ -641,20 +637,7 @@ const StaffAttendance = () => {
               </select>
             </div>
 
-            <div className="col-6 col-md-2">
-              <select
-                className="form-select form-select-sm"
-                value={branchFilter}
-                onChange={(e) => setBranchFilter(e.target.value)}
-                style={{ fontSize: '0.875rem' }}
-              >
-                {allBranches.map(branch => (
-                  <option key={branch} value={branch}>{branch}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="col-6 col-md-2">
+            <div className="col-12 col-md-1">
               <button 
                 className="btn btn-outline-secondary btn-sm w-100" 
                 onClick={clearFilters}
@@ -675,7 +658,7 @@ const StaffAttendance = () => {
           </h6>
         </div>
         <div className="card-body p-0">
-          {/* Desktop Table View */}
+          {/* Desktop Table View - Removed branch column */}
           <div className="d-none d-md-block">
             <div className="table-responsive">
               <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.8rem' }}>
@@ -684,7 +667,6 @@ const StaffAttendance = () => {
                     <th className="fw-semibold text-nowrap" style={{ fontSize: '0.75rem', padding: '0.5rem' }}>DATE</th>
                     <th className="fw-semibold text-nowrap" style={{ fontSize: '0.75rem', padding: '0.5rem' }}>STAFF NAME</th>
                     <th className="fw-semibold text-nowrap" style={{ fontSize: '0.75rem', padding: '0.5rem', width: '100px' }}>ROLE</th>
-                    <th className="fw-semibold text-nowrap" style={{ fontSize: '0.75rem', padding: '0.5rem', width: '90px' }}>BRANCH</th>
                     <th className="fw-semibold text-nowrap" style={{ fontSize: '0.75rem', padding: '0.5rem' }}>CHECK-IN</th>
                     <th className="fw-semibold text-nowrap" style={{ fontSize: '0.75rem', padding: '0.5rem' }}>CHECK-OUT</th>
                     <th className="fw-semibold text-nowrap d-none d-lg-table-cell" style={{ fontSize: '0.75rem', padding: '0.5rem' }}>MODE</th>
@@ -705,7 +687,6 @@ const StaffAttendance = () => {
                           <strong>{record.staff_name}</strong>
                         </td>
                         <td className="text-nowrap" style={{ padding: '0.5rem' }}>{getRoleBadge(record.role)}</td>
-                        <td className="text-nowrap" style={{ padding: '0.5rem' }}>{getBranchBadge(record.branch)}</td>
                         <td className="text-nowrap" style={{ padding: '0.5rem' }}>{formatTime(record.checkin_time)}</td>
                         <td className="text-nowrap" style={{ padding: '0.5rem' }}>{formatTime(record.checkout_time)}</td>
                         <td className="text-nowrap d-none d-lg-table-cell" style={{ padding: '0.5rem' }}>
@@ -750,7 +731,7 @@ const StaffAttendance = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="10" className="text-center py-4">
+                      <td colSpan="9" className="text-center py-4">
                         <div className="text-muted">
                           <FaSearch size={24} className="mb-2" />
                           <p className="mb-0">No attendance records found matching your criteria.</p>
@@ -832,22 +813,7 @@ const StaffAttendance = () => {
                       </select>
                     </div>
 
-                    {/* Branch & Date */}
-                    <div className="col-6">
-                      <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Branch</label>
-                      <select
-                        name="branch_id"
-                        className="form-select form-select-sm"
-                        defaultValue={selectedRecord ? branches.find(b => b.name === selectedRecord.branch)?.id || '' : ''}
-                        disabled={modalType === 'view'}
-                        required
-                      >
-                        <option value="">Select Branch</option>
-                        {branches.map(branch => (
-                          <option key={branch.id} value={branch.id}>{branch.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                    {/* Date & Shift */}
                     <div className="col-6">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Date</label>
                       <input
@@ -859,8 +825,6 @@ const StaffAttendance = () => {
                         required
                       />
                     </div>
-
-                    {/* Shift & Mode */}
                     <div className="col-6">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Shift</label>
                       <select
@@ -877,6 +841,8 @@ const StaffAttendance = () => {
                         ))}
                       </select>
                     </div>
+
+                    {/* Mode & Status */}
                     <div className="col-6">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Mode</label>
                       <select
@@ -888,6 +854,21 @@ const StaffAttendance = () => {
                       >
                         <option value="QR">QR</option>
                         <option value="Manual">Manual</option>
+                      </select>
+                    </div>
+                    <div className="col-6">
+                      <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Status</label>
+                      <select
+                        name="status"
+                        className="form-select form-select-sm"
+                        defaultValue={selectedRecord?.status || 'Present'}
+                        disabled={modalType === 'view'}
+                        required
+                      >
+                        <option value="Present">Present</option>
+                        <option value="Late">Late</option>
+                        <option value="Absent">Absent</option>
+                        <option value="Overtime">Overtime</option>
                       </select>
                     </div>
 
@@ -913,23 +894,8 @@ const StaffAttendance = () => {
                       />
                     </div>
 
-                    {/* Status & Notes */}
-                    <div className="col-6">
-                      <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Status</label>
-                      <select
-                        name="status"
-                        className="form-select form-select-sm"
-                        defaultValue={selectedRecord?.status || 'Present'}
-                        disabled={modalType === 'view'}
-                        required
-                      >
-                        <option value="Present">Present</option>
-                        <option value="Late">Late</option>
-                        <option value="Absent">Absent</option>
-                        <option value="Overtime">Overtime</option>
-                      </select>
-                    </div>
-                    <div className="col-6">
+                    {/* Notes */}
+                    <div className="col-12">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Notes</label>
                       <input
                         name="notes"

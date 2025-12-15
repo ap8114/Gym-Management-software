@@ -42,6 +42,8 @@ const CreatePlan = () => {
     validity: "",
     price: "",
     type: "group",
+    trainerType: "", // New field for trainer type (personal/general)
+    trainerId: "",   // New field for selected trainer ID
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -52,6 +54,10 @@ const CreatePlan = () => {
   const [bookingRequests, setBookingRequests] = useState([]);
   const [renewalRequests, setRenewalRequests] = useState([]);
   const [activeRequestTab, setActiveRequestTab] = useState("booking");
+  
+  // New state for trainers
+  const [trainers, setTrainers] = useState([]);
+  const [trainersLoading, setTrainersLoading] = useState(false);
 
   const customColor = "#6EB2CC";
 
@@ -79,6 +85,41 @@ const CreatePlan = () => {
     fetchBookingRequests();
     fetchRenewalRequests();
   }, []);
+
+  // Fetch trainers when trainer type changes
+  useEffect(() => {
+    if (newPlan.type === "member" && newPlan.trainerType) {
+      fetchTrainers(newPlan.trainerType);
+    }
+  }, [newPlan.trainerType, newPlan.type]);
+
+  const fetchTrainers = async (trainerType) => {
+    setTrainersLoading(true);
+    try {
+      const adminId = localStorage.getItem("userId") || "4";
+      const response = await axiosInstance.get(
+        `${BaseUrl}class/trainers/personal-general?adminId=${adminId}`
+      );
+      if (response.data.success) {
+        // Filter trainers based on the selected type
+        const filteredTrainers = response.data.trainers.filter(trainer => {
+          if (trainerType === "personal") {
+            return trainer.roleId === 5; // Assuming roleId 5 is for personal trainers
+          } else if (trainerType === "general") {
+            return trainer.roleId === 6; // Assuming roleId 6 is for general trainers
+          }
+          return false;
+        });
+        setTrainers(filteredTrainers);
+      } else {
+        console.error("Failed to fetch trainers");
+      }
+    } catch (err) {
+      console.error("Error fetching trainers:", err);
+    } finally {
+      setTrainersLoading(false);
+    }
+  };
 
   const fetchPlansFromAPI = async () => {
     setLoading(true);
@@ -258,6 +299,13 @@ const CreatePlan = () => {
       setCreatePlanError("Please fill all fields"); // Use the separate error state
       return;
     }
+    
+    // Additional validation for membership plans
+    if (newPlan.type === "member" && (!newPlan.trainerType || !newPlan.trainerId)) {
+      setCreatePlanError("Please select trainer type and trainer for membership plans");
+      return;
+    }
+    
     setLoading(true);
     setCreatePlanError(null); // Reset the create plan error
     try {
@@ -270,6 +318,13 @@ const CreatePlan = () => {
         adminId: parseInt(adminId),
         type: newPlan.type.toUpperCase(),
       };
+      
+      // Add trainer information for membership plans
+      if (newPlan.type === "member") {
+        payload.trainerType = newPlan.trainerType;
+        payload.trainerId = parseInt(newPlan.trainerId);
+      }
+      
       const response = await axiosInstance.post(
         `${BaseUrl}MemberPlan`,
         payload
@@ -285,7 +340,9 @@ const CreatePlan = () => {
           type: response.data.plan.type.toLowerCase(),
         };
         const currentPlans =
-          newPlan.type === "group" ? groupPlans : personalPlans;
+          newPlan.type === "group" ? groupPlans : 
+          newPlan.type === "personal" ? personalPlans : 
+          membershipPlans;
         updatePlansByType(newPlan.type, [...currentPlans, plan]);
         setApiPlans([...apiPlans, plan]);
         setNewPlan({
@@ -294,10 +351,13 @@ const CreatePlan = () => {
           validity: "",
           price: "",
           type: activeTab === "personal" ? "personal" : "group",
+          trainerType: "",
+          trainerId: "",
         });
         setShowCreateModal(false);
         alert(
-          `✅ ${newPlan.type === "group" ? "Group" : "Personal"
+          `✅ ${newPlan.type === "group" ? "Group" : 
+          newPlan.type === "personal" ? "Personal" : "Membership"
           } Plan Created: ${plan.name}`
         );
       } else {
@@ -1342,7 +1402,10 @@ const CreatePlan = () => {
                 sessions: "",
                 validity: "",
                 price: "",
-                type: activeTab === "personal" ? "personal" : "group",
+                type: activeTab === "personal" ? "personal" : 
+                       activeTab === "member" ? "member" : "group",
+                trainerType: "",
+                trainerId: "",
               });
               setCreatePlanError(null); // Reset create plan error when opening modal
               setShowCreateModal(true);
@@ -1683,7 +1746,8 @@ const CreatePlan = () => {
             }}
           >
             <Modal.Title style={{ color: "#333", fontWeight: "600" }}>
-              Create New {newPlan.type === "group" ? "Group" : "Personal"} Plan
+              Create New {newPlan.type === "group" ? "Group" : 
+                         newPlan.type === "personal" ? "Personal" : "Membership"} Plan
             </Modal.Title>
           </Modal.Header>
           <Modal.Body className="p-3 p-md-4">
@@ -1693,9 +1757,15 @@ const CreatePlan = () => {
                 <Form.Label className="fw-medium">Plan Type</Form.Label>
                 <Form.Select
                   value={newPlan.type}
-                  onChange={(e) =>
-                    setNewPlan({ ...newPlan, type: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const type = e.target.value;
+                    setNewPlan({ 
+                      ...newPlan, 
+                      type: type,
+                      trainerType: type === "member" ? newPlan.trainerType : "",
+                      trainerId: type === "member" ? newPlan.trainerId : ""
+                    });
+                  }}
                   style={{ padding: "12px", fontSize: "1rem" }}
                 >
                   <option value="personal">Personal Training Plan</option>
@@ -1703,6 +1773,64 @@ const CreatePlan = () => {
                   <option value="member">MemberShip Plan</option>
                 </Form.Select>
               </Form.Group>
+              
+              {/* Additional fields for membership plans */}
+              {newPlan.type === "member" && (
+                <>
+                  <Row>
+                    <Col md={6}>
+                      <Form.Group className="mb-4">
+                        <Form.Label className="fw-medium">Trainer Type</Form.Label>
+                        <Form.Select
+                          value={newPlan.trainerType}
+                          onChange={(e) => {
+                            setNewPlan({ 
+                              ...newPlan, 
+                              trainerType: e.target.value,
+                              trainerId: "" // Reset trainer ID when trainer type changes
+                            });
+                          }}
+                          style={{ padding: "12px", fontSize: "1rem" }}
+                        >
+                          <option value="">Select Trainer Type</option>
+                          <option value="personal">Personal Trainer</option>
+                          <option value="general">General Trainer</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Group className="mb-4">
+                        <Form.Label className="fw-medium">Select Trainer</Form.Label>
+                        {trainersLoading ? (
+                          <div className="d-flex align-items-center">
+                            <div className="spinner-border spinner-border-sm me-2" role="status">
+                              <span className="visually-hidden">Loading...</span>
+                            </div>
+                            Loading trainers...
+                          </div>
+                        ) : (
+                          <Form.Select
+                            value={newPlan.trainerId}
+                            onChange={(e) => setNewPlan({ ...newPlan, trainerId: e.target.value })}
+                            style={{ padding: "12px", fontSize: "1rem" }}
+                            disabled={!newPlan.trainerType || trainers.length === 0}
+                          >
+                            <option value="">
+                              {newPlan.trainerType ? "Select a Trainer" : "Select Trainer Type First"}
+                            </option>
+                            {trainers.map((trainer) => (
+                              <option key={trainer.id} value={trainer.id}>
+                                {trainer.fullName}
+                              </option>
+                            ))}
+                          </Form.Select>
+                        )}
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                </>
+              )}
+              
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-4">
@@ -1808,7 +1936,8 @@ const CreatePlan = () => {
             }}
           >
             <Modal.Title>
-              Edit {selectedPlan?.type === "group" ? "Group" : "Personal"} Plan
+              Edit {selectedPlan?.type === "group" ? "Group" : 
+                    selectedPlan?.type === "personal" ? "Personal" : "Membership"} Plan
             </Modal.Title>
           </Modal.Header>
           <Modal.Body className="p-3 p-md-4">
@@ -1933,7 +2062,8 @@ const CreatePlan = () => {
               <div className="p-4 bg-light rounded">
                 <h5 className="fw-bold mb-4">
                   {selectedPlan.name} (
-                  {selectedPlan.type === "group" ? "Group" : "Personal"})
+                  {selectedPlan.type === "group" ? "Group" : 
+                   selectedPlan.type === "personal" ? "Personal" : "Membership"})
                 </h5>
                 <div className="row">
                   {[
