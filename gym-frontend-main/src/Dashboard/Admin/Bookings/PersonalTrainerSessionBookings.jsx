@@ -36,6 +36,15 @@ const SessionBookingPage = () => {
 
   const customColor = '#6EB2CC';
 
+  // Function to get role name from roleId
+  const getRoleName = (roleId) => {
+    switch(roleId) {
+      case 5: return 'Personal Trainer';
+      case 6: return 'General Trainer';
+      default: return 'Trainer';
+    }
+  };
+
   useEffect(() => {
     if (!adminId) {
       setError('Admin ID not found. Please log in.');
@@ -92,7 +101,7 @@ const SessionBookingPage = () => {
   // Added fetchTrainers function to get trainers from API
   const fetchTrainers = async () => {
     try {
-      const res = await axiosInstance.get(`${BaseUrl}class/trainers/personal-general`);
+      const res = await axiosInstance.get(`${BaseUrl}class/trainers/personal-general?adminId=${adminId}`);
       let trainerList = [];
       if (res.data.success && res.data.trainers) {
         trainerList = res.data.trainers;
@@ -165,7 +174,7 @@ const SessionBookingPage = () => {
         duration: numDuration,
         description: description.trim(),
         status: 'Upcoming',
-        adminId: adminId           // Added adminId to the payload
+        adminId: adminId           // Added adminId to payload
       };
 
       const res = await axiosInstance.post(`${BaseUrl}sessions/create`, payload);
@@ -529,7 +538,7 @@ const SessionBookingPage = () => {
                       >
                         <option value="">Select trainer</option>
                         {trainers.map(t => (
-                          <option key={t.id} value={t.id}>{t.fullName || t.name}</option>
+                          <option key={t.id} value={t.id}>{t.fullName || t.name} ({getRoleName(t.roleId)})</option>
                         ))}
                       </select>
                     </div>

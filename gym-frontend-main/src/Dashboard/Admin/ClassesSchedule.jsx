@@ -49,7 +49,7 @@ const ClassesSchedule = () => {
       console.log('Processed branches:', branchList);
 
       // Fetch trainers
-      const trainersRes = await axiosInstance.get(`class/trainers/personal-general`);
+      const trainersRes = await axiosInstance.get(`class/trainers/personal-general?adminId=${adminId}`);
       let trainerList = [];
       console.log('Trainers API response:', trainersRes.data);
       
@@ -93,6 +93,15 @@ const ClassesSchedule = () => {
       setError('Failed to load data. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Function to get role name from roleId
+  const getRoleName = (roleId) => {
+    switch(roleId) {
+      case 5: return 'Personal Trainer';
+      case 6: return 'General Trainer';
+      default: return 'Trainer';
     }
   };
 
@@ -147,7 +156,7 @@ const ClassesSchedule = () => {
 
   const handleView = (gymClass) => {
     setModalType('view');
-    // Parse the time string to get start and end times
+    // Parse time string to get start and end times
     const timeString = gymClass.time || '';
     let startTime = '';
     let endTime = '';
@@ -182,7 +191,7 @@ const ClassesSchedule = () => {
 
   const handleEdit = (gymClass) => {
     setModalType('edit');
-    // Parse the time string to get start and end times
+    // Parse time string to get start and end times
     const timeString = gymClass.time || '';
     let startTime = '';
     let endTime = '';
@@ -521,7 +530,7 @@ const ClassesSchedule = () => {
                       >
                         <option value="">Select trainer</option>
                         {trainers.map(t => (
-                          <option key={t.id} value={t.id}>{t.fullName}</option>
+                          <option key={t.id} value={t.id}>{t.fullName} ({getRoleName(t.roleId)})</option>
                         ))}
                       </select>
                     )}

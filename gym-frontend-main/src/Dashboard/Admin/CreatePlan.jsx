@@ -45,6 +45,7 @@ const CreatePlan = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [createPlanError, setCreatePlanError] = useState(null); // Separate error state for create plan
   const [apiPlans, setApiPlans] = useState([]);
   const [plansLoaded, setPlansLoaded] = useState(false);
   const [viewLoading, setViewLoading] = useState(false);
@@ -143,9 +144,8 @@ const CreatePlan = () => {
       }
     } catch (err) {
       console.error("Error fetching booking requests:", err);
-      setError(
-        err.response?.data?.message || "Failed to fetch booking requests."
-      );
+      // Don't set the global error state here to avoid showing it in the create plan modal
+      // Instead, we could show a toast notification or handle it differently
     }
   };
 
@@ -198,6 +198,7 @@ const CreatePlan = () => {
       }
     } catch (err) {
       console.error("Error fetching renewal requests:", err);
+      // Don't set the global error state here to avoid showing it in the create plan modal
     }
   };
 
@@ -254,11 +255,11 @@ const CreatePlan = () => {
       !newPlan.validity ||
       !newPlan.price
     ) {
-      setError("Please fill all fields");
+      setCreatePlanError("Please fill all fields"); // Use the separate error state
       return;
     }
     setLoading(true);
-    setError(null);
+    setCreatePlanError(null); // Reset the create plan error
     try {
       const adminId = localStorage.getItem("userId") || "4";
       const payload = {
@@ -300,11 +301,11 @@ const CreatePlan = () => {
           } Plan Created: ${plan.name}`
         );
       } else {
-        setError("Failed to create plan.");
+        setCreatePlanError("Failed to create plan."); // Use the separate error state
       }
     } catch (err) {
       console.error("Error creating plan:", err);
-      setError(err.response?.data?.message || "Failed to create plan.");
+      setCreatePlanError(err.response?.data?.message || "Failed to create plan."); // Use the separate error state
     } finally {
       setLoading(false);
     }
@@ -1343,6 +1344,7 @@ const CreatePlan = () => {
                 price: "",
                 type: activeTab === "personal" ? "personal" : "group",
               });
+              setCreatePlanError(null); // Reset create plan error when opening modal
               setShowCreateModal(true);
             }}
             className="px-3 px-md-4 py-2 d-flex align-items-center justify-content-center"
@@ -1685,7 +1687,7 @@ const CreatePlan = () => {
             </Modal.Title>
           </Modal.Header>
           <Modal.Body className="p-3 p-md-4">
-            {error && <Alert variant="danger">{error}</Alert>}
+            {createPlanError && <Alert variant="danger">{createPlanError}</Alert>} {/* Use the separate error state */}
             <Form>
               <Form.Group className="mb-4">
                 <Form.Label className="fw-medium">Plan Type</Form.Label>
