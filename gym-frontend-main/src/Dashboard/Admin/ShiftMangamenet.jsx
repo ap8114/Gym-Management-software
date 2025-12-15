@@ -13,50 +13,58 @@ const ShiftManagement = () => {
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+  const [staffSearch, setStaffSearch] = useState("");
+
+
+
+
+  const filteredStaff = staffMembers.filter(staff =>
+    staff.fullName.toLowerCase().includes(staffSearch.toLowerCase())
+  );
+
   // Fetch data from APIs
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
+
         // Fetch staff data based on admin ID
         const staffResponse = await fetch(`${BaseUrl}staff/admin/${adminId}`);
         const staffData = await staffResponse.json();
-        
+
         // Fetch branches data
         const branchesResponse = await fetch(`${BaseUrl}branches/by-admin/${adminId}`);
         const branchesData = await branchesResponse.json();
-        
+
         // Fetch shifts data
         const shiftsResponse = await fetch(`${BaseUrl}shift/all`);
         const shiftsData = await shiftsResponse.json();
-        
+
         if (staffData.success) {
           setStaffMembers(staffData.staff);
         } else {
           throw new Error('Failed to fetch data');
         }
-        
+
         if (branchesData.success) {
           setBranches(branchesData.branches);
         } else {
           throw new Error('Failed to fetch branches data');
         }
-        
+
         if (shiftsData.success) {
           setShifts(shiftsData.data || []);
         } else {
           throw new Error('Failed to fetch shifts data');
         }
-        
+
         setLoading(false);
       } catch (err) {
         setError(err.message);
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, [BaseUrl, adminId]);
 
@@ -72,18 +80,18 @@ const ShiftManagement = () => {
   // FIXED: Updated getStaffName to handle array of staff IDs
   const getStaffName = (ids) => {
     if (!ids) return 'Not Assigned';
-    
+
     // Handle case where ids is a string
     if (typeof ids === 'string') {
       ids = parseInt(ids);
     }
-    
+
     // Handle case where ids is a single number
     if (typeof ids === 'number') {
       const staff = staffMembers.find(s => s.staffId === ids);
       return staff ? staff.fullName : 'Unknown';
     }
-    
+
     // Handle case where ids is an array
     if (Array.isArray(ids)) {
       const names = ids.map(id => {
@@ -92,7 +100,7 @@ const ShiftManagement = () => {
       });
       return names.join(', ');
     }
-    
+
     return 'Unknown';
   };
 
@@ -103,11 +111,11 @@ const ShiftManagement = () => {
 
   const getShiftColor = (type) => {
     switch (type) {
-      case 'Morning Shift': 
+      case 'Morning Shift':
       case 'Morning': return 'warning';
-      case 'Evening Shift': 
+      case 'Evening Shift':
       case 'Evening': return 'info';
-      case 'Night Shift': 
+      case 'Night Shift':
       case 'Night': return 'primary';
       default: return 'secondary';
     }
@@ -142,12 +150,12 @@ const ShiftManagement = () => {
   const handleCreateShift = async () => {
     try {
       console.log(shiftForm)
-      if (!shiftForm.staffIds || !shiftForm.staffIds.length ||  !shiftForm.shiftDate || 
-          !shiftForm.startTime || !shiftForm.endTime || !shiftForm.shiftType) {
+      if (!shiftForm.staffIds || !shiftForm.staffIds.length || !shiftForm.shiftDate ||
+        !shiftForm.startTime || !shiftForm.endTime || !shiftForm.shiftType) {
         alert('Please fill all required fields');
         return;
       }
-      
+
       const response = await fetch(`${BaseUrl}shift/create`, {
         method: 'POST',
         headers: {
@@ -155,17 +163,17 @@ const ShiftManagement = () => {
         },
         body: JSON.stringify(shiftForm)
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         const shiftsResponse = await fetch(`${BaseUrl}shift/all`);
         const shiftsData = await shiftsResponse.json();
-        
+
         if (shiftsData.success) {
           setShifts(shiftsData.data || []);
         }
-        
+
         setShiftForm({
           staffIds: [],
           shiftDate: '',
@@ -190,22 +198,22 @@ const ShiftManagement = () => {
     try {
       // Find the shift to get the staff IDs
       const shift = shifts.find(s => s.id === shiftId);
-      
+
       const response = await fetch(`${BaseUrl}shift/status/${shiftId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           status: 'Approved',
           staffIds: shift.staffIds // Add staff IDs to the payload
         })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
-        setShifts(shifts.map(shift => 
+        setShifts(shifts.map(shift =>
           shift.id === shiftId ? { ...shift, status: 'Approved' } : shift
         ));
         alert('Shift approved successfully');
@@ -223,22 +231,22 @@ const ShiftManagement = () => {
     try {
       // Find the shift to get the staff IDs
       const shift = shifts.find(s => s.id === shiftId);
-      
+
       const response = await fetch(`${BaseUrl}shift/status/${shiftId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           status: 'Rejected',
           staffIds: shift.staffIds // Add staff IDs to the payload
         })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
-        setShifts(shifts.map(shift => 
+        setShifts(shifts.map(shift =>
           shift.id === shiftId ? { ...shift, status: 'Rejected' } : shift
         ));
         alert('Shift rejected successfully');
@@ -253,7 +261,7 @@ const ShiftManagement = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    
+
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return dateString;
@@ -273,8 +281,8 @@ const ShiftManagement = () => {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Create New Shift</h5>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="btn-close"
                   onClick={() => setShowShiftModal(false)}
                 ></button>
@@ -284,31 +292,63 @@ const ShiftManagement = () => {
                   <div className="row mb-3">
                     <div className="col-md-6">
                       <label className="form-label">Staff</label>
-                      <div className="border rounded p-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                        {staffMembers.length > 0 ? (
-                          staffMembers.map(staff => (
-                            <div className="form-check" key={staff.staffId}>
-                              <input 
-                                className="form-check-input" 
-                                type="checkbox" 
-                                id={`staff-${staff.staffId}`}
-                                checked={shiftForm.staffIds.includes(staff.staffId)}
-                                onChange={(e) => handleStaffCheckboxChange(staff.staffId, e.target.checked)}
-                              />
-                              <label className="form-check-label" htmlFor={`staff-${staff.staffId}`}>
-                                {staff.fullName} - {getBranchName(staff.branchId)}
-                              </label>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-muted">No staff members available</p>
-                        )}
+
+                      <div className="border rounded p-2">
+
+                        {/* 🔍 Search Bar */}
+                        <input
+                          type="text"
+                          className="form-control mb-2"
+                          placeholder="Search staff..."
+                          value={staffSearch}
+                          onChange={(e) => setStaffSearch(e.target.value)}
+                        />
+
+                        {/* 📜 Scrollable Area */}
+                        <div
+                          style={{
+                            maxHeight: "100px",
+                            overflowY: "auto",
+                            overflowX: "auto",
+                            whiteSpace: "nowrap"
+                          }}
+                        >
+                          {filteredStaff.length > 0 ? (
+                            filteredStaff.map(staff => (
+                              <div
+                                className="form-check"
+                                key={staff.staffId}
+                                style={{ minWidth: "250px" }} // 👈 horizontal scroll ke liye
+                              >
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  id={`staff-${staff.staffId}`}
+                                  checked={shiftForm.staffIds.includes(staff.staffId)}
+                                  onChange={(e) =>
+                                    handleStaffCheckboxChange(staff.staffId, e.target.checked)
+                                  }
+                                />
+                                <label
+                                  className="form-check-label"
+                                  htmlFor={`staff-${staff.staffId}`}
+                                >
+                                  {staff.fullName}
+                                </label>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-muted mb-0">No staff members found</p>
+                          )}
+                        </div>
+
                       </div>
                     </div>
+
                     <div className="col-md-6">
                       <label className="form-label">Date</label>
-                      <input 
-                        type="date" 
+                      <input
+                        type="date"
                         className="form-control"
                         name="shiftDate"
                         value={shiftForm.shiftDate}
@@ -320,8 +360,8 @@ const ShiftManagement = () => {
                   <div className="row mb-3">
                     <div className="col-md-6">
                       <label className="form-label">Start Time</label>
-                      <input 
-                        type="time" 
+                      <input
+                        type="time"
                         className="form-control"
                         name="startTime"
                         value={shiftForm.startTime}
@@ -330,8 +370,8 @@ const ShiftManagement = () => {
                     </div>
                     <div className="col-md-6">
                       <label className="form-label">End Time</label>
-                      <input 
-                        type="time" 
+                      <input
+                        type="time"
                         className="form-control"
                         name="endTime"
                         value={shiftForm.endTime}
@@ -342,7 +382,7 @@ const ShiftManagement = () => {
 
                   <div className="mb-3">
                     <label className="form-label">Shift Type</label>
-                    <select 
+                    <select
                       className="form-select"
                       name="shiftType"
                       value={shiftForm.shiftType}
@@ -354,10 +394,10 @@ const ShiftManagement = () => {
                       <option value="Custom">Custom Shift</option>
                     </select>
                   </div>
-                  
+
                   <div className="mb-3">
                     <label className="form-label">Description</label>
-                    <textarea 
+                    <textarea
                       className="form-control"
                       name="description"
                       value={shiftForm.description}
@@ -368,15 +408,15 @@ const ShiftManagement = () => {
                 </form>
               </div>
               <div className="modal-footer">
-                <button 
+                <button
                   className="btn btn-secondary"
                   onClick={() => setShowShiftModal(false)}
                 >
                   Cancel
                 </button>
-                <button 
-                  className="btn btn-outline-light" 
-                  style={{ backgroundColor: '#2f6a87', color: '#fff' }} 
+                <button
+                  className="btn btn-outline-light"
+                  style={{ backgroundColor: '#2f6a87', color: '#fff' }}
                   onClick={handleCreateShift}
                 >
                   Create Shift
@@ -401,11 +441,11 @@ const ShiftManagement = () => {
   return (
     <div className="container-fluid py-4">
       <h2 className="mb-4">Staff Management</h2>
-      
+
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3>Duty Roster</h3>
-        <button 
-          className="btn btn-outline-light" 
+        <button
+          className="btn btn-outline-light"
           style={{ backgroundColor: '#2f6a87', color: '#fff' }}
           onClick={() => setShowShiftModal(true)}
         >
@@ -439,7 +479,7 @@ const ShiftManagement = () => {
                     {shift.shiftType || 'Not Specified'}
                   </span>
                 </td>
-            
+
                 <td>
                   <span className={`badge bg-${getStatusClass(shift.status)}`}>
                     {shift.status}
@@ -459,7 +499,7 @@ const ShiftManagement = () => {
               <tr>
                 <th>Staff Name</th>
                 <th>Shift Date & Time</th>
-                <th>Branch</th>
+                {/* <th>Branch</th> */}
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -472,7 +512,7 @@ const ShiftManagement = () => {
                       {getStaffName(shift.staffIds)}
                     </td>
                     <td>{formatDate(shift.shiftDate)} {shift.startTime} - {shift.endTime}</td>
-                    <td>{getBranchName(shift.branchId)}</td>
+                    {/* <td>{getBranchName(shift.branchId)}</td> */}
                     <td>
                       <span className={`badge bg-${getStatusClass(shift.status)}`}>
                         {shift.status}
@@ -480,13 +520,13 @@ const ShiftManagement = () => {
                     </td>
                     <td>
                       <div className="btn-group">
-                        <button 
+                        <button
                           className="btn btn-sm btn-success"
                           onClick={() => handleApproveShift(shift.id)}
                         >
                           <Check size={14} />
                         </button>
-                        <button 
+                        <button
                           className="btn btn-sm btn-danger"
                           onClick={() => handleRejectShift(shift.id)}
                         >

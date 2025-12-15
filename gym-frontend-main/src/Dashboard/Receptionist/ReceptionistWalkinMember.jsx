@@ -18,7 +18,9 @@ import {
   Filter,
 } from "lucide-react";
 
+
 const ReceptionistWalkinMember = () => {
+  
   const [members, setMembers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
@@ -27,21 +29,20 @@ const ReceptionistWalkinMember = () => {
   const [showEditForm, setShowEditForm] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [filterStatus, setFilterStatus] = useState("");
-  const [filterBranch, setFilterBranch] = useState("");
+  // const [filterBranch, setFilterBranch] = useState(""); // Commented out branch filter
   const [loading, setLoading] = useState(false); // Add loading state
   const [editLoading, setEditLoading] = useState(false); // Add edit loading state
   const [deleteLoading, setDeleteLoading] = useState(false); // Add delete loading state
-  const [branches, setBranches] = useState([]);
-  const [branchesLoading, setBranchesLoading] = useState(false);
-  const [branchesError, setBranchesError] = useState(null);
+  // const [branches, setBranches] = useState([]); // Commented out branches state
+  // const [branchesLoading, setBranchesLoading] = useState(false); // Commented out branches loading state
+  // const [branchesError, setBranchesError] = useState(null); // Commented out branches error state
   const [membersLoading, setMembersLoading] = useState(false); // Add loading state for members
   // Plans state
   const [apiPlans, setApiPlans] = useState([]);
   const [plansLoaded, setPlansLoaded] = useState(false);
   const [planError, setPlanError] = useState(null);
   const [planLoading, setPlanLoading] = useState(false);
-
-     const getUserFromStorage = () => {
+const getUserFromStorage = () => {
     try {
       const userStr = localStorage.getItem('user');
       return userStr ? JSON.parse(userStr) : null;
@@ -53,20 +54,17 @@ const ReceptionistWalkinMember = () => {
 
   const user = getUserFromStorage();
   const memberId = user?.id || null;
-  const adminId = user?.adminId || null;
   const branchId = user?.branchId || null;
-
-  console.log('Member ID:', memberId);
-  console.log('Admin ID:', adminId);
-  console.log('Branch ID:', branchId);
-
+  const name = user?.fullName || null;
+  const staffId = user?.staffId || null;
+  const adminId = user?.adminId || null;
   // Form states
   const [newMember, setNewMember] = useState({
     fullName: "",
     phone: "",
     email: "",
     password: "",
-    branchId: "",
+    // branchId: "", // Commented out branchId
     planId: "",
     address: "",
     gender: "",
@@ -84,7 +82,7 @@ const ReceptionistWalkinMember = () => {
     fullName: "", // ✅ Changed from 'name' to 'fullName'
     phone: "",
     email: "",
-    branchId: "", // ✅ Changed from 'branch' to 'branchId'
+    // branchId: "", // Commented out branchId
     planId: "", // ✅ Changed from 'plan' to 'planId'
     address: "",
     gender: "",
@@ -101,7 +99,7 @@ const ReceptionistWalkinMember = () => {
   });
 
   // Get unique branches for filter
-  const uniqueBranches = [...new Set(members.map((member) => member.branch))];
+  // const uniqueBranches = [...new Set(members.map((member) => member.branch))]; // Commented out unique branches
 
 // Filter members based on search term, status and branch
 const filteredMembers = members.filter((member) => {
@@ -109,9 +107,9 @@ const filteredMembers = members.filter((member) => {
     member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     member.phone.includes(searchTerm);
   const matchesStatus = filterStatus === "" || member.status === filterStatus;
-  const matchesBranch =
-    filterBranch === "" || member.branchId === parseInt(filterBranch); // ✅ Use branchId for comparison
-  return matchesSearch && matchesStatus && matchesBranch;
+  // const matchesBranch =
+  //   filterBranch === "" || member.branchId === parseInt(filterBranch); // Commented out branch filter
+  return matchesSearch && matchesStatus; // Removed matchesBranch from return
 });
 
 // Fetch members by admin ID
@@ -119,44 +117,31 @@ const fetchMembersByAdminId = async () => {
   setMembersLoading(true);
   try {
     const response = await axiosInstance.get(
-      `${BaseUrl}members/branch/${branchId}`
+      `${BaseUrl}members/admin/${adminId}`
     );
 
     if (response.data && response.data.success) {
       // Map API response to match our component structure
-      // Updated to use 'items' array from the new API response structure
-      const formattedMembers = response.data.items.map((member) => ({
+      const formattedMembers = response.data.data.map((member) => ({
         id: member.id,
         name: member.fullName,
         phone: member.phone,
         email: member.email,
         gender: member.gender,
-        branch: getBranchNameById(member.branchId), // ✅ Get branch name by ID
-        branchId: member.branchId, // Store the branch ID
+        // branch: getBranchNameById(member.branchId), // Commented out branch name
+        // branchId: member.branchId, // Commented out branch ID
         plan: getPlanNameById(member.planId), // ✅ Get plan name by ID
-        planId: member.planId, // Store the plan ID
+        planId: member.planId, // Store plan ID
         address: member.address,
         dob: member.dateOfBirth,
         planStart: member.membershipFrom,
         expiry: member.membershipTo,
         status: member.status,
         interestedIn: member.interestedIn,
-        amountPaid: member.amountPaid, // Added amount paid
-        paymentMode: member.paymentMode, // Added payment mode
-        joinDate: member.joinDate, // Added join date
-        userId: member.userId, // Added user ID
-        adminId: member.adminId, // Added admin ID
       }));
 
       setMembers(formattedMembers);
-      console.log("Members loaded successfully with full response:", {
-        success: response.data.success,
-        total: response.data.total,
-        page: response.data.page,
-        limit: response.data.limit,
-        pages: response.data.pages,
-        items: formattedMembers
-      });
+      console.log("Members loaded successfully:", formattedMembers);
     } else {
       console.error("API response error:", response.data);
     }
@@ -173,6 +158,8 @@ const fetchMembersByAdminId = async () => {
     setPlanError(null);
 
     try {
+      // Get adminId from localStorage using "userId" key with fallback to '4'
+      const adminId = localStorage.getItem("userId") || "4";
 
       // Make API call to get plans by admin ID
       const response = await axiosInstance.get(
@@ -186,9 +173,9 @@ const fetchMembersByAdminId = async () => {
           name: plan.name,
           sessions: plan.sessions,
           validity: plan.validityDays,
-          price: `$${plan.price.toLocaleString()}`,
+          price: `₹${plan.price.toLocaleString()}`,
           active: true, // Assuming all plans from API are active by default
-          branch: "Downtown", // Default branch since API doesn't provide it
+          // branch: "Downtown", // Commented out default branch
           type: plan.type.toLowerCase(), // Convert to lowercase for our component
         }));
 
@@ -211,33 +198,34 @@ const fetchMembersByAdminId = async () => {
   };
 
   // Fetch branches
-  const fetchBranches = async () => {
-    setBranchesLoading(true);
-    setBranchesError(null);
-    try {
-      const response = await axiosInstance.get(
-        `${BaseUrl}branches/by-admin/${adminId}`
-      );
-      if (response.data?.success && Array.isArray(response.data.branches)) {
-        setBranches(response.data.branches);
-      } else {
-        setBranchesError("No branches found.");
-        setBranches([]);
-      }
-    } catch (err) {
-      console.error("Error fetching branches:", err);
-      setBranchesError("Failed to load branches.");
-      setBranches([]);
-    } finally {
-      setBranchesLoading(false);
-    }
-  };
+  // const fetchBranches = async () => { // Commented out fetchBranches function
+  //   setBranchesLoading(true);
+  //   setBranchesError(null);
+  //   try {
+  //     const adminId = localStorage.getItem("userId") || "5"; // fallback to 5 as per your note
+  //     const response = await axiosInstance.get(
+  //       `${BaseUrl}branches/by-admin/${adminId}`
+  //     );
+  //     if (response.data?.success && Array.isArray(response.data.branches)) {
+  //       setBranches(response.data.branches);
+  //     } else {
+  //       setBranchesError("No branches found.");
+  //       setBranches([]);
+  //     }
+  //   } catch (err) {
+  //     console.error("Error fetching branches:", err);
+  //     setBranchesError("Failed to load branches.");
+  //     setBranches([]);
+  //   } finally {
+  //     setBranchesLoading(false);
+  //   }
+  // };
 
   // Fetch data when component mounts
   useEffect(() => {
     fetchMembersByAdminId();
     fetchPlansFromAPI();
-    fetchBranches();
+    // fetchBranches(); // Commented out fetchBranches
   }, []);
 
   // Handle add member with API call
@@ -246,9 +234,9 @@ const fetchMembersByAdminId = async () => {
     setLoading(true);
 
     try {
-      // Prepare the payload for the API
+      // Prepare payload for API
       const payload = {
-        adminId: adminId, // ✅ Added adminId to the payload
+        adminId: adminId, // ✅ Added adminId to payload
         fullName: newMember.fullName,
         email: newMember.email,
         password: newMember.password,
@@ -257,7 +245,7 @@ const fetchMembersByAdminId = async () => {
         dateOfBirth: newMember.dateOfBirth,
         address: newMember.address,
         interestedIn: newMember.interestedIn,
-        branchId: parseInt(newMember.branchId), // Convert to number
+        // branchId: parseInt(newMember.branchId), // Commented out branchId
         planId: parseInt(newMember.planId), // Convert to number
         membershipFrom: newMember.startDate, // Map startDate to membershipFrom
         paymentMode:
@@ -272,18 +260,18 @@ const fetchMembersByAdminId = async () => {
         payload
       );
 
-      // If the API call is successful, add the member to the local state
+      // If API call is successful, add member to local state
       if (response.data) {
-        // Refresh the members list to get the updated data
+        // Refresh members list to get updated data
         await fetchMembersByAdminId();
 
-        // Reset the form
+        // Reset form
         setNewMember({
           fullName: "",
           phone: "",
           email: "",
           password: "",
-          branchId: "",
+          // branchId: "", // Commented out branchId
           planId: "",
           address: "",
           gender: "",
@@ -312,9 +300,9 @@ const fetchMembersByAdminId = async () => {
     setEditLoading(true);
 
     try {
-      // ✅ FIX: Prepare the payload for the API to match the expected structure
+      // ✅ FIX: Prepare payload for API to match expected structure
       const payload = {
-        adminId: adminId, // ✅ Added adminId to the payload
+        adminId: adminId, // ✅ Added adminId to payload
         fullName: editMember.fullName,
         email: editMember.email,
         phone: editMember.phone,
@@ -323,19 +311,19 @@ const fetchMembersByAdminId = async () => {
         dateOfBirth: editMember.dateOfBirth,
         interestedIn: editMember.interestedIn,
         status: editMember.status, // ✅ Added status
-        branchId: parseInt(editMember.branchId), // ✅ Added branchId
+        // branchId: parseInt(editMember.branchId), // Commented out branchId
         planId: parseInt(editMember.planId), // ✅ Added planId
       };
 
-      // ✅ FIX: Make API call using axiosInstance and BaseUrl with the correct URL
+      // ✅ FIX: Make API call using axiosInstance and BaseUrl with correct URL
       const response = await axiosInstance.put(
         `${BaseUrl}members/update/${editMember.id}`,
         payload
       );
 
-      // ✅ FIX: If the API call is successful, update the member in the local state
+      // ✅ FIX: If API call is successful, update member in local state
       if (response.data && response.data.success) {
-        // Update the member in the state with the response data
+        // Update member in state with response data
         setMembers(
           members.map((member) =>
             member.id === editMember.id
@@ -368,7 +356,7 @@ const fetchMembersByAdminId = async () => {
           `${BaseUrl}members/delete/${id}`
         );
 
-        // If the API call is successful, remove the member from the local state
+        // If API call is successful, remove member from local state
         if (response.data && response.data.success) {
           setMembers(members.filter((member) => member.id !== id));
           alert("Member deleted successfully!");
@@ -402,7 +390,7 @@ const fetchMembersByAdminId = async () => {
       dateOfBirth: member.dob, // ✅ Map 'dob' to 'dateOfBirth'
       interestedIn: member.interestedIn,
       status: member.status, // ✅ Map 'status'
-      branchId: member.branchId, // ✅ Map 'branchId'
+      // branchId: member.branchId, // Commented out branchId
       planId: member.planId, // ✅ Map 'planId'
     });
     setShowEditForm(true);
@@ -414,7 +402,7 @@ const fetchMembersByAdminId = async () => {
     setLoading(true);
 
     try {
-      // Prepare the payload for the API
+      // Prepare payload for API
       const payload = {
         adminId: adminId, // Add adminId to payload
         planId: parseInt(renewPlan.plan), // Convert to number
@@ -424,24 +412,24 @@ const fetchMembersByAdminId = async () => {
         amountPaid: parseFloat(renewPlan.amountPaid), // Convert to number
       };
 
-      // Make API call to renew the membership
+      // Make API call to renew membership
       const response = await axiosInstance.put(
         `${BaseUrl}members/renew/${renewPlan.memberId}`,
         payload
       );
 
-      // If the API call is successful, update the member in the local state
+      // If API call is successful, update member in local state
       if (response.data && response.data.success) {
-        // Find the member to update
+        // Find member to update
         const updatedMemberIndex = members.findIndex(
           (member) => member.id === parseInt(renewPlan.memberId)
         );
 
         if (updatedMemberIndex !== -1) {
-          // Create a copy of the members array
+          // Create a copy of members array
           const updatedMembers = [...members];
 
-          // Update the member with the new plan information
+          // Update member with new plan information
           updatedMembers[updatedMemberIndex] = {
             ...updatedMembers[updatedMemberIndex],
             planId: response.data.data.planId,
@@ -455,11 +443,11 @@ const fetchMembersByAdminId = async () => {
             status: "Active",
           };
 
-          // Update the state with the modified members array
+          // Update state with modified members array
           setMembers(updatedMembers);
         }
 
-        // Reset the form
+        // Reset form
         setRenewPlan({
           memberId: "",
           plan: "",
@@ -505,11 +493,11 @@ const fetchMembersByAdminId = async () => {
   };
 
 // Get branch name by ID
-const getBranchNameById = (branchId) => {
-  if (!branchId || branches.length === 0) return "Unknown Branch";
-  const branch = branches.find((b) => b.id === parseInt(branchId));
-  return branch ? branch.name : "Unknown Branch";
-};
+// const getBranchNameById = (branchId) => { // Commented out getBranchNameById function
+//   if (!branchId || branches.length === 0) return "Unknown Branch";
+//   const branch = branches.find((b) => b.id === parseInt(branchId));
+//   return branch ? branch.name : "Unknown Branch";
+// };
 
 // Get plan name by ID
 const getPlanNameById = (planId) => {
@@ -558,7 +546,8 @@ const getPlanNameById = (planId) => {
             />
           </div>
         </div>
-        <div className="col-12 col-md-4">
+        {/* Commented out branch filter */}
+        {/* <div className="col-12 col-md-4">
           <select
             className="form-select"
             value={filterBranch}
@@ -577,7 +566,7 @@ const getPlanNameById = (planId) => {
               ))
             )}
           </select>
-        </div>
+        </div> */}
         <div className="col-12 col-md-4">
           <select
             className="form-select"
@@ -607,7 +596,7 @@ const getPlanNameById = (planId) => {
                     <th>Phone</th>
                     <th>Email</th>
                     <th>Gender</th>
-                    <th>Branch</th>
+                    {/* <th>Branch</th> Commented out Branch column */}
                     <th>Plan</th>
                     <th>Expiry</th>
                     <th>Status</th>
@@ -617,7 +606,7 @@ const getPlanNameById = (planId) => {
                 <tbody>
                   {membersLoading ? (
                     <tr>
-                      <td colSpan="9" className="text-center py-4">
+                      <td colSpan="8" className="text-center py-4">
                         <div
                           className="spinner-border spinner-border-sm me-2"
                           role="status"
@@ -633,7 +622,7 @@ const getPlanNameById = (planId) => {
                         <td>{member.phone}</td>
                         <td>{member.email}</td>
                         <td>{member.gender}</td>
-                        <td>{getBranchNameById(member.branchId)}</td>
+                        {/* <td>{getBranchNameById(member.branchId)}</td> Commented out Branch display */}
                         <td>{getPlanNameById(member.planId)}</td>
                         <td>{new Date(member.expiry).toLocaleDateString()}</td>
                         <td>
@@ -695,7 +684,7 @@ const getPlanNameById = (planId) => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="9" className="text-center py-4">
+                      <td colSpan="8" className="text-center py-4">
                         No members found
                       </td>
                     </tr>
@@ -796,10 +785,11 @@ const getPlanNameById = (planId) => {
                     <div className="col-6">
                       <strong>Gender:</strong> {member.gender}
                     </div>
-                    <div className="col-6">
+                    {/* Commented out Branch display */}
+                    {/* <div className="col-6">
                       <strong>Branch:</strong>{" "}
                       {getBranchNameById(member.branchId)}
-                    </div>
+                    </div> */}
                     <div className="col-6">
                       <strong>Plan:</strong> {getPlanNameById(member.planId)}
                     </div>
@@ -1092,7 +1082,8 @@ const getPlanNameById = (planId) => {
                         }
                       ></textarea>
                     </div>
-                    <div className="col-12 col-md-6">
+                    {/* Commented out Branch field */}
+                    {/* <div className="col-12 col-md-6">
                       <label className="form-label">
                         Branch <span className="text-danger">*</span>
                       </label>
@@ -1122,7 +1113,7 @@ const getPlanNameById = (planId) => {
                           ))
                         )}
                       </select>
-                    </div>
+                    </div> */}
                     <div className="col-12 col-md-6">
                       <label className="form-label">
                         Plan <span className="text-danger">*</span>
@@ -1346,7 +1337,8 @@ const getPlanNameById = (planId) => {
                         <option value="Pending">Pending</option> */}
                       </select>
                     </div>
-                    <div className="col-12 col-md-6">
+                    {/* Commented out Branch field */}
+                    {/* <div className="col-12 col-md-6">
                       <label className="form-label">Branch</label>
                       <select
                         className="form-select"
@@ -1366,7 +1358,7 @@ const getPlanNameById = (planId) => {
                           </option>
                         ))}
                       </select>
-                    </div>
+                    </div> */}
                     <div className="col-12 col-md-6">
                       <label className="form-label">Membership Plan</label>
                       <select
@@ -1741,10 +1733,11 @@ const getPlanNameById = (planId) => {
                         <strong>Gender:</strong>
                         <div>{selectedMember.gender}</div>
                       </div>
-                      <div className="col-12 col-sm-6">
+                      {/* Commented out Branch display */}
+                      {/* <div className="col-12 col-sm-6">
                         <strong>Branch:</strong>
                         <div>{getBranchNameById(selectedMember.branchId)}</div>
-                      </div>
+                      </div> */}
                       <div className="col-12 col-sm-6">
                         <strong>Plan:</strong>
                         <div>{getPlanNameById(selectedMember.planId)}</div>

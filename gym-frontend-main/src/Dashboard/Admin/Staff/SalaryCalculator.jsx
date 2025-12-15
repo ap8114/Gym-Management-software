@@ -847,7 +847,7 @@ const handleSubmit = async () => {
               {salaries.map((salary) => {
                 const staff = getStaffInfo(salary.staff_id);
                 return (
-                  <tr key={salary.salary_id}>
+                  <tr key={salary.salaryId}>
                     <td className="d-none d-md-table-cell">
                       <strong>{salary.salary_id}</strong>
                     </td>
