@@ -293,7 +293,7 @@ const RequestPlan = () => {
                 <Alert variant="info" className="text-center py-4">
                   <i className="bi bi-info-circle display-6 mb-3 d-block"></i>
                   <h5>No Booking Records Found</h5>
-                  <p>No booking records found for member ID <strong>{memberId}</strong></p>
+                  <p>No booking records found for member</p>
                   <Button 
                     variant="outline-primary"
                     onClick={() => setRefreshKey(prev => prev + 1)}

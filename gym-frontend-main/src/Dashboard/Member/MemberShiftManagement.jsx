@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import BaseUrl from '../../Api/BaseUrl';
 import GetAdminId from '../../Api/GetAdminId';
 
-const PersonsalTrainerShiftManagement = () => {
+const MemberShiftManagement = () => {
   const [shift, setShift] = useState(null); // Single shift object
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -146,4 +146,4 @@ const PersonsalTrainerShiftManagement = () => {
   );
 };
 
-export default PersonsalTrainerShiftManagement;
+export default MemberShiftManagement;
