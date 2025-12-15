@@ -61,9 +61,9 @@ const ReceptionistBookGroupClasses = () => {
 
   const user = getUserFromStorage();
   const branchId = user?.branchId || null;
-   const adminId = user?.adminId || null;
+  const adminId = user?.adminId || null;
 
-
+  
 
   const normalizeBooking = (apiBooking) => {
     const isGroup = apiBooking.bookingType === 'GROUP';

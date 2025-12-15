@@ -440,13 +440,10 @@ const ShiftManagement = () => {
 
   return (
     <div className="container-fluid py-4">
-<<<<<<< HEAD
       <h2 className="mb-4">Staff Management</h2>
 
-=======
       <h2 className="mb-4">Shift Management</h2>
       
->>>>>>> ed8a15594f569812e0197cbe230d7cbd2c4286f1
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3>Duty Roster</h3>
         <button
