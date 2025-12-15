@@ -129,6 +129,7 @@ import PersonalSessionBooking from "./Dashboard/PersonalTrainer/PersonalSessionB
 import GeneralSessionBooking from "./Dashboard/GeneralTrainer/GeneralSessionBooking";
 import PersonsalTrainerShiftManagement from "./Dashboard/PersonalTrainer/PersonsalTrainerShiftManagement";
 import GeneralTrainerShiftManagement from "./Dashboard/GeneralTrainer/GeneralTrainerShiftManagement";
+import HouseKeepingShiftManagement from "./Dashboard/HouseKeeping/HouseKeepingShiftManagement";
 
 
 
@@ -297,6 +298,7 @@ function App() {
                 <Route path="/housekeeping/membership-plan" element={<HouseKeepingAttendance />} />
                 <Route path="/housekeeping/duty-roster" element={<HousekeepingTask />} />
                 <Route path="/housekeeping/class-schedule" element={<HouseKeepingNotifications />} />
+                <Route path="/housekeeping/shift-management" element={<HouseKeepingShiftManagement />} />
 
               </Routes>
             </div>

@@ -135,7 +135,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
 
     HOUSEKEEPING: [
       { name: "Dashboard", icon: faChartBar, path: "/housekeeping/dashboard" },
-      { name: "Staff Management", icon: faUsers, path: "/housekeeping/members" },
+      { name: "Shift Management", icon: faUsers, path: "/housekeeping/shift-management" },
       { name: "Task Checklist", icon: faCalendarAlt, path: "/housekeeping/duty-roster" },
       { name: "QR Check-in", icon: faGear, path: "/housekeeping/qrcheckin" },
       { name: "Attendance Marking", icon: faUserTag, path: "/housekeeping/membership-plan" },
