@@ -20,6 +20,8 @@ const ReceptionistBookGroupClasses = () => {
   const [bookingType, setBookingType] = useState('group');
   const [selectedBooking, setSelectedBooking] = useState(null);
 
+
+  
   const [members, setMembers] = useState([]);
   const [trainers, setTrainers] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -59,6 +61,9 @@ const ReceptionistBookGroupClasses = () => {
 
   const user = getUserFromStorage();
   const branchId = user?.branchId || null;
+   const adminId = user?.adminId || null;
+
+
 
   const normalizeBooking = (apiBooking) => {
     const isGroup = apiBooking.bookingType === 'GROUP';
@@ -82,16 +87,11 @@ const ReceptionistBookGroupClasses = () => {
   };
 
   const fetchData = async () => {
-    if (!branchId) {
-      setError('Branch ID not found. Please log in again.');
-      setLoading(false);
-      return;
-    }
 
     try {
       const [membersRes, bookingsRes, trainersRes] = await Promise.all([
-        axiosInstance.get(`members/branch/${branchId}`),
-        axiosInstance.get(`booking/unifiedbybranch/${branchId}`),
+        axiosInstance.get(`members/branch/${adminId}`),
+        axiosInstance.get(`booking/unifiedbybranch/${adminId}`),
         axiosInstance.get(`class/trainers/personal-general`),
       ]);
 
@@ -334,7 +334,7 @@ const ReceptionistBookGroupClasses = () => {
     const formatTime = (t) => (t.length === 5 ? `${t}:00` : t);
 
     const payload = {
-      branchId: parseInt(branchId, 10),
+     
       memberId: parseInt(member_id, 10),
       memberName: member_name,
       bookingType: bookingType === 'group' ? 'GROUP' : 'PT',
@@ -394,7 +394,7 @@ const ReceptionistBookGroupClasses = () => {
   const groupClasses = getUniqueClasses();
 
   if (loading) return <div className="text-center mt-5">Loading bookings...</div>;
-  if (error) return <div className="alert alert-danger">{error}</div>;
+
 
   return (
     <div className="">
