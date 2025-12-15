@@ -6,12 +6,28 @@ import axiosInstance from '../../Api/axiosInstance';
 const HousekeepingTask = () => {
   const [tasks, setTasks] = useState([]);
   const [loadingTaskId, setLoadingTaskId] = useState(null); // For loading state on button
-  const userId = localStorage.getItem('userId'); // assignedTo = userId
+
+
+  const getUserFromStorage = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (err) {
+      console.error('Error parsing user from localStorage:', err);
+      return null;
+    }
+  };
+
+  const user = getUserFromStorage();
+  const memberId = user?.id || null;
+  const branchId = user?.branchId || null;
+  const name = user?.fullName || null;
+  const staffId = user?.staffId || null;
 
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        const response = await axiosInstance.get(`housekeepingtask/asignedto/${userId}`);
+        const response = await axiosInstance.get(`housekeepingtask/asignedto/${staffId}`);
         setTasks(response.data.data || []);
       } catch (error) {
         console.error('Error fetching tasks:', error);
@@ -19,10 +35,10 @@ const HousekeepingTask = () => {
       }
     };
 
-    if (userId) {
+    if (staffId) {
       fetchTasks();
     }
-  }, [userId]);
+  }, [staffId]);
 
   // Format time (08:00)
   const formatTime = (isoString) => {

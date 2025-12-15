@@ -14,14 +14,10 @@ const PersonalPlansBookings = () => {
   const [error, setError] = useState(null);
 
   // ✅ Extract adminId once from localStorage
-    const getUserFromStorage = () => {
+ const getUserFromStorage = () => {
     try {
       const userStr = localStorage.getItem('user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        // For personal trainers, their own ID is used as "adminId" in the API
-        return user?.id || null; // 👈 Use `id` instead of `adminId`
-      }
+      return userStr ? JSON.parse(userStr) : null;
     } catch (err) {
       console.error('Error parsing user from localStorage:', err);
       return null;
@@ -30,8 +26,11 @@ const PersonalPlansBookings = () => {
 
   const user = getUserFromStorage();
   const memberId = user?.id || null;
-  const adminId = user?.adminId || null;
   const branchId = user?.branchId || null;
+  const name = user?.fullName || null;
+  const staffId = user?.staffId || null;
+  const adminId = user?.adminId || null;
+
 
   console.log('Member ID:', memberId);
   console.log('Admin ID:', adminId);

@@ -82,6 +82,30 @@ const StaffAttendance = () => {
     }
   };
 
+  // Function to calculate shift type based on check-in time
+  const calculateShiftType = (checkInTime) => {
+    if (!checkInTime) return 'Unknown';
+    
+    try {
+      const date = new Date(checkInTime);
+      const hours = date.getHours();
+      
+      // Define shift ranges
+      if (hours >= 5 && hours < 12) {
+        return 'Morning Shift';
+      } else if (hours >= 12 && hours < 17) {
+        return 'Day Shift';
+      } else if (hours >= 17 && hours < 22) {
+        return 'Evening Shift';
+      } else {
+        return 'Night Shift';
+      }
+    } catch (err) {
+      console.error('Error calculating shift type:', err);
+      return 'Unknown';
+    }
+  };
+
   // Fetch attendance records from API
   const fetchAttendanceRecords = async () => {
     try {
@@ -91,22 +115,29 @@ const StaffAttendance = () => {
       
       if (response.data && response.data.success && Array.isArray(response.data.attendance)) {
         // Transform API response to match component's expected format
-        const transformedRecords = response.data.attendance.map(record => ({
-          attendance_id: record.id,
-          staff_id: record.staffId,
-          staff_name: record.staffId ? getStaffName(record.staffId) : record.memberName || 'Unknown',
-          role: record.staffId ? getRoleNameFromStaff(record.staffId) : 'Member',
-          branch: getBranchName(record.branchId),
-          date: record.checkIn ? record.checkIn.split('T')[0] : '',
-          checkin_time: record.checkIn,
-          checkout_time: record.checkOut,
-          mode: record.mode,
-          shift_id: record.shiftId,
-          shift_name: getShiftName(record.shiftId),
-          status: record.status,
-          notes: record.notes,
-          member_id: record.memberId
-        }));
+        const transformedRecords = response.data.attendance.map(record => {
+          // Determine if it's a staff member or member
+          const isStaff = record.staffId !== null;
+          const name = isStaff ? record.staffName : record.memberName || 'Unknown';
+          const role = isStaff ? record.staffRole : record.memberRole || 'Member';
+          
+          return {
+            attendance_id: record.id,
+            staff_id: record.staffId,
+            staff_name: name,
+            role: role,
+            branch: getBranchName(record.branchId),
+            date: record.checkIn ? record.checkIn.split('T')[0] : '',
+            checkin_time: record.checkIn,
+            checkout_time: record.checkOut,
+            mode: record.mode,
+            shift_id: record.shiftId,
+            shift_name: record.shiftType || calculateShiftType(record.checkIn), // Use shiftType from API or calculate
+            status: record.status,
+            notes: record.notes,
+            member_id: record.memberId
+          };
+        });
         setRecords(transformedRecords);
       } else {
         setError('Failed to load attendance records');
@@ -139,7 +170,7 @@ const StaffAttendance = () => {
           checkout_time: record.checkOutTime,
           mode: record.mode,
           shift_id: record.shiftId,
-          shift_name: getShiftName(record.shiftId),
+          shift_name: record.shiftType || calculateShiftType(record.checkInTime), // Use shiftType from API or calculate
           status: record.status,
           notes: record.notes
         }));
@@ -193,7 +224,8 @@ const StaffAttendance = () => {
     const shifts = [
       { id: 1, name: "Morning Shift" },
       { id: 2, name: "Day Shift" },
-      { id: 3, name: "Evening Shift" }
+      { id: 3, name: "Evening Shift" },
+      { id: 4, name: "Night Shift" }
     ];
     const shift = shifts.find(s => s.id === shiftId);
     return shift ? shift.name : 'Unknown';
@@ -205,7 +237,8 @@ const StaffAttendance = () => {
   const shifts = [
     { id: 1, name: "Morning Shift" },
     { id: 2, name: "Day Shift" },
-    { id: 3, name: "Evening Shift" }
+    { id: 3, name: "Evening Shift" },
+    { id: 4, name: "Night Shift" }
   ];
 
   // Get unique options for dropdowns
@@ -305,10 +338,14 @@ const StaffAttendance = () => {
       "Receptionist": "bg-info",
       "Housekeeping": "bg-secondary",
       "General Trainer": "bg-success",
-      "Member": "bg-dark"
+      "Member": "bg-dark",
+      "Admin": "bg-danger",
+      "Manager": "bg-warning",
+      "Trainer": "bg-primary",
+      "generaltrainer": "bg-success"
     };
     return (
-      <span className={`badge rounded-pill ${colors[role] || 'bg-light'} text-dark px-2 py-1`} style={{ fontSize: '0.65rem', whiteSpace: 'nowrap' }}>
+      <span className={`badge rounded-pill ${colors[role] || 'bg-light'} text-light px-2 py-1`} style={{ fontSize: '0.65rem', whiteSpace: 'nowrap' }}>
         {role}
       </span>
     );
@@ -731,7 +768,7 @@ const StaffAttendance = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="9" className="text-center py-4">
+                      <td colSpan="8" className="text-center py-4">
                         <div className="text-muted">
                           <FaSearch size={24} className="mb-2" />
                           <p className="mb-0">No attendance records found matching your criteria.</p>
@@ -796,7 +833,7 @@ const StaffAttendance = () => {
                   <div className="row g-2">
                     {/* Staff & Role */}
                     <div className="col-12">
-                      <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Staff Member</label>
+                      <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Staff Member *</label>
                       <select
                         name="staff_id"
                         className="form-select form-select-sm"
@@ -813,7 +850,22 @@ const StaffAttendance = () => {
                       </select>
                     </div>
 
-                    {/* Date & Shift */}
+                    {/* Branch & Date */}
+                    <div className="col-6">
+                      <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Branch *</label>
+                      <select
+                        name="branch_id"
+                        className="form-select form-select-sm"
+                        defaultValue={selectedRecord ? branches.find(b => b.name === selectedRecord.branch)?.id || '' : ''}
+                        disabled={modalType === 'view'}
+                        required
+                      >
+                        <option value="">Select Branch</option>
+                        {branches.map(branch => (
+                          <option key={branch.id} value={branch.id}>{branch.name}</option>
+                        ))}
+                      </select>
+                    </div>
                     <div className="col-6">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Date</label>
                       <input
@@ -825,6 +877,8 @@ const StaffAttendance = () => {
                         required
                       />
                     </div>
+
+                    {/* Shift & Mode */}
                     <div className="col-6">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Shift</label>
                       <select
@@ -841,8 +895,6 @@ const StaffAttendance = () => {
                         ))}
                       </select>
                     </div>
-
-                    {/* Mode & Status */}
                     <div className="col-6">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Mode</label>
                       <select
@@ -856,6 +908,8 @@ const StaffAttendance = () => {
                         <option value="Manual">Manual</option>
                       </select>
                     </div>
+
+                    {/* Status & Check-in */}
                     <div className="col-6">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Status</label>
                       <select
@@ -871,8 +925,6 @@ const StaffAttendance = () => {
                         <option value="Overtime">Overtime</option>
                       </select>
                     </div>
-
-                    {/* Check-in / Check-out */}
                     <div className="col-6">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Check-in Time</label>
                       <input
@@ -883,6 +935,8 @@ const StaffAttendance = () => {
                         readOnly={modalType === 'view'}
                       />
                     </div>
+
+                    {/* Check-out & Notes */}
                     <div className="col-6">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Check-out Time</label>
                       <input
@@ -893,8 +947,6 @@ const StaffAttendance = () => {
                         readOnly={modalType === 'view'}
                       />
                     </div>
-
-                    {/* Notes */}
                     <div className="col-12">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Notes</label>
                       <input

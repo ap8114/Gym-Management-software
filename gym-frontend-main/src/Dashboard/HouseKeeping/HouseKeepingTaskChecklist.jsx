@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
-import { 
-  FaBroom, 
-  FaTools, 
-  FaCheckCircle, 
-  FaCircle, 
-  FaPlus, 
+import {
+  FaBroom,
+  FaTools,
+  FaCheckCircle,
+  FaCircle,
+  FaPlus,
   FaTrash,
   FaEdit,
   FaSearch,
   FaFilter,
   FaTimes
 } from 'react-icons/fa';
-import { 
-  Button, 
-  Card, 
-  Row, 
-  Col, 
-  Form, 
-  Badge, 
+import {
+  Button,
+  Card,
+  Row,
+  Col,
+  Form,
+  Badge,
   ListGroup,
   InputGroup,
   FormControl,
@@ -34,7 +34,7 @@ const initialTasks = [
   { id: 2, category: 'cleaning', title: 'Room 101 Cleaning', description: 'Clean and sanitize bathroom and bedroom', completed: false },
   { id: 3, category: 'cleaning', title: 'Hallway Cleaning', description: 'Dust and wipe down all surfaces', completed: false },
   { id: 4, category: 'cleaning', title: 'Restaurant Area', description: 'Clean tables and sanitize chairs', completed: true },
-  
+
   // Maintenance tasks
   { id: 5, category: 'maintenance', title: 'AC Maintenance', description: 'Check and clean AC filters in Room 201', completed: false },
   { id: 6, category: 'maintenance', title: 'Plumbing Check', description: 'Inspect all bathrooms for leaks', completed: true },
@@ -51,29 +51,29 @@ const HouseKeepingTaskChecklist = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
-  const [newTask, setNewTask] = useState({ 
-    category: 'cleaning', 
-    title: '', 
-    description: '', 
-    completed: false 
+  const [newTask, setNewTask] = useState({
+    category: 'cleaning',
+    title: '',
+    description: '',
+    completed: false
   });
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
 
   // Filter tasks based on selected filters and search term
   const filteredTasks = tasks.filter(task => {
     const matchesCategory = filter === 'all' || task.category === filter;
-    const matchesStatus = statusFilter === 'all' || 
-                          (statusFilter === 'completed' && task.completed) || 
-                          (statusFilter === 'pending' && !task.completed);
-    const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         task.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
+    const matchesStatus = statusFilter === 'all' ||
+      (statusFilter === 'completed' && task.completed) ||
+      (statusFilter === 'pending' && !task.completed);
+    const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.description.toLowerCase().includes(searchTerm.toLowerCase());
+
     return matchesCategory && matchesStatus && matchesSearch;
   });
 
   // Toggle task completion status
   const toggleTaskStatus = (taskId) => {
-    setTasks(tasks.map(task => 
+    setTasks(tasks.map(task =>
       task.id === taskId ? { ...task, completed: !task.completed } : task
     ));
   };
@@ -81,7 +81,7 @@ const HouseKeepingTaskChecklist = () => {
   // Add a new task
   const handleAddTask = () => {
     if (newTask.title.trim() === '') return;
-    
+
     const task = {
       id: tasks.length + 1,
       category: newTask.category,
@@ -89,7 +89,7 @@ const HouseKeepingTaskChecklist = () => {
       description: newTask.description,
       completed: false
     };
-    
+
     setTasks([...tasks, task]);
     setNewTask({ category: 'cleaning', title: '', description: '', completed: false });
     setShowAddModal(false);
@@ -98,11 +98,11 @@ const HouseKeepingTaskChecklist = () => {
   // Update an existing task
   const handleUpdateTask = () => {
     if (!selectedTask || selectedTask.title.trim() === '') return;
-    
-    setTasks(tasks.map(task => 
+
+    setTasks(tasks.map(task =>
       task.id === selectedTask.id ? selectedTask : task
     ));
-    
+
     setShowEditModal(false);
     setSelectedTask(null);
   };
@@ -124,7 +124,7 @@ const HouseKeepingTaskChecklist = () => {
     const maintenanceTasks = tasks.filter(t => t.category === 'maintenance');
     const completedTasks = tasks.filter(t => t.completed);
     const pendingTasks = tasks.filter(t => !t.completed);
-    
+
     return {
       total: tasks.length,
       cleaning: cleaningTasks.length,
@@ -304,8 +304,8 @@ const HouseKeepingTaskChecklist = () => {
           <Row className="align-items-center">
             <Col xs={12} md={6} className="mb-3 mb-md-0">
               <InputGroup>
-                <FormControl 
-                  placeholder="Search tasks..." 
+                <FormControl
+                  placeholder="Search tasks..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -317,7 +317,7 @@ const HouseKeepingTaskChecklist = () => {
             <Col xs={12} md={6}>
               <div className="d-flex flex-column flex-md-row">
                 <div className="desktop-filter">
-                  <Form.Select 
+                  <Form.Select
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                     className="me-md-2 mb-2 mb-md-0"
@@ -328,7 +328,7 @@ const HouseKeepingTaskChecklist = () => {
                   </Form.Select>
                 </div>
                 <div className="desktop-filter">
-                  <Form.Select 
+                  <Form.Select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                   >
@@ -338,8 +338,8 @@ const HouseKeepingTaskChecklist = () => {
                   </Form.Select>
                 </div>
                 <div className="mobile-filter-toggle">
-                  <Button 
-                    variant="outline-secondary" 
+                  <Button
+                    variant="outline-secondary"
                     onClick={() => setFilterMenuOpen(!filterMenuOpen)}
                     className="w-100"
                   >
@@ -349,7 +349,7 @@ const HouseKeepingTaskChecklist = () => {
               </div>
             </Col>
           </Row>
-          
+
           {/* Mobile Filter Menu */}
           <Collapse in={filterMenuOpen}>
             <div className="mt-3">
@@ -357,22 +357,22 @@ const HouseKeepingTaskChecklist = () => {
                 <Col xs={12} className="mb-2">
                   <Form.Label>Category</Form.Label>
                   <div>
-                    <Badge 
-                      bg={filter === 'all' ? 'primary' : 'secondary'} 
+                    <Badge
+                      bg={filter === 'all' ? 'primary' : 'secondary'}
                       className="filter-badge"
                       onClick={() => setFilter('all')}
                     >
                       All
                     </Badge>
-                    <Badge 
-                      bg={filter === 'cleaning' ? 'primary' : 'secondary'} 
+                    <Badge
+                      bg={filter === 'cleaning' ? 'primary' : 'secondary'}
                       className="filter-badge"
                       onClick={() => setFilter('cleaning')}
                     >
                       Cleaning
                     </Badge>
-                    <Badge 
-                      bg={filter === 'maintenance' ? 'primary' : 'secondary'} 
+                    <Badge
+                      bg={filter === 'maintenance' ? 'primary' : 'secondary'}
                       className="filter-badge"
                       onClick={() => setFilter('maintenance')}
                     >
@@ -383,22 +383,22 @@ const HouseKeepingTaskChecklist = () => {
                 <Col xs={12}>
                   <Form.Label>Status</Form.Label>
                   <div>
-                    <Badge 
-                      bg={statusFilter === 'all' ? 'primary' : 'secondary'} 
+                    <Badge
+                      bg={statusFilter === 'all' ? 'primary' : 'secondary'}
                       className="filter-badge"
                       onClick={() => setStatusFilter('all')}
                     >
                       All
                     </Badge>
-                    <Badge 
-                      bg={statusFilter === 'pending' ? 'primary' : 'secondary'} 
+                    <Badge
+                      bg={statusFilter === 'pending' ? 'primary' : 'secondary'}
                       className="filter-badge"
                       onClick={() => setStatusFilter('pending')}
                     >
                       Pending
                     </Badge>
-                    <Badge 
-                      bg={statusFilter === 'completed' ? 'primary' : 'secondary'} 
+                    <Badge
+                      bg={statusFilter === 'completed' ? 'primary' : 'secondary'}
                       className="filter-badge"
                       onClick={() => setStatusFilter('completed')}
                     >
@@ -427,8 +427,8 @@ const HouseKeepingTaskChecklist = () => {
                     <ListGroup.Item key={task.id} className="task-item px-2 px-md-3">
                       <Row className="align-items-center">
                         <Col xs="auto" className="pe-0">
-                          <Form.Check 
-                            type="checkbox" 
+                          <Form.Check
+                            type="checkbox"
                             checked={task.completed}
                             onChange={() => toggleTaskStatus(task.id)}
                           />
@@ -449,15 +449,15 @@ const HouseKeepingTaskChecklist = () => {
                         </Col>
                         <Col xs="auto">
                           <div className="d-flex gap-1">
-                            <Button 
-                              variant="outline-primary" 
+                            <Button
+                              variant="outline-primary"
                               size="sm"
                               onClick={() => prepareEditTask(task)}
                             >
                               <FaEdit />
                             </Button>
-                            <Button 
-                              variant="outline-danger" 
+                            <Button
+                              variant="outline-danger"
                               size="sm"
                               onClick={() => handleDeleteTask(task.id)}
                             >
@@ -471,7 +471,7 @@ const HouseKeepingTaskChecklist = () => {
                 )}
               </ListGroup>
             </Tab>
-            
+
             <Tab eventKey="cleaning" title="Cleaning Tasks">
               <ListGroup variant="flush">
                 {filteredTasks.filter(t => t.category === 'cleaning').length === 0 ? (
@@ -485,8 +485,8 @@ const HouseKeepingTaskChecklist = () => {
                       <ListGroup.Item key={task.id} className="task-item px-2 px-md-3">
                         <Row className="align-items-center">
                           <Col xs="auto" className="pe-0">
-                            <Form.Check 
-                              type="checkbox" 
+                            <Form.Check
+                              type="checkbox"
                               checked={task.completed}
                               onChange={() => toggleTaskStatus(task.id)}
                             />
@@ -502,15 +502,15 @@ const HouseKeepingTaskChecklist = () => {
                           </Col>
                           <Col xs="auto">
                             <div className="d-flex gap-1">
-                              <Button 
-                                variant="outline-primary" 
+                              <Button
+                                variant="outline-primary"
                                 size="sm"
                                 onClick={() => prepareEditTask(task)}
                               >
                                 <FaEdit />
                               </Button>
-                              <Button 
-                                variant="outline-danger" 
+                              <Button
+                                variant="outline-danger"
                                 size="sm"
                                 onClick={() => handleDeleteTask(task.id)}
                               >
@@ -524,7 +524,7 @@ const HouseKeepingTaskChecklist = () => {
                 )}
               </ListGroup>
             </Tab>
-            
+
             <Tab eventKey="maintenance" title="Maintenance Tasks">
               <ListGroup variant="flush">
                 {filteredTasks.filter(t => t.category === 'maintenance').length === 0 ? (
@@ -538,8 +538,8 @@ const HouseKeepingTaskChecklist = () => {
                       <ListGroup.Item key={task.id} className="task-item px-2 px-md-3">
                         <Row className="align-items-center">
                           <Col xs="auto" className="pe-0">
-                            <Form.Check 
-                              type="checkbox" 
+                            <Form.Check
+                              type="checkbox"
                               checked={task.completed}
                               onChange={() => toggleTaskStatus(task.id)}
                             />
@@ -555,15 +555,15 @@ const HouseKeepingTaskChecklist = () => {
                           </Col>
                           <Col xs="auto">
                             <div className="d-flex gap-1">
-                              <Button 
-                                variant="outline-primary" 
+                              <Button
+                                variant="outline-primary"
                                 size="sm"
                                 onClick={() => prepareEditTask(task)}
                               >
                                 <FaEdit />
                               </Button>
-                              <Button 
-                                variant="outline-danger" 
+                              <Button
+                                variant="outline-danger"
                                 size="sm"
                                 onClick={() => handleDeleteTask(task.id)}
                               >
@@ -590,9 +590,9 @@ const HouseKeepingTaskChecklist = () => {
           <Form>
             <Form.Group className="mb-3">
               <Form.Label>Category</Form.Label>
-              <Form.Select 
+              <Form.Select
                 value={newTask.category}
-                onChange={(e) => setNewTask({...newTask, category: e.target.value})}
+                onChange={(e) => setNewTask({ ...newTask, category: e.target.value })}
               >
                 <option value="cleaning">Cleaning</option>
                 <option value="maintenance">Maintenance</option>
@@ -600,21 +600,21 @@ const HouseKeepingTaskChecklist = () => {
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Task Title</Form.Label>
-              <Form.Control 
-                type="text" 
+              <Form.Control
+                type="text"
                 placeholder="Enter task title"
                 value={newTask.title}
-                onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
               />
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Description</Form.Label>
-              <Form.Control 
-                as="textarea" 
-                rows={3} 
+              <Form.Control
+                as="textarea"
+                rows={3}
                 placeholder="Enter task description"
                 value={newTask.description}
-                onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
               />
             </Form.Group>
           </Form>
@@ -639,9 +639,9 @@ const HouseKeepingTaskChecklist = () => {
             <Form>
               <Form.Group className="mb-3">
                 <Form.Label>Category</Form.Label>
-                <Form.Select 
+                <Form.Select
                   value={selectedTask.category}
-                  onChange={(e) => setSelectedTask({...selectedTask, category: e.target.value})}
+                  onChange={(e) => setSelectedTask({ ...selectedTask, category: e.target.value })}
                 >
                   <option value="cleaning">Cleaning</option>
                   <option value="maintenance">Maintenance</option>
@@ -649,29 +649,29 @@ const HouseKeepingTaskChecklist = () => {
               </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label>Task Title</Form.Label>
-                <Form.Control 
-                  type="text" 
+                <Form.Control
+                  type="text"
                   placeholder="Enter task title"
                   value={selectedTask.title}
-                  onChange={(e) => setSelectedTask({...selectedTask, title: e.target.value})}
+                  onChange={(e) => setSelectedTask({ ...selectedTask, title: e.target.value })}
                 />
               </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label>Description</Form.Label>
-                <Form.Control 
-                  as="textarea" 
-                  rows={3} 
+                <Form.Control
+                  as="textarea"
+                  rows={3}
                   placeholder="Enter task description"
                   value={selectedTask.description}
-                  onChange={(e) => setSelectedTask({...selectedTask, description: e.target.value})}
+                  onChange={(e) => setSelectedTask({ ...selectedTask, description: e.target.value })}
                 />
               </Form.Group>
               <Form.Group className="mb-3">
-                <Form.Check 
-                  type="checkbox" 
+                <Form.Check
+                  type="checkbox"
                   label="Task Completed"
                   checked={selectedTask.completed}
-                  onChange={(e) => setSelectedTask({...selectedTask, completed: e.target.checked})}
+                  onChange={(e) => setSelectedTask({ ...selectedTask, completed: e.target.checked })}
                 />
               </Form.Group>
             </Form>

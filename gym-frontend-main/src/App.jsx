@@ -125,6 +125,11 @@ import DynamicPage from "./Layout/DynamicPage";
 import RequestPlan from "./Dashboard/Member/RequestsPlan";
 import PersonalTrainerClassesSchedule from "./Dashboard/PersonalTrainer/PersonalTrainerClassesSchedule";
 import GeneralClassesSchedule from "./Dashboard/GeneralTrainer/GeneralClassesSchedule";
+import PersonalSessionBooking from "./Dashboard/PersonalTrainer/PersonalSessionBooking";
+import GeneralSessionBooking from "./Dashboard/GeneralTrainer/GeneralSessionBooking";
+import PersonsalTrainerShiftManagement from "./Dashboard/PersonalTrainer/PersonsalTrainerShiftManagement";
+import GeneralTrainerShiftManagement from "./Dashboard/GeneralTrainer/GeneralTrainerShiftManagement";
+import HouseKeepingShiftManagement from "./Dashboard/HouseKeeping/HouseKeepingShiftManagement";
 
 
 
@@ -251,7 +256,10 @@ function App() {
 
                 <Route path="/generaltrainer/dashboard" element={<GeneralTrainerDashboard />} />
                 <Route path="/generaltrainer/classesschedule" element={<GeneralClassesSchedule />} />
+                <Route path="/generaltrainer/bookings" element={<GeneralSessionBooking />} />
                 <Route path="/GeneralTrainer/attendance" element={<Attendance />} />
+                <Route path="/GeneralTrainer/shift-managment" element={<GeneralTrainerShiftManagement />} />
+
                 {/* <Route path="/GeneralTrainer/MemberInteraction" element={<MemberInteraction />} /> */}
                 <Route path="/GeneralTrainer/qrcheckin" element={<GeneralQrCheckin />} />
                 <Route path="/GeneralTrainer/Reports" element={<Report />} />
@@ -278,9 +286,11 @@ function App() {
                 <Route path="/personaltrainer/classesschedule" element={<PersonalTrainerClassesSchedule />} />
                 <Route path="/personaltrainer/messages" element={<PersonalTrainerMessages />} />
                 <Route path="/personaltrainer/group-classes" element={<PersonalTrainerGroupClasses />} />
+                <Route path="/personaltrainer/bookings" element={<PersonalSessionBooking />} />
                 <Route path="/personaltrainer/qrcheckin" element={<PersonalTrainerQrCheckin />} />
                 <Route path="/personaltrainer/personalattendance" element={<PersonalAttendance />} />
                 <Route path="/personaltrainer/personalplansbookings" element={<PersonalPlansBookings />} />
+                <Route path="/personaltrainer/shift-managment" element={<PersonsalTrainerShiftManagement />} />
 
                 <Route path="/housekeeping/dashboard" element={<HouseKeepingDashboard />} />
                 <Route path="/housekeeping/qrcheckin" element={<HouseKeepingQrCheckin />} />
@@ -288,10 +298,9 @@ function App() {
                 <Route path="/housekeeping/membership-plan" element={<HouseKeepingAttendance />} />
                 <Route path="/housekeeping/duty-roster" element={<HousekeepingTask />} />
                 <Route path="/housekeeping/class-schedule" element={<HouseKeepingNotifications />} />
+                <Route path="/housekeeping/shift-management" element={<HouseKeepingShiftManagement />} />
 
               </Routes>
-
-
             </div>
           </div>
         </>

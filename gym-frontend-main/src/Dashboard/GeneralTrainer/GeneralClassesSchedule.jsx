@@ -31,45 +31,45 @@ const fetchAllData = async () => {
     setLoading(true);
     try {
         // Fetch branches
-        const branchesRes = await axiosInstance.get(`branches/by-admin/${adminId}`);
-        let branchList = [];
-        if (branchesRes.data.success) {
-            if (branchesRes.data.branch) {
-                branchList = Array.isArray(branchesRes.data.branch) ? branchesRes.data.branch : [branchesRes.data.branch];
-            } else if (branchesRes.data.branches) {
-                branchList = Array.isArray(branchesRes.data.branches) ? branchesRes.data.branches : [];
-            } else if (Array.isArray(branchesRes.data)) {
-                branchList = branchesRes.data;
-            }
-        }
-        setBranches(branchList);
+        // const branchesRes = await axiosInstance.get(`branches/by-admin/${adminId}`);
+        // let branchList = [];
+        // if (branchesRes.data.success) {
+        //     if (branchesRes.data.branch) {
+        //         branchList = Array.isArray(branchesRes.data.branch) ? branchesRes.data.branch : [branchesRes.data.branch];
+        //     } else if (branchesRes.data.branches) {
+        //         branchList = Array.isArray(branchesRes.data.branches) ? branchesRes.data.branches : [];
+        //     } else if (Array.isArray(branchesRes.data)) {
+        //         branchList = branchesRes.data;
+        //     }
+        // }
+        // setBranches(branchList);
 
         // Fetch trainers
-        const trainersRes = await axiosInstance.get(`class/trainers/personal-general`);
-        const trainerList = trainersRes.data.success && Array.isArray(trainersRes.data.trainers)
-            ? trainersRes.data.trainers
-            : [];
-        setTrainers(trainerList);
+        // const trainersRes = await axiosInstance.get(`class/trainers/personal-general`);
+        // const trainerList = trainersRes.data.success && Array.isArray(trainersRes.data.trainers)
+        //     ? trainersRes.data.trainers
+        //     : [];
+        // setTrainers(trainerList);
 
         // Fetch members
-        const membersRes = await axiosInstance.get(`MemberPlan?adminId=${adminId}`);
-        let memberList = [];
-        if (membersRes.data.success) {
-            let plans = [];
-            if (membersRes.data.plans) {
-                plans = Array.isArray(membersRes.data.plans) ? membersRes.data.plans : [];
-            } else if (membersRes.data.plan) {
-                plans = Array.isArray(membersRes.data.plan) ? membersRes.data.plan : [membersRes.data.plan];
-            } else if (Array.isArray(membersRes.data)) {
-                plans = membersRes.data;
-            }
+        // const membersRes = await axiosInstance.get(`MemberPlan?adminId=${adminId}`);
+        // let memberList = [];
+        // if (membersRes.data.success) {
+        //     let plans = [];
+        //     if (membersRes.data.plans) {
+        //         plans = Array.isArray(membersRes.data.plans) ? membersRes.data.plans : [];
+        //     } else if (membersRes.data.plan) {
+        //         plans = Array.isArray(membersRes.data.plan) ? membersRes.data.plan : [membersRes.data.plan];
+        //     } else if (Array.isArray(membersRes.data)) {
+        //         plans = membersRes.data;
+        //     }
 
-            memberList = plans.map(plan => ({
-                id: plan.id,
-                name: plan.name || plan.fullName || `Member ${plan.id}`
-            }));
-        }
-        setMembers(memberList);
+        //     memberList = plans.map(plan => ({
+        //         id: plan.id,
+        //         name: plan.name || plan.fullName || `Member ${plan.id}`
+        //     }));
+        // }
+        // setMembers(memberList);
 
         // Fetch ALL scheduled classes
         const classesRes = await axiosInstance.get(`class/scheduled/all`);
@@ -78,10 +78,10 @@ const fetchAllData = async () => {
             allClasses = classesRes.data.data || [];
         }
 
-        // 🔥 FILTER: Keep only classes where trainer is exactly "General"
-        const generalClasses = allClasses.filter(cls => cls.trainer === "General");
+        // 🔥 FILTER: Keep only classes where trainer is exactly "Personal"
+        const pGeneralClasses = allClasses.filter(cls => cls.trainer === "General");
 
-        setClasses(generalClasses);
+        setClasses(pGeneralClasses);
     } catch (err) {
         console.error('Error fetching data:', err);
         setError('Failed to load data. Please try again.');
