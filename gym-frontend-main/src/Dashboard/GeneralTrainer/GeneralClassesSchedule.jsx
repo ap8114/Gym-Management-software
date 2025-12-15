@@ -27,68 +27,68 @@ const GeneralClassesSchedule = () => {
         fetchAllData();
     }, [adminId]);
 
-const fetchAllData = async () => {
-    setLoading(true);
-    try {
-        // Fetch branches
-        // const branchesRes = await axiosInstance.get(`branches/by-admin/${adminId}`);
-        // let branchList = [];
-        // if (branchesRes.data.success) {
-        //     if (branchesRes.data.branch) {
-        //         branchList = Array.isArray(branchesRes.data.branch) ? branchesRes.data.branch : [branchesRes.data.branch];
-        //     } else if (branchesRes.data.branches) {
-        //         branchList = Array.isArray(branchesRes.data.branches) ? branchesRes.data.branches : [];
-        //     } else if (Array.isArray(branchesRes.data)) {
-        //         branchList = branchesRes.data;
-        //     }
-        // }
-        // setBranches(branchList);
+    const fetchAllData = async () => {
+        setLoading(true);
+        try {
+            // Fetch branches
+            // const branchesRes = await axiosInstance.get(`branches/by-admin/${adminId}`);
+            // let branchList = [];
+            // if (branchesRes.data.success) {
+            //     if (branchesRes.data.branch) {
+            //         branchList = Array.isArray(branchesRes.data.branch) ? branchesRes.data.branch : [branchesRes.data.branch];
+            //     } else if (branchesRes.data.branches) {
+            //         branchList = Array.isArray(branchesRes.data.branches) ? branchesRes.data.branches : [];
+            //     } else if (Array.isArray(branchesRes.data)) {
+            //         branchList = branchesRes.data;
+            //     }
+            // }
+            // setBranches(branchList);
 
-        // Fetch trainers
-        // const trainersRes = await axiosInstance.get(`class/trainers/personal-general`);
-        // const trainerList = trainersRes.data.success && Array.isArray(trainersRes.data.trainers)
-        //     ? trainersRes.data.trainers
-        //     : [];
-        // setTrainers(trainerList);
+            // Fetch trainers
+            // const trainersRes = await axiosInstance.get(`class/trainers/personal-general`);
+            // const trainerList = trainersRes.data.success && Array.isArray(trainersRes.data.trainers)
+            //     ? trainersRes.data.trainers
+            //     : [];
+            // setTrainers(trainerList);
 
-        // Fetch members
-        // const membersRes = await axiosInstance.get(`MemberPlan?adminId=${adminId}`);
-        // let memberList = [];
-        // if (membersRes.data.success) {
-        //     let plans = [];
-        //     if (membersRes.data.plans) {
-        //         plans = Array.isArray(membersRes.data.plans) ? membersRes.data.plans : [];
-        //     } else if (membersRes.data.plan) {
-        //         plans = Array.isArray(membersRes.data.plan) ? membersRes.data.plan : [membersRes.data.plan];
-        //     } else if (Array.isArray(membersRes.data)) {
-        //         plans = membersRes.data;
-        //     }
+            // Fetch members
+            // const membersRes = await axiosInstance.get(`MemberPlan?adminId=${adminId}`);
+            // let memberList = [];
+            // if (membersRes.data.success) {
+            //     let plans = [];
+            //     if (membersRes.data.plans) {
+            //         plans = Array.isArray(membersRes.data.plans) ? membersRes.data.plans : [];
+            //     } else if (membersRes.data.plan) {
+            //         plans = Array.isArray(membersRes.data.plan) ? membersRes.data.plan : [membersRes.data.plan];
+            //     } else if (Array.isArray(membersRes.data)) {
+            //         plans = membersRes.data;
+            //     }
 
-        //     memberList = plans.map(plan => ({
-        //         id: plan.id,
-        //         name: plan.name || plan.fullName || `Member ${plan.id}`
-        //     }));
-        // }
-        // setMembers(memberList);
+            //     memberList = plans.map(plan => ({
+            //         id: plan.id,
+            //         name: plan.name || plan.fullName || `Member ${plan.id}`
+            //     }));
+            // }
+            // setMembers(memberList);
 
-        // Fetch ALL scheduled classes
-        const classesRes = await axiosInstance.get(`class/scheduled/all`);
-        let allClasses = [];
-        if (classesRes.data.success) {
-            allClasses = classesRes.data.data || [];
+            // Fetch ALL scheduled classes
+            const classesRes = await axiosInstance.get(`class/scheduled/all`);
+            let allClasses = [];
+            if (classesRes.data.success) {
+                allClasses = classesRes.data.data || [];
+            }
+
+            // 🔥 FILTER: Keep only classes where trainer is exactly "Personal"
+            const pGeneralClasses = allClasses.filter(cls => cls.trainer === "General");
+
+            setClasses(pGeneralClasses);
+        } catch (err) {
+            console.error('Error fetching data:', err);
+            setError('Failed to load data. Please try again.');
+        } finally {
+            setLoading(false);
         }
-
-        // 🔥 FILTER: Keep only classes where trainer is exactly "Personal"
-        const pGeneralClasses = allClasses.filter(cls => cls.trainer === "General");
-
-        setClasses(pGeneralClasses);
-    } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load data. Please try again.');
-    } finally {
-        setLoading(false);
-    }
-};
+    };
 
     // Function to add a member
     const addMember = () => {
@@ -279,9 +279,9 @@ const fetchAllData = async () => {
                         <button className="btn btn-sm btn-outline-secondary" title="View" onClick={() => handleView(gymClass)}>
                             <FaEye size={14} />
                         </button>
-                        <button className="btn btn-sm btn-outline-danger" title="Delete" onClick={() => handleDeleteClick(gymClass)}>
+                        {/* <button className="btn btn-sm btn-outline-danger" title="Delete" onClick={() => handleDeleteClick(gymClass)}>
                             <FaTrashAlt size={14} />
-                        </button>
+                        </button> */}
                     </div>
                 </div>
                 <div className="row mb-2">
@@ -364,9 +364,9 @@ const fetchAllData = async () => {
                                                         <button className="btn btn-sm btn-outline-secondary" title="View" onClick={() => handleView(c)}>
                                                             <FaEye size={14} />
                                                         </button>
-                                                        <button className="btn btn-sm btn-outline-danger" title="Delete" onClick={() => handleDeleteClick(c)}>
+                                                        {/* <button className="btn btn-sm btn-outline-danger" title="Delete" onClick={() => handleDeleteClick(c)}>
                                                             <FaTrashAlt size={14} />
-                                                        </button>
+                                                        </button> */}
                                                     </div>
                                                 </td>
                                             </tr>
