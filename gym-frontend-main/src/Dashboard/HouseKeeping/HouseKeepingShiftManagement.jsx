@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import BaseUrl from '../../Api/BaseUrl';
 import GetAdminId from '../../Api/GetAdminId';
 
-const PersonsalTrainerShiftManagement = () => {
+const HouseKeepingShiftManagement = () => {
   const [shift, setShift] = useState(null); // Single shift object
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -97,6 +97,14 @@ const PersonsalTrainerShiftManagement = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="container-fluid py-4">
+        <div className="alert alert-danger">{error}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="container-fluid py-4">
       <h2 className="mb-4">Shift Management</h2>
@@ -146,4 +154,4 @@ const PersonsalTrainerShiftManagement = () => {
   );
 };
 
-export default PersonsalTrainerShiftManagement;
+export default HouseKeepingShiftManagement;

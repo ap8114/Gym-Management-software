@@ -440,8 +440,11 @@ const ShiftManagement = () => {
 
   return (
     <div className="container-fluid py-4">
+<<<<<<< HEAD
       <h2 className="mb-4">Staff Management</h2>
 
+=======
+>>>>>>> bf11297c857c1f70288cdffb739ce1f95bca0163
       <h2 className="mb-4">Shift Management</h2>
       
       <div className="d-flex justify-content-between align-items-center mb-4">

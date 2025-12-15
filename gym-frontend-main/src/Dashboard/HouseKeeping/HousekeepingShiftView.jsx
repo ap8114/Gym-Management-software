@@ -80,33 +80,24 @@ const HousekeepingShiftView = () => {
   if (loading) {
     return (
       <div className="container-fluid py-4">
-        <h2 className="mb-4">Staff Management</h2>
+        <h2 className="mb-4">Shift Management</h2>
         <p>Loading shift details...</p>
       </div>
     );
   }
-
-  if (error) {
-  return (
-    <div className="container-fluid py-4">
-      <h2 className="mb-4">Staff Management</h2>
-    <p className="text-danger">Error: {error}</p>
-  </div>
-  );
-}
-
+  
 // ✅ Only render table if shift is not null/undefined
 if (!shift) {
   return (
     <div className="container-fluid py-4">
-      <h2 className="mb-4">Staff Management</h2>
+      <h2 className="mb-4">Shift Management</h2>
       <p className="text-muted">No shift assigned.</p>
     </div>
   );
 }
   return (
     <div className="container-fluid py-4">
-      <h2 className="mb-4">Staff Management</h2>
+      <h2 className="mb-4">Shift Management</h2>
       <div className="table-responsive mb-4">
         <table className="table table-striped">
           <thead>

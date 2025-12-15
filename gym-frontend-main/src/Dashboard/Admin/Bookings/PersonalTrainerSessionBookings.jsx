@@ -60,16 +60,9 @@ const SessionBookingPage = () => {
     setLoading(true);
     try {
       const res = await axiosInstance.get(`${BaseUrl}sessions/${adminId}`);
-      if (res.data.success && res.data.sessions) {
-        // Enrich with trainerName
-        const enrichedSessions = res.data.sessions.map(sess => {
-          const trainer = trainers.find(t => t.id === sess.trainerId);
-          return {
-            ...sess,
-            trainerName: trainer?.fullName || trainer?.name || '—' // Handle both fullName and name
-          };
-        });
-        setSessions(enrichedSessions);
+      if (res.data.success && res.data.data) { // FIX: Changed from res.data.sessions to res.data.data
+        // The API already includes trainerName in the response, so no need to enrich
+        setSessions(res.data.data);
       } else {
         setError('Failed to load sessions');
       }
@@ -113,12 +106,8 @@ const SessionBookingPage = () => {
     }
   };
 
-  // Re-fetch sessions when trainers load to get trainer names
-  useEffect(() => {
-    if (trainers.length > 0 && adminId) {
-      fetchSessions();
-    }
-  }, [trainers]);
+  // Removed the useEffect that re-fetches sessions when trainers load
+  // since the API already includes trainerName in the response
 
   const filteredSessions = sessions.filter(session => {
     const matchesStatus = statusFilter === 'All' || session.status === statusFilter;
@@ -130,7 +119,13 @@ const SessionBookingPage = () => {
     return matchesStatus && matchesBranch && matchesSearch;
   });
 
-  const formatDate = (isoStr) => isoStr ? isoStr.split('T')[0] : '';
+  const formatDate = (isoStr) => {
+    if (!isoStr) return '';
+    // Handle both date strings and Date objects
+    const date = typeof isoStr === 'string' ? new Date(isoStr) : isoStr;
+    return date.toISOString().split('T')[0];
+  };
+  
   const formatTimeDisplay = (time24) => {
     if (!time24) return '';
     const [hours, minutes] = time24.split(':').map(Number);

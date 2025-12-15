@@ -3,31 +3,39 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChartBar,
+  faCodeBranch,
+  faUserShield,
+  faClipboardList,
+  faTags,
+  faCreditCard,
+  faCogs,
   faUsers,
-  faCalendarAlt,
-  faClipboardCheck,
-  faDollarSign,
-  faComments,
+  faPlusCircle,
   faChalkboardTeacher,
-  faGear,
+  faCalendarCheck,
+  faUserTie,
+  faClock,
   faChevronDown,
-  faUserTag,
-  faFileAlt,
-  faUserGear,
-  faCalculator,
-  faChartLine,
-  faAddressBook,
-  faCalendarDays,
-  faClapperboard,
-  faStarOfDavid,
-  faMoneyBillAlt,
-  faNetworkWired,
-  faChartArea,
-  faCaretRight,
-  faEye,
+  faTasks,
+  faDumbbell,
+  faChartPie,
+  faTools,
+  faBroom,
+  faQrcode,
+  faUserCheck,
+  faCalendar,
+  faClipboardCheck,
+  faLayerGroup,
+  faFileInvoice,
   faBookAtlas,
-  faUserGroup,
-  faCogs
+  faUserPlus,
+  faDoorOpen,
+  faMoneyCheckAlt,
+  faUserFriends,
+  faComments,
+  faEye,
+  faClapperboard,
+  faIdCard
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./Sidebar.css";
@@ -74,25 +82,24 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
   const allMenus = {
     SUPERADMIN: [
       { name: "Dashboard", icon: faChartBar, path: "/superadmin/dashboard" },
-      { name: "Branches", icon: faGear, path: "/admin/AdminBranches" },
-      { name: "Admin", icon: faUsers, path: "/superadmin/Admin" },
-      { name: "Request Plan", icon: faClipboardCheck, path: "/superadmin/request-plan" },
-      { name: "Plans & Pricing", icon: faChartLine, path: "/superadmin/Plans&Pricing" },
-      { name: "Payments", icon: faMoneyBillAlt, path: "/superadmin/payments" },
-      // { name: "Setting", icon:  faCogs, path: "/superadmin/setting" },
+      { name: "Branches", icon: faCodeBranch, path: "/admin/AdminBranches" },
+      { name: "Admin", icon: faUserShield, path: "/superadmin/Admin" },
+      { name: "Request Plan", icon: faClipboardList, path: "/superadmin/request-plan" },
+      { name: "Plans & Pricing", icon: faTags, path: "/superadmin/Plans&Pricing" },
+      { name: "Payments", icon: faCreditCard, path: "/superadmin/payments" },
       { name: "Setting", icon: faCogs, path: "/member/account" },
     ],
 
     ADMIN: [
       { name: "Dashboard", icon: faChartBar, path: "/admin/admin-dashboard" },
       { name: "Members", icon: faUsers, path: "/admin/AdminMember" },
-      { name: "Create Plan", icon: faUsers, path: "/admin/createplan" },
-      { name: "Classes Schedule", icon: faUsers, path: "/admin/classesSchedule" },
-      { name: "Session Bookings", icon: faCalendarAlt, path: "/admin/bookings" },
+      { name: "Create Plan", icon: faPlusCircle, path: "/admin/createplan" },
+      { name: "Classes Schedule", icon: faChalkboardTeacher, path: "/admin/classesSchedule" },
+      { name: "Session Bookings", icon: faCalendarCheck, path: "/admin/bookings" },
 
       {
         name: "Staff",
-        icon: faUsers,
+        icon: faUserTie,
         key: "Staff",
         subItems: [
           { label: "Manage Staff", path: "/admin/staff/manage-staff" },
@@ -100,24 +107,14 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
           { label: "Salary Calculator", path: "/admin/staff/salary-calculator" }
         ]
       },
-      { name: "Shift Managment", icon: faCalendarAlt, path: "/admin/shift-managment" },
-      { name: "Task Managment", icon: faCalendarAlt, path: "/admin/task-managment" },
 
-      {
-        name: "Personal Training Details",
-        icon: faFileAlt,
-        path: "/admin/booking/personal-training"
-      },
-
-      // {
-      //   name: "Payments",
-      //   icon: faCalculator,
-      //   path: "/admin/payments/membership",
-      // },
+      { name: "Shift Management", icon: faClock, path: "/admin/shift-managment" },
+      { name: "Task Management", icon: faTasks, path: "/admin/task-managment" },
+      { name: "Personal Training Details", icon: faDumbbell, path: "/admin/booking/personal-training" },
 
       {
         name: "Reports",
-        icon: faChartLine,
+        icon: faChartPie,
         key: "reports",
         subItems: [
           { label: "Sales Report", path: "/admin/reports/sales" },
@@ -125,81 +122,67 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         ]
       },
 
-      {
-        name: "Settings",
-        icon: faGear,
-        // path: "/admin/settings/RoleManagement"
-        path: "/admin/settings"
-      }
+      { name: "Settings", icon: faTools, path: "/admin/settings" }
     ],
 
     HOUSEKEEPING: [
       { name: "Dashboard", icon: faChartBar, path: "/housekeeping/dashboard" },
-      { name: "Staff Management", icon: faUsers, path: "/housekeeping/members" },
-      { name: "Task Checklist", icon: faCalendarAlt, path: "/housekeeping/duty-roster" },
-      { name: "QR Check-in", icon: faGear, path: "/housekeeping/qrcheckin" },
-      { name: "Attendance Marking", icon: faUserTag, path: "/housekeeping/membership-plan" },
-
-      // { name: "Duty Roster", icon: faUsers, path: "/housekeeping/members" },
-      // { name: "Notifications", icon: faCalendarDays, path: "/housekeeping/class-schedule" }
+      { name: "Shift Management", icon: faClock, path: "/housekeeping/shift-management" },
+      { name: "Task Checklist", icon: faBroom, path: "/housekeeping/duty-roster" },
+      { name: "QR Check-in", icon: faQrcode, path: "/housekeeping/qrcheckin" },
+      { name: "Attendance Marking", icon: faUserCheck, path: "/housekeeping/membership-plan" }
     ],
 
     GENERALTRAINER: [
       { name: "Dashboard", icon: faChartBar, path: "/generaltrainer/dashboard" },
-      { name: "Classes Schedule", icon: faUsers, path: "/generaltrainer/classesschedule" },
-      { name: "Shift Managment", icon: faCalendarAlt, path: "/GeneralTrainer/shift-managment" },
-      { name: "Task Checklist", icon: faCalendarAlt, path: "/housekeeping/duty-roster" },
-      { name: "Session Bookings", icon: faCalendarAlt, path: "/generaltrainer/bookings" },
-      { name: "Qr Check-in", icon: faGear, path: "/generaltrainer/qrcheckin" },
+      { name: "Classes Schedule", icon: faCalendar, path: "/generaltrainer/classesschedule" },
+      { name: "Shift Management", icon: faClock, path: "/GeneralTrainer/shift-managment" },
+      { name: "Task Checklist", icon: faTasks, path: "/housekeeping/duty-roster" },
+      { name: "Session Bookings", icon: faCalendarCheck, path: "/generaltrainer/bookings" },
+      { name: "QR Check-in", icon: faQrcode, path: "/generaltrainer/qrcheckin" },
       { name: "Attendance", icon: faClipboardCheck, path: "/generaltrainer/attendance" },
-      { name: "GroupPlans & Bookings", icon: faUserGroup, path: "/generaltrainer/groupplansbookings" },
-      { name: "Reports Classes", icon: faFileAlt, path: "/generaltrainer/Reports" },
+      { name: "Group Plans & Bookings", icon: faLayerGroup, path: "/generaltrainer/groupplansbookings" },
+      { name: "Reports Classes", icon: faFileInvoice, path: "/generaltrainer/Reports" },
     ],
 
     PERSONALTRAINER: [
       { name: "Dashboard", icon: faChartBar, path: "/personaltrainer/dashboard" },
-      { name: "Classes Schedule", icon: faUsers, path: "/personaltrainer/classesschedule" },
-      { name: "Shift Managment", icon: faCalendarAlt, path: "/personaltrainer/shift-managment" },
-      { name: "Task Checklist", icon: faCalendarAlt, path: "/housekeeping/duty-roster" },
-      { name: "Session Bookings", icon: faCalendarAlt, path: "/personaltrainer/bookings" },
-      { name: "QR Check-in", icon: faGear, path: "/personaltrainer/qrcheckin" },
-      { name: "Attendance", icon: faGear, path: "/personaltrainer/personalattendance" },
+      { name: "Classes Schedule", icon: faCalendar, path: "/personaltrainer/classesschedule" },
+      { name: "Shift Management", icon: faClock, path: "/personaltrainer/shift-managment" },
+      { name: "Task Checklist", icon: faTasks, path: "/housekeeping/duty-roster" },
+      { name: "Session Bookings", icon: faCalendarCheck, path: "/personaltrainer/bookings" },
+      { name: "QR Check-in", icon: faQrcode, path: "/personaltrainer/qrcheckin" },
+      { name: "Attendance", icon: faClipboardCheck, path: "/personaltrainer/personalattendance" },
       { name: "Plans & Bookings", icon: faBookAtlas, path: "/personaltrainer/PersonalPlansBookings" },
     ],
 
     RECEPTIONIST: [
       { name: "Dashboard", icon: faChartBar, path: "/receptionist/dashboard" },
-      { name: "QR Check-in", icon: faGear, path: "/receptionist/qrcheckin" },
-      { name: "Walk-in Registration", icon: faFileAlt, path: "/receptionist/walk-in-registration" },
-      // { name: "New Sign-ups", icon: faFileAlt, path: "/receptionist/new-sign-ups" },
-      { name: "QR Attendance", icon: faFileAlt, path: "/receptionist/qr-attendance" },
-      { name: "Book Classes & Sessions", icon: faFileAlt, path: "/receptionist/book-classes-sessions" },
-      { name: "Payment", icon: faFileAlt, path: "/receptionist/payemnet" }
+      { name: "QR Check-in", icon: faQrcode, path: "/receptionist/qrcheckin" },
+      { name: "Walk-in Registration", icon: faUserPlus, path: "/receptionist/walk-in-registration" },
+      { name: "QR Attendance", icon: faDoorOpen, path: "/receptionist/qr-attendance" },
+      { name: "Book Classes & Sessions", icon: faCalendarCheck, path: "/receptionist/book-classes-sessions" },
+      { name: "Payment", icon: faMoneyCheckAlt, path: "/receptionist/payemnet" }
     ],
-
-
 
     MANAGER: [
       { name: "Dashboard", icon: faChartBar, path: "/manager/dashboard" },
-      { name: "Members", icon: faUsers, path: "/manager/members" },
+      { name: "Members", icon: faUserFriends, path: "/manager/members" },
       { name: "Duty Roster", icon: faClipboardCheck, path: "/manager/duty-roster" },
-      { name: "Class Schedule", icon: faCalendarAlt, path: "/manager/class-schedule" },
-      { name: "Reports", icon: faFileAlt, path: "/manager/reports" },
+      { name: "Class Schedule", icon: faCalendar, path: "/manager/class-schedule" },
+      { name: "Reports", icon: faFileInvoice, path: "/manager/reports" },
       { name: "Communication", icon: faComments, path: "/manager/communication" },
     ],
 
     MEMBER: [
       { name: "Dashboard", icon: faChartBar, path: "/member/dashboard" },
-      { name: "QR Check-in", icon: faGear, path: "/member/qrcheckin" },
+      { name: "QR Check-in", icon: faQrcode, path: "/member/qrcheckin" },
+      { name: "Attendance", icon: faClipboardCheck, path: "/member/memberattendance" },
       { name: "View Plan", icon: faEye, path: "/member/viewplan" },
-      { name: "Requests Plan", icon: faEye, path: "/member/requestplan" },
+      { name: "Requests Plan", icon: faClipboardList, path: "/member/requestplan" },
       { name: "Class Schedule", icon: faClapperboard, path: "/member/classSchedule" },
-      { name: "My Account", icon: faMoneyBillAlt, path: "/member/account" }
+      { name: "My Account", icon: faIdCard, path: "/member/account" }
     ],
-
-
-
-
   };
 
   // Default to ADMIN if no role is found

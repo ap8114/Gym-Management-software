@@ -15,17 +15,12 @@ const StaffAttendance = () => {
   const [statusFilter, setStatusFilter] = useState('All');
   const [branchFilter, setBranchFilter] = useState('All');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  
-  // Add state for branches and staff members
   const [branches, setBranches] = useState([]);
   const [staffMembers, setStaffMembers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  // Custom color for all blue elements
   const customColor = "#6EB2CC";
 
-  // Fetch branches and staff data on component mount
   useEffect(() => {
     fetchBranches();
     fetchStaffMembers();
@@ -36,8 +31,6 @@ const StaffAttendance = () => {
     try {
       setLoading(true);
       const response = await axiosInstance.get(`${BaseUrl}branches/by-admin/${adminId}`);
-      console.log('Branches API response:', response.data);
-      
       if (response.data.success) {
         setBranches(response.data.branches);
       } else {
@@ -55,10 +48,7 @@ const StaffAttendance = () => {
     try {
       setLoading(true);
       const response = await axiosInstance.get(`${BaseUrl}staff/all`);
-      console.log('Staff API response:', response.data);
-      
       if (response.data.success) {
-        // Transform API response to match component's expected format
         const transformedStaff = response.data.staff.map(staff => ({
           id: staff.staffId,
           staffId: staff.staffId,
@@ -67,7 +57,6 @@ const StaffAttendance = () => {
           branch: getBranchName(staff.branchId),
           email: staff.email,
           phone: staff.phone,
-          branchId: staff.branchId,
           roleId: staff.roleId
         }));
         setStaffMembers(transformedStaff);
@@ -82,30 +71,46 @@ const StaffAttendance = () => {
     }
   };
 
-  // Fetch attendance records from API
+  const calculateShiftType = (checkInTime) => {
+    if (!checkInTime) return 'Unknown';
+    try {
+      const date = new Date(checkInTime);
+      const hours = date.getHours();
+      if (hours >= 5 && hours < 12) return 'Morning Shift';
+      else if (hours >= 12 && hours < 17) return 'Day Shift';
+      else if (hours >= 17 && hours < 22) return 'Evening Shift';
+      else return 'Night Shift';
+    } catch (err) {
+      return 'Unknown';
+    }
+  };
+
   const fetchAttendanceRecords = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get(`${BaseUrl}admin-staff-attendance`);
-      console.log('Attendance API response:', response.data);
-      
-      if (response.data && Array.isArray(response.data)) {
-        // Transform API response to match the component's expected format
-        const transformedRecords = response.data.map(record => ({
-          attendance_id: record.id,
-          staff_id: record.staffId,
-          staff_name: record.staffName,
-          role: getRoleNameFromStaff(record.staffId),
-          branch: record.branchName,
-          date: record.date,
-          checkin_time: record.checkInTime,
-          checkout_time: record.checkOutTime,
-          mode: record.mode,
-          shift_id: record.shiftId,
-          shift_name: getShiftName(record.shiftId),
-          status: record.status,
-          notes: record.notes
-        }));
+      const response = await axiosInstance.get(`${BaseUrl}memberattendence/admin?adminId=${adminId}`);
+      if (response.data?.success && Array.isArray(response.data.attendance)) {
+        const transformedRecords = response.data.attendance.map(record => {
+          const isStaff = record.staffId !== null;
+          const name = isStaff ? record.staffName : record.memberName || 'Unknown';
+          const role = isStaff ? record.staffRole : record.memberRole || 'Member';
+          return {
+            attendance_id: record.id,
+            staff_id: record.staffId,
+            staff_name: name,
+            role: role,
+            branch: getBranchName(record.branchId),
+            date: record.checkIn ? record.checkIn.split('T')[0] : '',
+            checkin_time: record.checkIn,
+            checkout_time: record.checkOut,
+            mode: record.mode,
+            shift_id: record.shiftId,
+            shift_name: record.shiftType || calculateShiftType(record.checkIn),
+            status: record.status,
+            notes: record.notes,
+            member_id: record.memberId
+          };
+        });
         setRecords(transformedRecords);
       } else {
         setError('Failed to load attendance records');
@@ -118,15 +123,11 @@ const StaffAttendance = () => {
     }
   };
 
-  // Fetch attendance records by branch
   const fetchAttendanceByBranch = async (branchId) => {
     try {
       setLoading(true);
       const response = await axiosInstance.get(`${BaseUrl}admin-staff-attendance/branch/${branchId}`);
-      console.log('Attendance by branch API response:', response.data);
-      
       if (response.data && Array.isArray(response.data)) {
-        // Transform API response to match the component's expected format
         const transformedRecords = response.data.map(record => ({
           attendance_id: record.id,
           staff_id: record.staffId,
@@ -138,7 +139,7 @@ const StaffAttendance = () => {
           checkout_time: record.checkOutTime,
           mode: record.mode,
           shift_id: record.shiftId,
-          shift_name: getShiftName(record.shiftId),
+          shift_name: record.shiftType || calculateShiftType(record.checkInTime),
           status: record.status,
           notes: record.notes
         }));
@@ -147,14 +148,18 @@ const StaffAttendance = () => {
         setError('Failed to load attendance records for this branch');
       }
     } catch (err) {
-      console.error('Error fetching attendance records by branch:', err);
-      setError('Failed to load attendance records for this branch');
+      console.error('Error fetching attendance by branch:', err);
+      setError('Failed to load attendance for branch');
     } finally {
       setLoading(false);
     }
   };
 
-  // Helper function to get role name from roleId - Updated with all role IDs
+  const getStaffName = (staffId) => {
+    const staff = staffMembers.find(s => s.staffId === staffId);
+    return staff ? staff.name : 'Unknown';
+  };
+
   const getRoleName = (roleId) => {
     const roles = {
       1: 'Admin',
@@ -169,52 +174,45 @@ const StaffAttendance = () => {
     return roles[roleId] || 'Unknown';
   };
 
-  // Helper function to get role name from staff ID
   const getRoleNameFromStaff = (staffId) => {
     const staff = staffMembers.find(s => s.staffId === staffId);
     return staff ? staff.role : 'Unknown';
   };
 
-  // Helper function to get branch name from branchId
   const getBranchName = (branchId) => {
     const branch = branches.find(b => b.id === branchId);
     return branch ? branch.name : 'Unknown';
   };
 
-  // Helper function to get shift name from shiftId
   const getShiftName = (shiftId) => {
     const shifts = [
       { id: 1, name: "Morning Shift" },
       { id: 2, name: "Day Shift" },
-      { id: 3, name: "Evening Shift" }
+      { id: 3, name: "Evening Shift" },
+      { id: 4, name: "Night Shift" }
     ];
     const shift = shifts.find(s => s.id === shiftId);
     return shift ? shift.name : 'Unknown';
   };
 
-  // Set records state
   const [records, setRecords] = useState([]);
-
   const shifts = [
     { id: 1, name: "Morning Shift" },
     { id: 2, name: "Day Shift" },
-    { id: 3, name: "Evening Shift" }
+    { id: 3, name: "Evening Shift" },
+    { id: 4, name: "Night Shift" }
   ];
 
-  // Get unique options for dropdowns
   const allRoles = ['All', ...new Set(staffMembers.map(s => s.role))];
   const allStatuses = ['All', 'Present', 'Late', 'Absent', 'Overtime'];
   const allBranches = ['All', ...new Set(branches.map(b => b.name))];
 
-  // Filter records based on search term AND filters
   const filteredRecords = records.filter(record =>
     (record.staff_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
      record.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     record.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     record.branch.toLowerCase().includes(searchTerm.toLowerCase())) &&
+     record.status.toLowerCase().includes(searchTerm.toLowerCase())) &&
     (roleFilter === 'All' || record.role === roleFilter) &&
-    (statusFilter === 'All' || record.status === statusFilter) &&
-    (branchFilter === 'All' || record.branch === branchFilter)
+    (statusFilter === 'All' || record.status === statusFilter)
   );
 
   const handleAddNew = () => {
@@ -243,10 +241,7 @@ const StaffAttendance = () => {
   const confirmDelete = async () => {
     if (selectedRecord) {
       try {
-        // Call Delete API
         await axiosInstance.delete(`${BaseUrl}admin-staff-attendance/${selectedRecord.attendance_id}`);
-        
-        // Update local state
         setRecords(prev => prev.filter(r => r.attendance_id !== selectedRecord.attendance_id));
         alert(`Deleted attendance record for ${selectedRecord.staff_name} (${selectedRecord.role}).`);
       } catch (err) {
@@ -268,7 +263,6 @@ const StaffAttendance = () => {
     setSelectedRecord(null);
   };
 
-  // Prevent background scroll
   useEffect(() => {
     if (isModalOpen || isDeleteModalOpen) {
       document.body.style.overflow = 'hidden';
@@ -299,20 +293,16 @@ const StaffAttendance = () => {
       "Personal Trainer": "bg-primary",
       "Receptionist": "bg-info",
       "Housekeeping": "bg-secondary",
-      "General Trainer": "bg-success"
+      "General Trainer": "bg-success",
+      "Member": "bg-dark",
+      "Admin": "bg-danger",
+      "Manager": "bg-warning",
+      "Trainer": "bg-primary",
+      "generaltrainer": "bg-success"
     };
     return (
-      <span className={`badge rounded-pill ${colors[role] || 'bg-light'} text-dark px-2 py-1`} style={{ fontSize: '0.65rem', whiteSpace: 'nowrap' }}>
+      <span className={`badge rounded-pill ${colors[role] || 'bg-light'} text-light px-2 py-1`} style={{ fontSize: '0.65rem', whiteSpace: 'nowrap' }}>
         {role}
-      </span>
-    );
-  };
-
-  // Branch badge without background color
-  const getBranchBadge = (branch) => {
-    return (
-      <span className="badge rounded-pill text-dark px-2 py-1 border" style={{ fontSize: '0.65rem', backgroundColor: 'transparent' }}>
-        {branch}
       </span>
     );
   };
@@ -327,6 +317,7 @@ const StaffAttendance = () => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString('en-US', options);
   };
@@ -341,45 +332,36 @@ const StaffAttendance = () => {
     return records.length > 0 ? Math.max(...records.map(r => r.attendance_id)) + 1 : 1;
   };
 
-  // Handle form submission with API integration
+  // ✅ FIXED: Removed branchId, added adminId in payload
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    
+
     if (modalType === 'add') {
       try {
         const staffId = parseInt(formData.get('staff_id'));
         const staffData = staffMembers.find(s => s.id === staffId);
         if (!staffData) return alert("Invalid staff selection");
 
-        const branchId = parseInt(formData.get('branch_id'));
-        const branchData = branches.find(b => b.id === branchId);
-        const branchName = branchData ? branchData.name : '';
-
         const shiftId = formData.get('shift_id');
-        const shiftName = shifts.find(s => s.id === shiftId)?.name || '';
-
-        // Create payload for API
         const payload = {
+          adminId: adminId, // ✅ Added adminId
           staffId: staffId,
-          branchId: branchId,
           mode: formData.get('mode') || 'QR',
-          shiftId: shiftId,
+          shiftId: shiftId || null,
           date: formData.get('date') || new Date().toISOString().split('T')[0],
           checkInTime: formData.get('checkin_time') || null,
           checkOutTime: formData.get('checkout_time') || null,
           status: formData.get('status') || 'Present',
           notes: formData.get('notes') || ''
+          // ❌ No branchId included
         };
-        
-        // Call API to create an attendance record
+
         const response = await axiosInstance.post(`${BaseUrl}admin-staff-attendance`, payload);
-        console.log('Create attendance response:', response.data);
-        
         if (response.data) {
-          // Refresh attendance records
           if (branchFilter !== 'All') {
-            fetchAttendanceByBranch(branchId);
+            const branch = branches.find(b => b.name === branchFilter);
+            if (branch) fetchAttendanceByBranch(branch.id);
           } else {
             fetchAttendanceRecords();
           }
@@ -390,7 +372,7 @@ const StaffAttendance = () => {
         }
       } catch (err) {
         console.error('Error creating attendance record:', err);
-        alert('Error creating attendance record: ' + err.message);
+        alert('Error creating attendance record: ' + (err.response?.data?.message || err.message));
       }
     } else if (modalType === 'edit') {
       try {
@@ -398,34 +380,25 @@ const StaffAttendance = () => {
         const staffData = staffMembers.find(s => s.id === staffId);
         if (!staffData) return alert("Invalid staff selection");
 
-        const branchId = parseInt(formData.get('branch_id'));
-        const branchData = branches.find(b => b.id === branchId);
-        const branchName = branchData ? branchData.name : selectedRecord.branch;
-
         const shiftId = formData.get('shift_id');
-        const shiftName = shifts.find(s => s.id === shiftId)?.name || '';
-
-        // Create payload for API
         const payload = {
+          adminId: adminId, // ✅ Added adminId
           staffId: staffId,
-          branchId: branchId,
           mode: formData.get('mode') || selectedRecord.mode,
-          shiftId: shiftId,
+          shiftId: shiftId || selectedRecord.shift_id || null,
           date: formData.get('date') || selectedRecord.date,
           checkInTime: formData.get('checkin_time') || selectedRecord.checkin_time,
           checkOutTime: formData.get('checkout_time') || selectedRecord.checkout_time,
           status: formData.get('status') || selectedRecord.status,
           notes: formData.get('notes') || selectedRecord.notes
+          // ❌ No branchId
         };
-        
-        // Call API to update attendance record
+
         const response = await axiosInstance.put(`${BaseUrl}admin-staff-attendance/${selectedRecord.attendance_id}`, payload);
-        console.log('Update attendance response:', response.data);
-        
         if (response.data) {
-          // Refresh attendance records
           if (branchFilter !== 'All') {
-            fetchAttendanceByBranch(branchId);
+            const branch = branches.find(b => b.name === branchFilter);
+            if (branch) fetchAttendanceByBranch(branch.id);
           } else {
             fetchAttendanceRecords();
           }
@@ -436,19 +409,17 @@ const StaffAttendance = () => {
         }
       } catch (err) {
         console.error('Error updating attendance record:', err);
-        alert('Error updating attendance record: ' + err.message);
+        alert('Error updating attendance record: ' + (err.response?.data?.message || err.message));
       }
     }
   };
 
-  // Export CSV with Role and Branch
   const exportCSV = () => {
-    const header = ["Date", "Staff Name", "Role", "Branch", "Check-in", "Check-out", "Mode", "Shift", "Status", "Notes"];
+    const header = ["Date", "Staff Name", "Role", "Check-in", "Check-out", "Mode", "Shift", "Status", "Notes"];
     const rows = filteredRecords.map(record => [
       record.date,
       record.staff_name,
       record.role,
-      record.branch,
       formatTime(record.checkin_time),
       formatTime(record.checkout_time),
       record.mode,
@@ -456,7 +427,7 @@ const StaffAttendance = () => {
       record.status,
       record.notes
     ]);
-    const csv = [header, ...rows].map(row => row.join(",")).join("\n");
+    const csv = [header, ...rows].map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -472,7 +443,6 @@ const StaffAttendance = () => {
     setBranchFilter('All');
   };
 
-  // Handle branch filter change
   useEffect(() => {
     if (branchFilter !== 'All') {
       const branch = branches.find(b => b.name === branchFilter);
@@ -484,7 +454,6 @@ const StaffAttendance = () => {
     }
   }, [branchFilter]);
 
-  // Mobile Card View Component
   const MobileAttendanceCard = ({ record }) => (
     <div className="card mb-3 shadow-sm" style={{ borderRadius: '0.5rem' }}>
       <div className="card-body p-3">
@@ -493,12 +462,10 @@ const StaffAttendance = () => {
             <h6 className="mb-1 fw-bold" style={{ fontSize: '0.95rem' }}>{record.staff_name}</h6>
             <div className="d-flex gap-1 flex-wrap">
               {getRoleBadge(record.role)}
-              {getBranchBadge(record.branch)}
             </div>
           </div>
           {getStatusBadge(record.status)}
         </div>
-        
         <div className="row g-2 mb-2">
           <div className="col-6">
             <small className="text-muted d-block">Date</small>
@@ -517,14 +484,12 @@ const StaffAttendance = () => {
             <span style={{ fontSize: '0.85rem' }}>{formatTime(record.checkout_time)}</span>
           </div>
         </div>
-        
         {record.notes && (
           <div className="mb-2">
             <small className="text-muted">Notes:</small>
             <p className="mb-0" style={{ fontSize: '0.85rem' }}>{record.notes}</p>
           </div>
         )}
-        
         <div className="d-flex justify-content-end gap-1">
           <button
             className="btn btn-sm action-btn"
@@ -587,7 +552,6 @@ const StaffAttendance = () => {
       {/* Filters Section */}
       <div className="card shadow-sm border-0 mb-3 mb-md-4">
         <div className="card-body p-2 p-md-3">
-          {/* Mobile Filter Toggle */}
           <div className="d-md-none mb-2">
             <button 
               className="btn btn-outline-secondary btn-sm w-100 d-flex justify-content-between align-items-center"
@@ -597,9 +561,8 @@ const StaffAttendance = () => {
               <FaFilter />
             </button>
           </div>
-
           <div className={`row g-2 ${showMobileFilters ? 'd-block' : 'd-none d-md-flex'}`}>
-            <div className="col-12 col-md-4">
+            <div className="col-12 col-md-5">
               <div className="input-group input-group-sm">
                 <span className="input-group-text bg-light border">
                   <FaSearch className="text-muted" style={{ fontSize: '0.875rem' }} />
@@ -614,8 +577,7 @@ const StaffAttendance = () => {
                 />
               </div>
             </div>
-
-            <div className="col-6 col-md-2">
+            <div className="col-6 col-md-3">
               <select
                 className="form-select form-select-sm"
                 value={roleFilter}
@@ -627,8 +589,7 @@ const StaffAttendance = () => {
                 ))}
               </select>
             </div>
-
-            <div className="col-6 col-md-2">
+            <div className="col-6 col-md-3">
               <select
                 className="form-select form-select-sm"
                 value={statusFilter}
@@ -640,21 +601,7 @@ const StaffAttendance = () => {
                 ))}
               </select>
             </div>
-
-            <div className="col-6 col-md-2">
-              <select
-                className="form-select form-select-sm"
-                value={branchFilter}
-                onChange={(e) => setBranchFilter(e.target.value)}
-                style={{ fontSize: '0.875rem' }}
-              >
-                {allBranches.map(branch => (
-                  <option key={branch} value={branch}>{branch}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="col-6 col-md-2">
+            <div className="col-12 col-md-1">
               <button 
                 className="btn btn-outline-secondary btn-sm w-100" 
                 onClick={clearFilters}
@@ -675,7 +622,6 @@ const StaffAttendance = () => {
           </h6>
         </div>
         <div className="card-body p-0">
-          {/* Desktop Table View */}
           <div className="d-none d-md-block">
             <div className="table-responsive">
               <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.8rem' }}>
@@ -684,7 +630,6 @@ const StaffAttendance = () => {
                     <th className="fw-semibold text-nowrap" style={{ fontSize: '0.75rem', padding: '0.5rem' }}>DATE</th>
                     <th className="fw-semibold text-nowrap" style={{ fontSize: '0.75rem', padding: '0.5rem' }}>STAFF NAME</th>
                     <th className="fw-semibold text-nowrap" style={{ fontSize: '0.75rem', padding: '0.5rem', width: '100px' }}>ROLE</th>
-                    <th className="fw-semibold text-nowrap" style={{ fontSize: '0.75rem', padding: '0.5rem', width: '90px' }}>BRANCH</th>
                     <th className="fw-semibold text-nowrap" style={{ fontSize: '0.75rem', padding: '0.5rem' }}>CHECK-IN</th>
                     <th className="fw-semibold text-nowrap" style={{ fontSize: '0.75rem', padding: '0.5rem' }}>CHECK-OUT</th>
                     <th className="fw-semibold text-nowrap d-none d-lg-table-cell" style={{ fontSize: '0.75rem', padding: '0.5rem' }}>MODE</th>
@@ -705,7 +650,6 @@ const StaffAttendance = () => {
                           <strong>{record.staff_name}</strong>
                         </td>
                         <td className="text-nowrap" style={{ padding: '0.5rem' }}>{getRoleBadge(record.role)}</td>
-                        <td className="text-nowrap" style={{ padding: '0.5rem' }}>{getBranchBadge(record.branch)}</td>
                         <td className="text-nowrap" style={{ padding: '0.5rem' }}>{formatTime(record.checkin_time)}</td>
                         <td className="text-nowrap" style={{ padding: '0.5rem' }}>{formatTime(record.checkout_time)}</td>
                         <td className="text-nowrap d-none d-lg-table-cell" style={{ padding: '0.5rem' }}>
@@ -750,7 +694,7 @@ const StaffAttendance = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="10" className="text-center py-4">
+                      <td colSpan="8" className="text-center py-4">
                         <div className="text-muted">
                           <FaSearch size={24} className="mb-2" />
                           <p className="mb-0">No attendance records found matching your criteria.</p>
@@ -763,7 +707,6 @@ const StaffAttendance = () => {
             </div>
           </div>
 
-          {/* Mobile Card View */}
           <div className="d-md-none p-3">
             {filteredRecords.length > 0 ? (
               filteredRecords.map(record => (
@@ -781,7 +724,7 @@ const StaffAttendance = () => {
         </div>
       </div>
 
-      {/* MAIN MODAL (Add/Edit/View) - Compact Version */}
+      {/* MAIN MODAL */}
       {isModalOpen && (
         <div
           className="modal fade show"
@@ -813,9 +756,8 @@ const StaffAttendance = () => {
                 {error && <div className="alert alert-danger">{error}</div>}
                 <form onSubmit={handleFormSubmit}>
                   <div className="row g-2">
-                    {/* Staff & Role */}
                     <div className="col-12">
-                      <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Staff Member</label>
+                      <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Staff Member *</label>
                       <select
                         name="staff_id"
                         className="form-select form-select-sm"
@@ -831,23 +773,6 @@ const StaffAttendance = () => {
                         ))}
                       </select>
                     </div>
-
-                    {/* Branch & Date */}
-                    <div className="col-6">
-                      <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Branch</label>
-                      <select
-                        name="branch_id"
-                        className="form-select form-select-sm"
-                        defaultValue={selectedRecord ? branches.find(b => b.name === selectedRecord.branch)?.id || '' : ''}
-                        disabled={modalType === 'view'}
-                        required
-                      >
-                        <option value="">Select Branch</option>
-                        {branches.map(branch => (
-                          <option key={branch.id} value={branch.id}>{branch.name}</option>
-                        ))}
-                      </select>
-                    </div>
                     <div className="col-6">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Date</label>
                       <input
@@ -859,8 +784,6 @@ const StaffAttendance = () => {
                         required
                       />
                     </div>
-
-                    {/* Shift & Mode */}
                     <div className="col-6">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Shift</label>
                       <select
@@ -890,8 +813,21 @@ const StaffAttendance = () => {
                         <option value="Manual">Manual</option>
                       </select>
                     </div>
-
-                    {/* Check-in / Check-out */}
+                    <div className="col-6">
+                      <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Status</label>
+                      <select
+                        name="status"
+                        className="form-select form-select-sm"
+                        defaultValue={selectedRecord?.status || 'Present'}
+                        disabled={modalType === 'view'}
+                        required
+                      >
+                        <option value="Present">Present</option>
+                        <option value="Late">Late</option>
+                        <option value="Absent">Absent</option>
+                        <option value="Overtime">Overtime</option>
+                      </select>
+                    </div>
                     <div className="col-6">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Check-in Time</label>
                       <input
@@ -912,24 +848,7 @@ const StaffAttendance = () => {
                         readOnly={modalType === 'view'}
                       />
                     </div>
-
-                    {/* Status & Notes */}
-                    <div className="col-6">
-                      <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Status</label>
-                      <select
-                        name="status"
-                        className="form-select form-select-sm"
-                        defaultValue={selectedRecord?.status || 'Present'}
-                        disabled={modalType === 'view'}
-                        required
-                      >
-                        <option value="Present">Present</option>
-                        <option value="Late">Late</option>
-                        <option value="Absent">Absent</option>
-                        <option value="Overtime">Overtime</option>
-                      </select>
-                    </div>
-                    <div className="col-6">
+                    <div className="col-12">
                       <label className="form-label fw-semibold" style={{ fontSize: '0.8rem' }}>Notes</label>
                       <input
                         name="notes"
@@ -941,8 +860,6 @@ const StaffAttendance = () => {
                       />
                     </div>
                   </div>
-
-                  {/* Buttons */}
                   <div className="d-flex justify-content-end gap-2 mt-3">
                     <button
                       type="button"
@@ -972,7 +889,7 @@ const StaffAttendance = () => {
         </div>
       )}
 
-      {/* DELETE CONFIRMATION MODAL - Compact Version */}
+      {/* DELETE CONFIRMATION MODAL */}
       {isDeleteModalOpen && (
         <div
           className="modal fade show"
@@ -1031,7 +948,7 @@ const StaffAttendance = () => {
           </div>
         </div>
       )}
-      
+
       <style jsx global>{`
         .action-btn {
           width: 28px;
@@ -1042,59 +959,48 @@ const StaffAttendance = () => {
           justify-content: center;
           border-radius: 4px;
         }
-        
         @media (max-width: 576px) {
           .action-btn {
             width: 24px;
             height: 24px;
           }
         }
-        
         .table-responsive {
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
         }
-        
         @media (max-width: 768px) {
           .container-fluid {
             padding-left: 0.75rem !important;
             padding-right: 0.75rem !important;
           }
         }
-        
         .card {
           border: none;
           box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
         }
-        
         .table th {
           border-bottom: 2px solid #dee2e6;
           font-weight: 600;
           white-space: nowrap;
         }
-        
         .table td {
           vertical-align: middle;
           white-space: nowrap;
         }
-        
         .form-control, .form-select {
           border-radius: 0.375rem !important;
         }
-        
         .btn {
           border-radius: 0.375rem;
           font-weight: 500;
         }
-        
         .modal-header {
           border-radius: 0.375rem 0.375rem 0 0;
         }
-        
         .modal-footer {
           border-radius: 0 0 0.375rem 0.375rem;
         }
-
         @media (max-width: 576px) {
           .modal-dialog {
             margin: 0.25rem;
