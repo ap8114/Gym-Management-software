@@ -20,10 +20,6 @@ const GeneralClassesSchedule = () => {
     const [trainers, setTrainers] = useState([]); // For trainers from API
 
     useEffect(() => {
-        if (!adminId) {
-            setError('Admin ID not found. Please log in.');
-            return;
-        }
         fetchAllData();
     }, [adminId]);
 

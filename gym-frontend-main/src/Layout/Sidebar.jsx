@@ -135,19 +135,21 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
 
     HOUSEKEEPING: [
       { name: "Dashboard", icon: faChartBar, path: "/housekeeping/dashboard" },
-      { name: "QR Check-in", icon: faGear, path: "/housekeeping/qrcheckin" },
-      // { name: "Duty Roster", icon: faUsers, path: "/housekeeping/members" },
       { name: "Staff Management", icon: faUsers, path: "/housekeeping/members" },
-      { name: "Attendance Marking", icon: faUserTag, path: "/housekeeping/membership-plan" },
       { name: "Task Checklist", icon: faCalendarAlt, path: "/housekeeping/duty-roster" },
+      { name: "QR Check-in", icon: faGear, path: "/housekeeping/qrcheckin" },
+      { name: "Attendance Marking", icon: faUserTag, path: "/housekeeping/membership-plan" },
+
+      // { name: "Duty Roster", icon: faUsers, path: "/housekeeping/members" },
       // { name: "Notifications", icon: faCalendarDays, path: "/housekeeping/class-schedule" }
     ],
 
     GENERALTRAINER: [
       { name: "Dashboard", icon: faChartBar, path: "/generaltrainer/dashboard" },
       { name: "Classes Schedule", icon: faUsers, path: "/generaltrainer/classesschedule" },
-      { name: "Staff Management", icon: faUsers, path: "/housekeeping/members" },
+      { name: "Shift Managment", icon: faCalendarAlt, path: "/GeneralTrainer/shift-managment" },
       { name: "Task Checklist", icon: faCalendarAlt, path: "/housekeeping/duty-roster" },
+      { name: "Session Bookings", icon: faCalendarAlt, path: "/generaltrainer/bookings" },
       { name: "Qr Check-in", icon: faGear, path: "/generaltrainer/qrcheckin" },
       { name: "Attendance", icon: faClipboardCheck, path: "/generaltrainer/attendance" },
       { name: "GroupPlans & Bookings", icon: faUserGroup, path: "/generaltrainer/groupplansbookings" },
@@ -157,8 +159,9 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
     PERSONALTRAINER: [
       { name: "Dashboard", icon: faChartBar, path: "/personaltrainer/dashboard" },
       { name: "Classes Schedule", icon: faUsers, path: "/personaltrainer/classesschedule" },
-      { name: "Staff Management", icon: faUsers, path: "/housekeeping/members" },
+      { name: "Shift Managment", icon: faCalendarAlt, path: "/personaltrainer/shift-managment" },
       { name: "Task Checklist", icon: faCalendarAlt, path: "/housekeeping/duty-roster" },
+      { name: "Session Bookings", icon: faCalendarAlt, path: "/personaltrainer/bookings" },
       { name: "QR Check-in", icon: faGear, path: "/personaltrainer/qrcheckin" },
       { name: "Attendance", icon: faGear, path: "/personaltrainer/personalattendance" },
       { name: "Plans & Bookings", icon: faBookAtlas, path: "/personaltrainer/PersonalPlansBookings" },
