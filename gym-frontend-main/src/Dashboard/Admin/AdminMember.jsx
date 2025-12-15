@@ -162,6 +162,7 @@ const fetchMembersByAdminId = async () => {
           active: true, // Assuming all plans from API are active by default
           // branch: "Downtown", // Commented out default branch
           type: plan.type.toLowerCase(), // Convert to lowercase for our component
+          trainerType: plan.trainerType ? plan.trainerType.toLowerCase() : null, // Convert to lowercase for our component
         }));
 
         setApiPlans(formattedPlans);
@@ -489,6 +490,24 @@ const getPlanNameById = (planId) => {
   if (!planId || apiPlans.length === 0) return "Unknown Plan";
   const plan = apiPlans.find((p) => p.id === parseInt(planId));
   return plan ? plan.name : "Unknown Plan";
+};
+
+// Filter plans based on "Interested In" selection
+const getFilteredPlans = (interestedIn) => {
+  if (!plansLoaded || apiPlans.length === 0) return [];
+  
+  switch (interestedIn) {
+    case "Personal Training":
+      return apiPlans.filter(plan => plan.type === "personal");
+    case "Group Classes":
+      return apiPlans.filter(plan => plan.type === "group");
+    case "General":
+      return apiPlans.filter(plan => plan.trainerType === "general");
+    case "Both":
+      return apiPlans; // Show all plans
+    default:
+      return []; // No selection, return empty array
+  }
 };
 
   return (
@@ -977,7 +996,7 @@ const getPlanNameById = (planId) => {
                         </div>
                       </div>
                     </div>
-                    {/* Added Interested In section */}
+                    {/* Modified Interested In section */}
                     <div className="col-12">
                       <label className="form-label">
                         Interested In <span className="text-danger">*</span>
@@ -993,12 +1012,13 @@ const getPlanNameById = (planId) => {
                             checked={
                               newMember.interestedIn === "Personal Training"
                             }
-                            onChange={(e) =>
+                            onChange={(e) => {
                               setNewMember({
                                 ...newMember,
                                 interestedIn: e.target.value,
-                              })
-                            }
+                                planId: "", // Reset plan selection when interested in changes
+                              });
+                            }}
                             required
                           />
                           <label
@@ -1013,22 +1033,25 @@ const getPlanNameById = (planId) => {
                             className="form-check-input"
                             type="radio"
                             name="interestedIn"
-                            id="groupClasses"
-                            value="Group Classes"
-                            checked={newMember.interestedIn === "Group Classes"}
-                            onChange={(e) =>
+                            id="general"
+                            value="General"
+                            checked={
+                              newMember.interestedIn === "General"
+                            }
+                            onChange={(e) => {
                               setNewMember({
                                 ...newMember,
                                 interestedIn: e.target.value,
-                              })
-                            }
+                                planId: "", // Reset plan selection when interested in changes
+                              });
+                            }}
                             required
                           />
                           <label
                             className="form-check-label"
-                            htmlFor="groupClasses"
+                            htmlFor="general"
                           >
-                            Group Classes
+                            General
                           </label>
                         </div>
                         <div className="form-check">
@@ -1036,19 +1059,23 @@ const getPlanNameById = (planId) => {
                             className="form-check-input"
                             type="radio"
                             name="interestedIn"
-                            id="both"
-                            value="Both"
-                            checked={newMember.interestedIn === "Both"}
-                            onChange={(e) =>
+                            id="groupClasses"
+                            value="Group Classes"
+                            checked={newMember.interestedIn === "Group Classes"}
+                            onChange={(e) => {
                               setNewMember({
                                 ...newMember,
                                 interestedIn: e.target.value,
-                              })
-                            }
+                                planId: "", // Reset plan selection when interested in changes
+                              });
+                            }}
                             required
                           />
-                          <label className="form-check-label" htmlFor="both">
-                            Both
+                          <label
+                            className="form-check-label"
+                            htmlFor="groupClasses"
+                          >
+                            Group Classes
                           </label>
                         </div>
                       </div>
@@ -1128,10 +1155,15 @@ const getPlanNameById = (planId) => {
                             })
                           }
                           required
+                          disabled={!newMember.interestedIn} // Disable if no interest selected
                         >
-                          <option value="">Select Plan</option>
+                          <option value="">
+                            {newMember.interestedIn
+                              ? "Select Plan"
+                              : "Please select 'Interested In' first"}
+                          </option>
                           {plansLoaded &&
-                            apiPlans.map((plan) => (
+                            getFilteredPlans(newMember.interestedIn).map((plan) => (
                               <option key={plan.id} value={plan.id}>
                                 {plan.name} - {plan.price} ({plan.validity}{" "}
                                 days)
@@ -1356,10 +1388,15 @@ const getPlanNameById = (planId) => {
                           })
                         }
                         required
+                        disabled={!editMember.interestedIn} // Disable if no interest selected
                       >
-                        <option value="">Select Plan</option>
+                        <option value="">
+                          {editMember.interestedIn
+                            ? "Select Plan"
+                            : "Please select 'Interested In' first"}
+                        </option>
                         {plansLoaded &&
-                          apiPlans.map((plan) => (
+                          getFilteredPlans(editMember.interestedIn).map((plan) => (
                             <option key={plan.id} value={plan.id}>
                               {plan.name} - {plan.price} ({plan.validity} days)
                             </option>
@@ -1412,7 +1449,7 @@ const getPlanNameById = (planId) => {
                         <option value="Other">Other</option>
                       </select>
                     </div>
-                    {/* Added Interested In section to Edit form */}
+                    {/* Modified Interested In section to Edit form */}
                     <div className="col-12">
                       <label className="form-label">Interested In</label>
                       <div className="d-flex gap-3">
@@ -1426,12 +1463,13 @@ const getPlanNameById = (planId) => {
                             checked={
                               editMember.interestedIn === "Personal Training"
                             }
-                            onChange={(e) =>
+                            onChange={(e) => {
                               setEditMember({
                                 ...editMember,
                                 interestedIn: e.target.value,
-                              })
-                            }
+                                planId: "", // Reset plan selection when interested in changes
+                              });
+                            }}
                           />
                           <label
                             className="form-check-label"
@@ -1445,23 +1483,24 @@ const getPlanNameById = (planId) => {
                             className="form-check-input"
                             type="radio"
                             name="editInterestedIn"
-                            id="editGroupClasses"
-                            value="Group Classes"
+                            id="editGeneral"
+                            value="General"
                             checked={
-                              editMember.interestedIn === "Group Classes"
+                              editMember.interestedIn === "General"
                             }
-                            onChange={(e) =>
+                            onChange={(e) => {
                               setEditMember({
                                 ...editMember,
                                 interestedIn: e.target.value,
-                              })
-                            }
+                                planId: "", // Reset plan selection when interested in changes
+                              });
+                            }}
                           />
                           <label
                             className="form-check-label"
-                            htmlFor="editGroupClasses"
+                            htmlFor="editGeneral"
                           >
-                            Group Classes
+                            General
                           </label>
                         </div>
                         <div className="form-check">
@@ -1469,21 +1508,24 @@ const getPlanNameById = (planId) => {
                             className="form-check-input"
                             type="radio"
                             name="editInterestedIn"
-                            id="editBoth"
-                            value="Both"
-                            checked={editMember.interestedIn === "Both"}
-                            onChange={(e) =>
+                            id="editGroupClasses"
+                            value="Group Classes"
+                            checked={
+                              editMember.interestedIn === "Group Classes"
+                            }
+                            onChange={(e) => {
                               setEditMember({
                                 ...editMember,
                                 interestedIn: e.target.value,
-                              })
-                            }
+                                planId: "", // Reset plan selection when interested in changes
+                              });
+                            }}
                           />
                           <label
                             className="form-check-label"
-                            htmlFor="editBoth"
+                            htmlFor="editGroupClasses"
                           >
-                            Both
+                            Group Classes
                           </label>
                         </div>
                       </div>

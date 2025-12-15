@@ -43,7 +43,7 @@ const CreatePlan = () => {
     price: "",
     type: "group",
     trainerType: "", // New field for trainer type (personal/general)
-    trainerId: "",   // New field for selected trainer ID
+    trainerId: "", // New field for selected trainer ID
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -54,7 +54,7 @@ const CreatePlan = () => {
   const [bookingRequests, setBookingRequests] = useState([]);
   const [renewalRequests, setRenewalRequests] = useState([]);
   const [activeRequestTab, setActiveRequestTab] = useState("booking");
-  
+
   // New state for trainers
   const [trainers, setTrainers] = useState([]);
   const [trainersLoading, setTrainersLoading] = useState(false);
@@ -66,10 +66,10 @@ const CreatePlan = () => {
 
   const getUserFromStorage = () => {
     try {
-      const userStr = localStorage.getItem('user');
+      const userStr = localStorage.getItem("user");
       return userStr ? JSON.parse(userStr) : null;
     } catch (err) {
-      console.error('Error parsing user from localStorage:', err);
+      console.error("Error parsing user from localStorage:", err);
       return null;
     }
   };
@@ -102,7 +102,7 @@ const CreatePlan = () => {
       );
       if (response.data.success) {
         // Filter trainers based on the selected type
-        const filteredTrainers = response.data.trainers.filter(trainer => {
+        const filteredTrainers = response.data.trainers.filter((trainer) => {
           if (trainerType === "personal") {
             return trainer.roleId === 5; // Assuming roleId 5 is for personal trainers
           } else if (trainerType === "general") {
@@ -138,6 +138,8 @@ const CreatePlan = () => {
           price: `₹${plan.price.toLocaleString()}`,
           active: plan.active ?? true,
           type: plan.type.toLowerCase(),
+          trainerType: plan.trainerType || "", // Add trainer type from API
+          trainerId: plan.trainerId || null, // Add trainer ID from API
         }));
         setApiPlans(formattedPlans);
         setPlansLoaded(true);
@@ -179,7 +181,7 @@ const CreatePlan = () => {
           classId: request.classId,
           memberId: request.memberId,
           branchId: request.branchId,
-          requestType: "booking"
+          requestType: "booking",
         }));
         setBookingRequests(formattedRequests);
       }
@@ -215,23 +217,32 @@ const CreatePlan = () => {
 
           return {
             id: renewal.id,
-            memberName: member.fullName || 'Unknown',
-            memberEmail: member.email || 'N/A',
-            memberPhone: member.phone || 'N/A',
-            currentPlan: currentPlan.name || 'Unknown',
-            currentPlanType: currentPlan.type ? currentPlan.type.toLowerCase() : 'unknown',
-            requestedPlan: requestedPlan.name || 'Unknown',
-            requestedPlanType: requestedPlan.type ? requestedPlan.type.toLowerCase() : 'unknown',
-            price: requestedPlan.price ? `₹${parseFloat(requestedPlan.price).toLocaleString()}` : 'N/A',
-            sessions: requestedPlan.sessions || 'N/A',
-            validity: requestedPlan.validityDays || requestedPlan.validity || 'N/A',
-            membershipFrom: renewal.membershipFrom || 'N/A',
-            membershipTo: renewal.membershipTo || 'N/A',
-            requestedAt: renewal.createdAt ? new Date(renewal.createdAt).toLocaleString() : 'N/A',
-            status: renewal.status ? renewal.status.toLowerCase() : 'unknown',
+            memberName: member.fullName || "Unknown",
+            memberEmail: member.email || "N/A",
+            memberPhone: member.phone || "N/A",
+            currentPlan: currentPlan.name || "Unknown",
+            currentPlanType: currentPlan.type
+              ? currentPlan.type.toLowerCase()
+              : "unknown",
+            requestedPlan: requestedPlan.name || "Unknown",
+            requestedPlanType: requestedPlan.type
+              ? requestedPlan.type.toLowerCase()
+              : "unknown",
+            price: requestedPlan.price
+              ? `₹${parseFloat(requestedPlan.price).toLocaleString()}`
+              : "N/A",
+            sessions: requestedPlan.sessions || "N/A",
+            validity:
+              requestedPlan.validityDays || requestedPlan.validity || "N/A",
+            membershipFrom: renewal.membershipFrom || "N/A",
+            membershipTo: renewal.membershipTo || "N/A",
+            requestedAt: renewal.createdAt
+              ? new Date(renewal.createdAt).toLocaleString()
+              : "N/A",
+            status: renewal.status ? renewal.status.toLowerCase() : "unknown",
             memberId: renewal.memberId || member.id || null,
             branchId: renewal.branchId || member.branchId || null,
-            requestType: "renewal"
+            requestType: "renewal",
           };
         });
 
@@ -299,13 +310,18 @@ const CreatePlan = () => {
       setCreatePlanError("Please fill all fields"); // Use the separate error state
       return;
     }
-    
+
     // Additional validation for membership plans
-    if (newPlan.type === "member" && (!newPlan.trainerType || !newPlan.trainerId)) {
-      setCreatePlanError("Please select trainer type and trainer for membership plans");
+    if (
+      newPlan.type === "member" &&
+      (!newPlan.trainerType || !newPlan.trainerId)
+    ) {
+      setCreatePlanError(
+        "Please select trainer type and trainer for membership plans"
+      );
       return;
     }
-    
+
     setLoading(true);
     setCreatePlanError(null); // Reset the create plan error
     try {
@@ -318,13 +334,13 @@ const CreatePlan = () => {
         adminId: parseInt(adminId),
         type: newPlan.type.toUpperCase(),
       };
-      
+
       // Add trainer information for membership plans
       if (newPlan.type === "member") {
         payload.trainerType = newPlan.trainerType;
         payload.trainerId = parseInt(newPlan.trainerId);
       }
-      
+
       const response = await axiosInstance.post(
         `${BaseUrl}MemberPlan`,
         payload
@@ -340,9 +356,11 @@ const CreatePlan = () => {
           type: response.data.plan.type.toLowerCase(),
         };
         const currentPlans =
-          newPlan.type === "group" ? groupPlans : 
-          newPlan.type === "personal" ? personalPlans : 
-          membershipPlans;
+          newPlan.type === "group"
+            ? groupPlans
+            : newPlan.type === "personal"
+            ? personalPlans
+            : membershipPlans;
         updatePlansByType(newPlan.type, [...currentPlans, plan]);
         setApiPlans([...apiPlans, plan]);
         setNewPlan({
@@ -356,8 +374,12 @@ const CreatePlan = () => {
         });
         setShowCreateModal(false);
         alert(
-          `✅ ${newPlan.type === "group" ? "Group" : 
-          newPlan.type === "personal" ? "Personal" : "Membership"
+          `✅ ${
+            newPlan.type === "group"
+              ? "Group"
+              : newPlan.type === "personal"
+              ? "Personal"
+              : "Membership"
           } Plan Created: ${plan.name}`
         );
       } else {
@@ -365,7 +387,9 @@ const CreatePlan = () => {
       }
     } catch (err) {
       console.error("Error creating plan:", err);
-      setCreatePlanError(err.response?.data?.message || "Failed to create plan."); // Use the separate error state
+      setCreatePlanError(
+        err.response?.data?.message || "Failed to create plan."
+      ); // Use the separate error state
     } finally {
       setLoading(false);
     }
@@ -542,9 +566,10 @@ const CreatePlan = () => {
       };
 
       if (isRenewal) {
-        const endpoint = status === "approved"
-          ? `${BaseUrl}members/renew/approve/${requestToProcess.id}`
-          : `${BaseUrl}members/renew/reject/${requestToProcess.id}`;
+        const endpoint =
+          status === "approved"
+            ? `${BaseUrl}members/renew/approve/${requestToProcess.id}`
+            : `${BaseUrl}members/renew/reject/${requestToProcess.id}`;
 
         response = await axiosInstance.put(endpoint, payload);
 
@@ -556,9 +581,10 @@ const CreatePlan = () => {
           );
         }
       } else {
-        const endpoint = status === "approved"
-          ? `${BaseUrl}booking/approve/${requestToProcess.id}`
-          : `${BaseUrl}booking/reject/${requestToProcess.id}`;
+        const endpoint =
+          status === "approved"
+            ? `${BaseUrl}booking/approve/${requestToProcess.id}`
+            : `${BaseUrl}booking/reject/${requestToProcess.id}`;
 
         response = await axiosInstance.put(endpoint, payload);
 
@@ -574,18 +600,27 @@ const CreatePlan = () => {
       if (response.data.success) {
         const msg =
           status === "approved"
-            ? `✅ ${isRenewal ? "Renewal" : "Booking"} Approved! Member will be notified.`
-            : `❌ ${isRenewal ? "Renewal" : "Booking"} Rejected. Member will be notified.`;
+            ? `✅ ${
+                isRenewal ? "Renewal" : "Booking"
+              } Approved! Member will be notified.`
+            : `❌ ${
+                isRenewal ? "Renewal" : "Booking"
+              } Rejected. Member will be notified.`;
         alert(msg);
         setShowStatusModal(false);
         setRequestToProcess(null);
       } else {
-        setError(`Failed to update ${isRenewal ? "renewal" : "booking"} status.`);
+        setError(
+          `Failed to update ${isRenewal ? "renewal" : "booking"} status.`
+        );
       }
     } catch (err) {
       console.error("Error updating status:", err);
       setError(
-        err.response?.data?.message || `Failed to update ${requestToProcess.requestType === "renewal" ? "renewal" : "booking"} status.`
+        err.response?.data?.message ||
+          `Failed to update ${
+            requestToProcess.requestType === "renewal" ? "renewal" : "booking"
+          } status.`
       );
     }
   };
@@ -612,9 +647,10 @@ const CreatePlan = () => {
       };
 
       if (isRenewal) {
-        const endpoint = newStatus === "approved"
-          ? `${BaseUrl}members/renew/approve/${requestId}`
-          : `${BaseUrl}members/renew/reject/${requestId}`;
+        const endpoint =
+          newStatus === "approved"
+            ? `${BaseUrl}members/renew/approve/${requestId}`
+            : `${BaseUrl}members/renew/reject/${requestId}`;
 
         response = await axiosInstance.put(endpoint, payload);
 
@@ -626,9 +662,10 @@ const CreatePlan = () => {
           );
         }
       } else {
-        const endpoint = newStatus === "approved"
-          ? `${BaseUrl}booking/approve/${requestId}`
-          : `${BaseUrl}booking/reject/${requestId}`;
+        const endpoint =
+          newStatus === "approved"
+            ? `${BaseUrl}booking/approve/${requestId}`
+            : `${BaseUrl}booking/reject/${requestId}`;
 
         response = await axiosInstance.put(endpoint, payload);
 
@@ -648,12 +685,15 @@ const CreatePlan = () => {
             : `❌ ${isRenewal ? "Renewal" : "Booking"} Rejected.`;
         alert(msg);
       } else {
-        setError(`Failed to toggle ${isRenewal ? "renewal" : "booking"} status.`);
+        setError(
+          `Failed to toggle ${isRenewal ? "renewal" : "booking"} status.`
+        );
       }
     } catch (err) {
       console.error("Error toggling request:", err);
       setError(
-        err.response?.data?.message || `Failed to update ${isRenewal ? "renewal" : "booking"} request.`
+        err.response?.data?.message ||
+          `Failed to update ${isRenewal ? "renewal" : "booking"} request.`
       );
     }
   };
@@ -701,9 +741,8 @@ const CreatePlan = () => {
                 {planType === "group"
                   ? "GROUP"
                   : planType === "personal"
-                    ? "PERSONAL"
-                    : "MEMBER"}
-
+                  ? "PERSONAL"
+                  : "MEMBER"}
               </div>
               <h5
                 className="fw-bold mb-0"
@@ -782,6 +821,20 @@ const CreatePlan = () => {
                 Price: {plan.price}
               </strong>
             </li>
+            {/* Show trainer type only for membership plans */}
+            {planType === "member" && plan.trainerType && (
+              <li className="mb-2 d-flex align-items-center gap-2">
+                <span className="text-muted" style={{ fontSize: "0.9rem" }}>
+                  👤
+                </span>
+                <strong style={{ fontSize: "0.9rem" }}>
+                  Trainer Type:{" "}
+                  {plan.trainerType === "personal"
+                    ? "Personal Trainer"
+                    : "General Trainer"}
+                </strong>
+              </li>
+            )}
           </ul>
           <div className="d-flex gap-2 mt-auto">
             {plan.active ? (
@@ -1044,9 +1097,7 @@ const CreatePlan = () => {
       <Card.Body className="p-3">
         <div className="d-flex justify-content-between align-items-start mb-2">
           <h6 className="mb-0 fw-bold">{req.memberName}</h6>
-          <span className="badge bg-secondary rounded-pill">
-            {index + 1}
-          </span>
+          <span className="badge bg-secondary rounded-pill">{index + 1}</span>
         </div>
         <div className="mb-2">
           <span className="text-muted small">Plan: </span>
@@ -1067,22 +1118,16 @@ const CreatePlan = () => {
         </div>
         <div className="row mb-2">
           <div className="col-6">
-            <span className="text-muted small">
-              Sessions:{" "}
-            </span>
+            <span className="text-muted small">Sessions: </span>
             {req.sessions}
           </div>
           <div className="col-6">
-            <span className="text-muted small">
-              Validity:{" "}
-            </span>
+            <span className="text-muted small">Validity: </span>
             {req.validity} days
           </div>
         </div>
         <div className="mb-3">
-          <span className="text-muted small">
-            Requested:{" "}
-          </span>
+          <span className="text-muted small">Requested: </span>
           {req.requestedAt}
         </div>
         <div className="d-flex justify-content-between align-items-center">
@@ -1170,9 +1215,7 @@ const CreatePlan = () => {
       <Card.Body className="p-3">
         <div className="d-flex justify-content-between align-items-start mb-2">
           <h6 className="mb-0 fw-bold">{req.memberName}</h6>
-          <span className="badge bg-secondary rounded-pill">
-            {index + 1}
-          </span>
+          <span className="badge bg-secondary rounded-pill">{index + 1}</span>
         </div>
         <div className="mb-2">
           <span className="text-muted small">Email: </span>
@@ -1201,22 +1244,16 @@ const CreatePlan = () => {
         </div>
         <div className="row mb-2">
           <div className="col-6">
-            <span className="text-muted small">
-              Sessions:{" "}
-            </span>
+            <span className="text-muted small">Sessions: </span>
             {req.sessions}
           </div>
           <div className="col-6">
-            <span className="text-muted small">
-              Validity:{" "}
-            </span>
+            <span className="text-muted small">Validity: </span>
             {req.validity} days
           </div>
         </div>
         <div className="mb-3">
-          <span className="text-muted small">
-            Requested:{" "}
-          </span>
+          <span className="text-muted small">Requested: </span>
           {req.requestedAt}
         </div>
         <div className="d-flex justify-content-between align-items-center">
@@ -1402,8 +1439,12 @@ const CreatePlan = () => {
                 sessions: "",
                 validity: "",
                 price: "",
-                type: activeTab === "personal" ? "personal" : 
-                       activeTab === "member" ? "member" : "group",
+                type:
+                  activeTab === "personal"
+                    ? "personal"
+                    : activeTab === "member"
+                    ? "member"
+                    : "group",
                 trainerType: "",
                 trainerId: "",
               });
@@ -1524,12 +1565,16 @@ const CreatePlan = () => {
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 mb-4 p-3 bg-white rounded shadow-sm border">
             <div className="d-flex flex-column flex-md-row gap-3 w-100 w-md-auto">
               <Button
-                variant={activeRequestTab === "booking" ? "primary" : "outline-primary"}
+                variant={
+                  activeRequestTab === "booking" ? "primary" : "outline-primary"
+                }
                 onClick={() => setActiveRequestTab("booking")}
                 className="px-3 px-md-4 py-2 fw-medium d-flex align-items-center justify-content-center"
                 style={{
                   backgroundColor:
-                    activeRequestTab === "booking" ? customColor : "transparent",
+                    activeRequestTab === "booking"
+                      ? customColor
+                      : "transparent",
                   borderColor: customColor,
                   color: activeRequestTab === "booking" ? "white" : customColor,
                   width: "100%",
@@ -1539,12 +1584,16 @@ const CreatePlan = () => {
                 Booking Requests
               </Button>
               <Button
-                variant={activeRequestTab === "renewal" ? "primary" : "outline-primary"}
+                variant={
+                  activeRequestTab === "renewal" ? "primary" : "outline-primary"
+                }
                 onClick={() => setActiveRequestTab("renewal")}
                 className="px-3 px-md-4 py-2 fw-medium d-flex align-items-center justify-content-center"
                 style={{
                   backgroundColor:
-                    activeRequestTab === "renewal" ? customColor : "transparent",
+                    activeRequestTab === "renewal"
+                      ? customColor
+                      : "transparent",
                   borderColor: customColor,
                   color: activeRequestTab === "renewal" ? "white" : customColor,
                   width: "100%",
@@ -1558,37 +1607,42 @@ const CreatePlan = () => {
 
           {/* Request Statistics */}
           <Row className="mb-4 g-3">
-            {(activeRequestTab === "booking" ? bookingStats : renewalStats).map((item, i) => (
-              <Col xs={12} sm={6} md={4} key={i}>
-                <Card
-                  className="text-center border-0 shadow-sm h-100"
-                  style={{ backgroundColor: "#f8f9fa", borderRadius: "12px" }}
-                >
-                  <Card.Body className="py-3 py-md-4">
-                    <div
-                      className="d-flex justify-content-center align-items-center mb-2"
-                      style={{
-                        width: "60px",
-                        height: "60px",
-                        borderRadius: "50%",
-                        backgroundColor: item.bg,
-                        margin: "0 auto",
-                      }}
-                    >
-                      <span
-                        className="fw-bold"
-                        style={{ color: item.color, fontSize: "1.5rem" }}
+            {(activeRequestTab === "booking" ? bookingStats : renewalStats).map(
+              (item, i) => (
+                <Col xs={12} sm={6} md={4} key={i}>
+                  <Card
+                    className="text-center border-0 shadow-sm h-100"
+                    style={{ backgroundColor: "#f8f9fa", borderRadius: "12px" }}
+                  >
+                    <Card.Body className="py-3 py-md-4">
+                      <div
+                        className="d-flex justify-content-center align-items-center mb-2"
+                        style={{
+                          width: "60px",
+                          height: "60px",
+                          borderRadius: "50%",
+                          backgroundColor: item.bg,
+                          margin: "0 auto",
+                        }}
                       >
-                        {item.count}
-                      </span>
-                    </div>
-                    <h5 className="fw-bold mb-1" style={{ color: customColor }}>
-                      {item.label}
-                    </h5>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
+                        <span
+                          className="fw-bold"
+                          style={{ color: item.color, fontSize: "1.5rem" }}
+                        >
+                          {item.count}
+                        </span>
+                      </div>
+                      <h5
+                        className="fw-bold mb-1"
+                        style={{ color: customColor }}
+                      >
+                        {item.label}
+                      </h5>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              )
+            )}
           </Row>
 
           {/* Requests Table */}
@@ -1598,17 +1652,29 @@ const CreatePlan = () => {
               style={{ borderBottom: `3px solid ${customColor}` }}
             >
               <h5 className="mb-0 text-dark" style={{ fontWeight: "600" }}>
-                All {activeRequestTab === "booking" ? "Booking" : "Renewal"} Requests
+                All {activeRequestTab === "booking" ? "Booking" : "Renewal"}{" "}
+                Requests
               </h5>
               <small className="text-muted">
-                Total: {activeRequestTab === "booking" ? bookingRequests.length : renewalRequests.length} requests
+                Total:{" "}
+                {activeRequestTab === "booking"
+                  ? bookingRequests.length
+                  : renewalRequests.length}{" "}
+                requests
               </small>
             </Card.Header>
             <Card.Body className="p-0">
-              {(activeRequestTab === "booking" ? bookingRequests.length === 0 : renewalRequests.length === 0) ? (
+              {(
+                activeRequestTab === "booking"
+                  ? bookingRequests.length === 0
+                  : renewalRequests.length === 0
+              ) ? (
                 <div className="text-center text-muted py-5">
                   <div className="display-4 mb-3">📭</div>
-                  <p className="fs-5">No {activeRequestTab === "booking" ? "booking" : "renewal"} requests yet.</p>
+                  <p className="fs-5">
+                    No {activeRequestTab === "booking" ? "booking" : "renewal"}{" "}
+                    requests yet.
+                  </p>
                 </div>
               ) : (
                 <>
@@ -1618,8 +1684,14 @@ const CreatePlan = () => {
                         <tr>
                           <th>#</th>
                           <th>Member</th>
-                          {activeRequestTab === "renewal" && <th>Current Plan</th>}
-                          <th>{activeRequestTab === "renewal" ? "Requested Plan" : "Plan"}</th>
+                          {activeRequestTab === "renewal" && (
+                            <th>Current Plan</th>
+                          )}
+                          <th>
+                            {activeRequestTab === "renewal"
+                              ? "Requested Plan"
+                              : "Plan"}
+                          </th>
                           <th>Type</th>
                           {/* <th className="d-none d-lg-table-cell">Sessions</th>
                           <th className="d-none d-lg-table-cell">Validity</th> */}
@@ -1630,9 +1702,12 @@ const CreatePlan = () => {
                       </thead>
                       <tbody>
                         {activeRequestTab === "booking"
-                          ? bookingRequests.map((req, index) => renderBookingRequestRow(req, index))
-                          : renewalRequests.map((req, index) => renderRenewalRequestRow(req, index))
-                        }
+                          ? bookingRequests.map((req, index) =>
+                              renderBookingRequestRow(req, index)
+                            )
+                          : renewalRequests.map((req, index) =>
+                              renderRenewalRequestRow(req, index)
+                            )}
                       </tbody>
                     </Table>
                   </div>
@@ -1640,9 +1715,12 @@ const CreatePlan = () => {
                   {/* Mobile View */}
                   <div className="d-md-none p-3">
                     {activeRequestTab === "booking"
-                      ? bookingRequests.map((req, index) => renderBookingRequestCard(req, index))
-                      : renewalRequests.map((req, index) => renderRenewalRequestCard(req, index))
-                    }
+                      ? bookingRequests.map((req, index) =>
+                          renderBookingRequestCard(req, index)
+                        )
+                      : renewalRequests.map((req, index) =>
+                          renderRenewalRequestCard(req, index)
+                        )}
                   </div>
                 </>
               )}
@@ -1668,7 +1746,11 @@ const CreatePlan = () => {
             <Modal.Title
               style={{ color: "#333", fontWeight: "600", fontSize: "1.1rem" }}
             >
-              Process {requestToProcess?.requestType === "renewal" ? "Renewal" : "Booking"} Request
+              Process{" "}
+              {requestToProcess?.requestType === "renewal"
+                ? "Renewal"
+                : "Booking"}{" "}
+              Request
             </Modal.Title>
             <Button
               variant="link"
@@ -1683,7 +1765,11 @@ const CreatePlan = () => {
             {requestToProcess && (
               <div>
                 <p className="mb-2 fw-medium text-center">
-                  Process {requestToProcess.requestType === "renewal" ? "renewal" : "booking"} request from:
+                  Process{" "}
+                  {requestToProcess.requestType === "renewal"
+                    ? "renewal"
+                    : "booking"}{" "}
+                  request from:
                 </p>
                 <div className="text-center mb-3">
                   <strong>{requestToProcess.memberName}</strong>
@@ -1695,8 +1781,7 @@ const CreatePlan = () => {
                   <div className="text-muted small">
                     {requestToProcess.requestType === "renewal"
                       ? `${requestToProcess.currentPlan} → ${requestToProcess.requestedPlan}`
-                      : requestToProcess.planName
-                    }
+                      : requestToProcess.planName}
                   </div>
                 </div>
                 <div className="d-flex gap-2 justify-content-center">
@@ -1746,12 +1831,20 @@ const CreatePlan = () => {
             }}
           >
             <Modal.Title style={{ color: "#333", fontWeight: "600" }}>
-              Create New {newPlan.type === "group" ? "Group" : 
-                         newPlan.type === "personal" ? "Personal" : "Membership"} Plan
+              Create New{" "}
+              {newPlan.type === "group"
+                ? "Group"
+                : newPlan.type === "personal"
+                ? "Personal"
+                : "Membership"}{" "}
+              Plan
             </Modal.Title>
           </Modal.Header>
           <Modal.Body className="p-3 p-md-4">
-            {createPlanError && <Alert variant="danger">{createPlanError}</Alert>} {/* Use the separate error state */}
+            {createPlanError && (
+              <Alert variant="danger">{createPlanError}</Alert>
+            )}{" "}
+            {/* Use the separate error state */}
             <Form>
               <Form.Group className="mb-4">
                 <Form.Label className="fw-medium">Plan Type</Form.Label>
@@ -1759,11 +1852,11 @@ const CreatePlan = () => {
                   value={newPlan.type}
                   onChange={(e) => {
                     const type = e.target.value;
-                    setNewPlan({ 
-                      ...newPlan, 
+                    setNewPlan({
+                      ...newPlan,
                       type: type,
                       trainerType: type === "member" ? newPlan.trainerType : "",
-                      trainerId: type === "member" ? newPlan.trainerId : ""
+                      trainerId: type === "member" ? newPlan.trainerId : "",
                     });
                   }}
                   style={{ padding: "12px", fontSize: "1rem" }}
@@ -1773,21 +1866,23 @@ const CreatePlan = () => {
                   <option value="member">MemberShip Plan</option>
                 </Form.Select>
               </Form.Group>
-              
+
               {/* Additional fields for membership plans */}
               {newPlan.type === "member" && (
                 <>
                   <Row>
                     <Col md={6}>
                       <Form.Group className="mb-4">
-                        <Form.Label className="fw-medium">Trainer Type</Form.Label>
+                        <Form.Label className="fw-medium">
+                          Trainer Type
+                        </Form.Label>
                         <Form.Select
                           value={newPlan.trainerType}
                           onChange={(e) => {
-                            setNewPlan({ 
-                              ...newPlan, 
+                            setNewPlan({
+                              ...newPlan,
                               trainerType: e.target.value,
-                              trainerId: "" // Reset trainer ID when trainer type changes
+                              trainerId: "", // Reset trainer ID when trainer type changes
                             });
                           }}
                           style={{ padding: "12px", fontSize: "1rem" }}
@@ -1800,23 +1895,39 @@ const CreatePlan = () => {
                     </Col>
                     <Col md={6}>
                       <Form.Group className="mb-4">
-                        <Form.Label className="fw-medium">Select Trainer</Form.Label>
+                        <Form.Label className="fw-medium">
+                          Select Trainer
+                        </Form.Label>
                         {trainersLoading ? (
                           <div className="d-flex align-items-center">
-                            <div className="spinner-border spinner-border-sm me-2" role="status">
-                              <span className="visually-hidden">Loading...</span>
+                            <div
+                              className="spinner-border spinner-border-sm me-2"
+                              role="status"
+                            >
+                              <span className="visually-hidden">
+                                Loading...
+                              </span>
                             </div>
                             Loading trainers...
                           </div>
                         ) : (
                           <Form.Select
                             value={newPlan.trainerId}
-                            onChange={(e) => setNewPlan({ ...newPlan, trainerId: e.target.value })}
+                            onChange={(e) =>
+                              setNewPlan({
+                                ...newPlan,
+                                trainerId: e.target.value,
+                              })
+                            }
                             style={{ padding: "12px", fontSize: "1rem" }}
-                            disabled={!newPlan.trainerType || trainers.length === 0}
+                            disabled={
+                              !newPlan.trainerType || trainers.length === 0
+                            }
                           >
                             <option value="">
-                              {newPlan.trainerType ? "Select a Trainer" : "Select Trainer Type First"}
+                              {newPlan.trainerType
+                                ? "Select a Trainer"
+                                : "Select Trainer Type First"}
                             </option>
                             {trainers.map((trainer) => (
                               <option key={trainer.id} value={trainer.id}>
@@ -1830,7 +1941,7 @@ const CreatePlan = () => {
                   </Row>
                 </>
               )}
-              
+
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-4">
@@ -1936,8 +2047,13 @@ const CreatePlan = () => {
             }}
           >
             <Modal.Title>
-              Edit {selectedPlan?.type === "group" ? "Group" : 
-                    selectedPlan?.type === "personal" ? "Personal" : "Membership"} Plan
+              Edit{" "}
+              {selectedPlan?.type === "group"
+                ? "Group"
+                : selectedPlan?.type === "personal"
+                ? "Personal"
+                : "Membership"}{" "}
+              Plan
             </Modal.Title>
           </Modal.Header>
           <Modal.Body className="p-3 p-md-4">
@@ -2062,8 +2178,12 @@ const CreatePlan = () => {
               <div className="p-4 bg-light rounded">
                 <h5 className="fw-bold mb-4">
                   {selectedPlan.name} (
-                  {selectedPlan.type === "group" ? "Group" : 
-                   selectedPlan.type === "personal" ? "Personal" : "Membership"})
+                  {selectedPlan.type === "group"
+                    ? "Group"
+                    : selectedPlan.type === "personal"
+                    ? "Personal"
+                    : "Membership"}
+                  )
                 </h5>
                 <div className="row">
                   {[
