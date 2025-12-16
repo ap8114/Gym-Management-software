@@ -741,7 +741,7 @@ const StaffAttendance = () => {
                             >
                               <FaEdit size={12} />
                             </button> */}
-                            <button
+                            {/* <button
                               className="btn btn-sm btn-outline-danger action-btn"
                               title="Delete"
                               onClick={() => handleDeleteClick(record)}
@@ -752,7 +752,7 @@ const StaffAttendance = () => {
                               ) : (
                                 <FaTrashAlt size={12} />
                               )}
-                            </button>
+                            </button> 
                           </div>
                         </td> */}
                       </tr>
