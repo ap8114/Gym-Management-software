@@ -63,6 +63,8 @@ const ReceptionistBookGroupClasses = () => {
   const branchId = user?.branchId || null;
   const adminId = user?.adminId || null;
 
+  console.log(adminId)
+
   
 
   const normalizeBooking = (apiBooking) => {
@@ -90,12 +92,12 @@ const ReceptionistBookGroupClasses = () => {
 
     try {
       const [membersRes, bookingsRes, trainersRes] = await Promise.all([
-        axiosInstance.get(`members/branch/${adminId}`),
+        axiosInstance.get(`members/admin/${adminId}`),
         axiosInstance.get(`booking/unifiedbybranch/${adminId}`),
-        axiosInstance.get(`class/trainers/personal-general`),
+        axiosInstance.get(`class/trainers/personal-general?adminId=${adminId}`),
       ]);
 
-      const membersData = membersRes.data?.items || [];
+      const membersData = membersRes.data?.data || [];
       const rawBookings = bookingsRes.data?.bookings || [];
       const normalizedBookings = rawBookings.map(normalizeBooking);
       const trainersData = trainersRes.data?.trainers || [];
@@ -295,8 +297,8 @@ const ReceptionistBookGroupClasses = () => {
   };
 
   const handleSubmit = async () => {
-    if (!branchId) {
-      alert('Branch ID missing. Please log in again.');
+    if (!adminId) {
+      alert('admin ID missing. Please log in again.');
       return;
     }
 
@@ -436,7 +438,7 @@ const ReceptionistBookGroupClasses = () => {
             />
           </div>
         </div>
-        <div className="col-6 col-md-3 col-lg-2">
+        {/* <div className="col-6 col-md-3 col-lg-2">
           <button className="btn btn-outline-secondary w-100">
             <i className="fas fa-filter me-1"></i> Filter
           </button>
@@ -445,7 +447,7 @@ const ReceptionistBookGroupClasses = () => {
           <button className="btn btn-outline-secondary w-100">
             <i className="fas fa-file-export me-1"></i> Export
           </button>
-        </div>
+        </div> */}
       </div>
 
       {/* Show Entries */}

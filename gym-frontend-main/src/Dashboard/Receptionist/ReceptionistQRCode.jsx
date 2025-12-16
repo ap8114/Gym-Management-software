@@ -245,10 +245,10 @@ const ReceptionistQRCode = () => {
                 }
               />
             </Col>
-            <Col xs={12} sm={6} md={4} className="d-flex justify-content-start justify-content-md-end">
+            {/* <Col xs={12} sm={6} md={4} className="d-flex justify-content-start justify-content-md-end">
               <Button variant="outline-secondary me-2">Filter</Button>
               <Button variant="outline-secondary">Export</Button>
-            </Col>
+            </Col> */}
           </Row>
 
           {/* Desktop Table View */}
