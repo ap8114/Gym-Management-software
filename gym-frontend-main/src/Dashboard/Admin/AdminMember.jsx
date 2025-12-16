@@ -29,14 +29,10 @@ const AdminMember = () => {
   const [showEditForm, setShowEditForm] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [filterStatus, setFilterStatus] = useState("");
-  // const [filterBranch, setFilterBranch] = useState(""); // Commented out branch filter
+  const [filterExpiring, setFilterExpiring] = useState(""); // New filter for expiring plans
   const [loading, setLoading] = useState(false); // Add loading state
   const [editLoading, setEditLoading] = useState(false); // Add edit loading state
   const [deleteLoading, setDeleteLoading] = useState(false); // Add delete loading state
-  // const [branches, setBranches] = useState([]); // Commented out branches state
-  // const [branchesLoading, setBranchesLoading] = useState(false); // Commented out branches loading state
-  // const [branchesError, setBranchesError] = useState(null); // Commented out branches error state
-  const [membersLoading, setMembersLoading] = useState(false); // Add loading state for members
   // Plans state
   const [apiPlans, setApiPlans] = useState([]);
   const [plansLoaded, setPlansLoaded] = useState(false);
@@ -49,7 +45,6 @@ const AdminMember = () => {
     phone: "",
     email: "",
     password: "",
-    // branchId: "", // Commented out branchId
     planId: "",
     address: "",
     gender: "",
@@ -61,19 +56,18 @@ const AdminMember = () => {
     status: "Active", // Added status field
   });
 
-  // ✅ FIX: Updated editMember state to include all necessary fields for API
+  // Updated editMember state to include all necessary fields for API
   const [editMember, setEditMember] = useState({
     id: "",
-    fullName: "", // ✅ Changed from 'name' to 'fullName'
+    fullName: "", // Changed from 'name' to 'fullName'
     phone: "",
     email: "",
-    // branchId: "", // Commented out branchId
-    planId: "", // ✅ Changed from 'plan' to 'planId'
+    planId: "", // Changed from 'plan' to 'planId'
     address: "",
     gender: "",
-    dateOfBirth: "", // ✅ Changed from 'dob' to 'dateOfBirth'
-    interestedIn: "", // ✅ Added field
-    status: "Active", // ✅ Added status field
+    dateOfBirth: "", // Changed from 'dob' to 'dateOfBirth'
+    interestedIn: "", // Added field
+    status: "Active", // Added status field
   });
 
   const [renewPlan, setRenewPlan] = useState({
@@ -83,59 +77,68 @@ const AdminMember = () => {
     amountPaid: "",
   });
 
-  // Get unique branches for filter
-  // const uniqueBranches = [...new Set(members.map((member) => member.branch))]; // Commented out unique branches
+  // Function to check if a plan is expiring in the next 7 days
+  const isExpiringIn7Days = (expiryDate) => {
+    if (!expiryDate) return false;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+    
+    const expiry = new Date(expiryDate);
+    const daysUntilExpiry = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+    
+    return daysUntilExpiry >= 0 && daysUntilExpiry <= 7;
+  };
 
-// Filter members based on search term, status and branch
-const filteredMembers = members.filter((member) => {
-  const matchesSearch =
-    member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.phone.includes(searchTerm);
-  const matchesStatus = filterStatus === "" || member.status === filterStatus;
-  // const matchesBranch =
-  //   filterBranch === "" || member.branchId === parseInt(filterBranch); // Commented out branch filter
-  return matchesSearch && matchesStatus; // Removed matchesBranch from return
-});
+  // Filter members based on search term, status and expiry
+  const filteredMembers = members.filter((member) => {
+    const matchesSearch =
+      member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.phone.includes(searchTerm);
+    const matchesStatus = filterStatus === "" || member.status === filterStatus;
+    const matchesExpiring = filterExpiring === "" || 
+      (filterExpiring === "expiring" && isExpiringIn7Days(member.expiry));
+    
+    return matchesSearch && matchesStatus && matchesExpiring;
+  });
 
-// Fetch members by admin ID
-const fetchMembersByAdminId = async () => {
-  setMembersLoading(true);
-  try {
-    const response = await axiosInstance.get(
-      `${BaseUrl}members/admin/${adminId}`
-    );
+  // Fetch members by admin ID
+  const fetchMembersByAdminId = async () => {
+    setMembersLoading(true);
+    try {
+      const response = await axiosInstance.get(
+        `${BaseUrl}members/admin/${adminId}`
+      );
 
-    if (response.data && response.data.success) {
-      // Map API response to match our component structure
-      const formattedMembers = response.data.data.map((member) => ({
-        id: member.id,
-        name: member.fullName,
-        phone: member.phone,
-        email: member.email,
-        gender: member.gender,
-        // branch: getBranchNameById(member.branchId), // Commented out branch name
-        // branchId: member.branchId, // Commented out branch ID
-        plan: getPlanNameById(member.planId), // ✅ Get plan name by ID
-        planId: member.planId, // Store plan ID
-        address: member.address,
-        dob: member.dateOfBirth,
-        planStart: member.membershipFrom,
-        expiry: member.membershipTo,
-        status: member.status,
-        interestedIn: member.interestedIn,
-      }));
+      if (response.data && response.data.success) {
+        // Map API response to match our component structure
+        const formattedMembers = response.data.data.map((member) => ({
+          id: member.id,
+          name: member.fullName,
+          phone: member.phone,
+          email: member.email,
+          gender: member.gender,
+          plan: getPlanNameById(member.planId), // Get plan name by ID
+          planId: member.planId, // Store plan ID
+          address: member.address,
+          dob: member.dateOfBirth,
+          planStart: member.membershipFrom,
+          expiry: member.membershipTo,
+          status: member.status,
+          interestedIn: member.interestedIn,
+        }));
 
-      setMembers(formattedMembers);
-      console.log("Members loaded successfully:", formattedMembers);
-    } else {
-      console.error("API response error:", response.data);
+        setMembers(formattedMembers);
+        console.log("Members loaded successfully:", formattedMembers);
+      } else {
+        console.error("API response error:", response.data);
+      }
+    } catch (err) {
+      console.error("Error fetching members:", err);
+    } finally {
+      setMembersLoading(false);
     }
-  } catch (err) {
-    console.error("Error fetching members:", err);
-  } finally {
-    setMembersLoading(false);
-  }
-};
+  };
 
   // Fetch plans from API
   const fetchPlansFromAPI = async () => {
@@ -160,8 +163,8 @@ const fetchMembersByAdminId = async () => {
           validity: plan.validityDays,
           price: `₹${plan.price.toLocaleString()}`,
           active: true, // Assuming all plans from API are active by default
-          // branch: "Downtown", // Commented out default branch
           type: plan.type.toLowerCase(), // Convert to lowercase for our component
+          trainerType: plan.trainerType ? plan.trainerType.toLowerCase() : null, // Convert to lowercase for our component
         }));
 
         setApiPlans(formattedPlans);
@@ -182,35 +185,10 @@ const fetchMembersByAdminId = async () => {
     }
   };
 
-  // Fetch branches
-  // const fetchBranches = async () => { // Commented out fetchBranches function
-  //   setBranchesLoading(true);
-  //   setBranchesError(null);
-  //   try {
-  //     const adminId = localStorage.getItem("userId") || "5"; // fallback to 5 as per your note
-  //     const response = await axiosInstance.get(
-  //       `${BaseUrl}branches/by-admin/${adminId}`
-  //     );
-  //     if (response.data?.success && Array.isArray(response.data.branches)) {
-  //       setBranches(response.data.branches);
-  //     } else {
-  //       setBranchesError("No branches found.");
-  //       setBranches([]);
-  //     }
-  //   } catch (err) {
-  //     console.error("Error fetching branches:", err);
-  //     setBranchesError("Failed to load branches.");
-  //     setBranches([]);
-  //   } finally {
-  //     setBranchesLoading(false);
-  //   }
-  // };
-
   // Fetch data when component mounts
   useEffect(() => {
     fetchMembersByAdminId();
     fetchPlansFromAPI();
-    // fetchBranches(); // Commented out fetchBranches
   }, []);
 
   // Handle add member with API call
@@ -221,7 +199,7 @@ const fetchMembersByAdminId = async () => {
     try {
       // Prepare payload for API
       const payload = {
-        adminId: adminId, // ✅ Added adminId to payload
+        adminId: adminId, // Added adminId to payload
         fullName: newMember.fullName,
         email: newMember.email,
         password: newMember.password,
@@ -230,7 +208,6 @@ const fetchMembersByAdminId = async () => {
         dateOfBirth: newMember.dateOfBirth,
         address: newMember.address,
         interestedIn: newMember.interestedIn,
-        // branchId: parseInt(newMember.branchId), // Commented out branchId
         planId: parseInt(newMember.planId), // Convert to number
         membershipFrom: newMember.startDate, // Map startDate to membershipFrom
         paymentMode:
@@ -256,7 +233,6 @@ const fetchMembersByAdminId = async () => {
           phone: "",
           email: "",
           password: "",
-          // branchId: "", // Commented out branchId
           planId: "",
           address: "",
           gender: "",
@@ -279,15 +255,15 @@ const fetchMembersByAdminId = async () => {
     }
   };
 
-  // ✅ FIX: Handle edit member with API call
+  // Handle edit member with API call
   const handleEditMember = async (e) => {
     e.preventDefault();
     setEditLoading(true);
 
     try {
-      // ✅ FIX: Prepare payload for API to match expected structure
+      // Prepare payload for API to match expected structure
       const payload = {
-        adminId: adminId, // ✅ Added adminId to payload
+        adminId: adminId, // Added adminId to payload
         fullName: editMember.fullName,
         email: editMember.email,
         phone: editMember.phone,
@@ -295,18 +271,17 @@ const fetchMembersByAdminId = async () => {
         address: editMember.address,
         dateOfBirth: editMember.dateOfBirth,
         interestedIn: editMember.interestedIn,
-        status: editMember.status, // ✅ Added status
-        // branchId: parseInt(editMember.branchId), // Commented out branchId
-        planId: parseInt(editMember.planId), // ✅ Added planId
+        status: editMember.status, // Added status
+        planId: parseInt(editMember.planId), // Added planId
       };
 
-      // ✅ FIX: Make API call using axiosInstance and BaseUrl with correct URL
+      // Make API call using axiosInstance and BaseUrl with correct URL
       const response = await axiosInstance.put(
         `${BaseUrl}members/update/${editMember.id}`,
         payload
       );
 
-      // ✅ FIX: If API call is successful, update member in local state
+      // If API call is successful, update member in local state
       if (response.data && response.data.success) {
         // Update member in state with response data
         setMembers(
@@ -363,20 +338,19 @@ const fetchMembersByAdminId = async () => {
     setShowViewModal(true);
   };
 
-  // ✅ FIX: Handle edit form open with correct field mapping
+  // Handle edit form open with correct field mapping
   const handleEditFormOpen = (member) => {
     setEditMember({
       id: member.id,
-      fullName: member.name, // ✅ Map 'name' to 'fullName'
+      fullName: member.name, // Map 'name' to 'fullName'
       email: member.email,
       phone: member.phone,
       gender: member.gender,
       address: member.address,
-      dateOfBirth: member.dob, // ✅ Map 'dob' to 'dateOfBirth'
+      dateOfBirth: member.dob, // Map 'dob' to 'dateOfBirth'
       interestedIn: member.interestedIn,
-      status: member.status, // ✅ Map 'status'
-      // branchId: member.branchId, // Commented out branchId
-      planId: member.planId, // ✅ Map 'planId'
+      status: member.status, // Map 'status'
+      planId: member.planId, // Map 'planId'
     });
     setShowEditForm(true);
   };
@@ -467,9 +441,6 @@ const fetchMembersByAdminId = async () => {
     switch (status) {
       case "Active":
         return "bg-success";
-      // case "Expired": return "bg-danger";
-      // case "Frozen": return "bg-info";
-      // case "Pending": return "bg-warning";
       case "Inactive":
         return "bg-secondary";
       default:
@@ -477,19 +448,33 @@ const fetchMembersByAdminId = async () => {
     }
   };
 
-// Get branch name by ID
-// const getBranchNameById = (branchId) => { // Commented out getBranchNameById function
-//   if (!branchId || branches.length === 0) return "Unknown Branch";
-//   const branch = branches.find((b) => b.id === parseInt(branchId));
-//   return branch ? branch.name : "Unknown Branch";
-// };
+  // Get plan name by ID
+  const getPlanNameById = (planId) => {
+    if (!planId || apiPlans.length === 0) return "Unknown Plan";
+    const plan = apiPlans.find((p) => p.id === parseInt(planId));
+    return plan ? plan.name : "Unknown Plan";
+  };
 
-// Get plan name by ID
-const getPlanNameById = (planId) => {
-  if (!planId || apiPlans.length === 0) return "Unknown Plan";
-  const plan = apiPlans.find((p) => p.id === parseInt(planId));
-  return plan ? plan.name : "Unknown Plan";
-};
+  // Filter plans based on "Interested In" selection
+  const getFilteredPlans = (interestedIn) => {
+    if (!plansLoaded || apiPlans.length === 0) return [];
+    
+    switch (interestedIn) {
+      case "Personal Training":
+        return apiPlans.filter(plan => plan.type === "personal");
+      case "Group Classes":
+        return apiPlans.filter(plan => plan.type === "group");
+      case "General":
+        return apiPlans.filter(plan => plan.trainerType === "general");
+      case "Both":
+        return apiPlans; // Show all plans
+      default:
+        return []; // No selection, return empty array
+    }
+  };
+
+  // Add missing state
+  const [membersLoading, setMembersLoading] = useState(false);
 
   return (
     <div className="container-fluid py-2 py-md-4">
@@ -531,27 +516,6 @@ const getPlanNameById = (planId) => {
             />
           </div>
         </div>
-        {/* Commented out branch filter */}
-        {/* <div className="col-12 col-md-4">
-          <select
-            className="form-select"
-            value={filterBranch}
-            onChange={(e) => setFilterBranch(e.target.value)}
-          >
-            <option value="">All Branches</option>
-            {branchesLoading ? (
-              <option>Loading branches...</option>
-            ) : branchesError ? (
-              <option className="text-danger">{branchesError}</option>
-            ) : (
-              branches.map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {branch.name}
-                </option>
-              ))
-            )}
-          </select>
-        </div> */}
         <div className="col-12 col-md-4">
           <select
             className="form-select"
@@ -560,10 +524,17 @@ const getPlanNameById = (planId) => {
           >
             <option value="">All Status</option>
             <option value="Active">Active</option>
-            {/* <option value="Expired">Expired</option>
-            <option value="Frozen">Frozen</option>
-            <option value="Pending">Pending</option> */}
             <option value="Inactive">Inactive</option>
+          </select>
+        </div>
+        <div className="col-12 col-md-4">
+          <select
+            className="form-select"
+            value={filterExpiring}
+            onChange={(e) => setFilterExpiring(e.target.value)}
+          >
+            <option value="">All Members</option>
+            <option value="expiring">Expiring in 7 Days</option>
           </select>
         </div>
       </div>
@@ -581,9 +552,8 @@ const getPlanNameById = (planId) => {
                     <th>Phone</th>
                     <th>Email</th>
                     <th>Gender</th>
-                    {/* <th>Branch</th> Commented out Branch column */}
                     <th>Plan</th>
-                    <th>Start Date</th>
+                    <th>Expiry Date</th>
                     <th>Status</th>
                     <th className="text-center">Actions</th>
                   </tr>
@@ -607,9 +577,13 @@ const getPlanNameById = (planId) => {
                         <td>{member.phone}</td>
                         <td>{member.email}</td>
                         <td>{member.gender}</td>
-                        {/* <td>{getBranchNameById(member.branchId)}</td> Commented out Branch display */}
                         <td>{getPlanNameById(member.planId)}</td>
-                        <td>{new Date(member.expiry).toLocaleDateString()}</td>
+                        <td>
+                          {new Date(member.expiry).toLocaleDateString()}
+                          {isExpiringIn7Days(member.expiry) && (
+                            <span className="badge bg-warning ms-2">Expiring Soon</span>
+                          )}
+                        </td>
                         <td>
                           <span
                             className={`badge ${getStatusClass(member.status)}`}
@@ -770,17 +744,15 @@ const getPlanNameById = (planId) => {
                     <div className="col-6">
                       <strong>Gender:</strong> {member.gender}
                     </div>
-                    {/* Commented out Branch display */}
-                    {/* <div className="col-6">
-                      <strong>Branch:</strong>{" "}
-                      {getBranchNameById(member.branchId)}
-                    </div> */}
                     <div className="col-6">
                       <strong>Plan:</strong> {getPlanNameById(member.planId)}
                     </div>
                     <div className="col-6">
                       <strong>Expiry:</strong>{" "}
                       {new Date(member.expiry).toLocaleDateString()}
+                      {isExpiringIn7Days(member.expiry) && (
+                        <span className="badge bg-warning ms-2">Expiring Soon</span>
+                      )}
                     </div>
                     <div className="col-12">
                       <strong>Email:</strong> {member.email}
@@ -795,7 +767,7 @@ const getPlanNameById = (planId) => {
         </div>
       </div>
 
-      {/* Add Member Modal - Fixed with editable start date, Interested In section, email, password, and status */}
+      {/* Add Member Modal */}
       {showAddForm && (
         <div
           className="modal fade show d-block"
@@ -977,7 +949,6 @@ const getPlanNameById = (planId) => {
                         </div>
                       </div>
                     </div>
-                    {/* Added Interested In section */}
                     <div className="col-12">
                       <label className="form-label">
                         Interested In <span className="text-danger">*</span>
@@ -993,12 +964,13 @@ const getPlanNameById = (planId) => {
                             checked={
                               newMember.interestedIn === "Personal Training"
                             }
-                            onChange={(e) =>
+                            onChange={(e) => {
                               setNewMember({
                                 ...newMember,
                                 interestedIn: e.target.value,
-                              })
-                            }
+                                planId: "", // Reset plan selection when interested in changes
+                              });
+                            }}
                             required
                           />
                           <label
@@ -1013,22 +985,25 @@ const getPlanNameById = (planId) => {
                             className="form-check-input"
                             type="radio"
                             name="interestedIn"
-                            id="groupClasses"
-                            value="Group Classes"
-                            checked={newMember.interestedIn === "Group Classes"}
-                            onChange={(e) =>
+                            id="general"
+                            value="General"
+                            checked={
+                              newMember.interestedIn === "General"
+                            }
+                            onChange={(e) => {
                               setNewMember({
                                 ...newMember,
                                 interestedIn: e.target.value,
-                              })
-                            }
+                                planId: "", // Reset plan selection when interested in changes
+                              });
+                            }}
                             required
                           />
                           <label
                             className="form-check-label"
-                            htmlFor="groupClasses"
+                            htmlFor="general"
                           >
-                            Group Classes
+                            General
                           </label>
                         </div>
                         <div className="form-check">
@@ -1036,19 +1011,23 @@ const getPlanNameById = (planId) => {
                             className="form-check-input"
                             type="radio"
                             name="interestedIn"
-                            id="both"
-                            value="Both"
-                            checked={newMember.interestedIn === "Both"}
-                            onChange={(e) =>
+                            id="groupClasses"
+                            value="Group Classes"
+                            checked={newMember.interestedIn === "Group Classes"}
+                            onChange={(e) => {
                               setNewMember({
                                 ...newMember,
                                 interestedIn: e.target.value,
-                              })
-                            }
+                                planId: "", // Reset plan selection when interested in changes
+                              });
+                            }}
                             required
                           />
-                          <label className="form-check-label" htmlFor="both">
-                            Both
+                          <label
+                            className="form-check-label"
+                            htmlFor="groupClasses"
+                          >
+                            Group Classes
                           </label>
                         </div>
                       </div>
@@ -1067,38 +1046,6 @@ const getPlanNameById = (planId) => {
                         }
                       ></textarea>
                     </div>
-                    {/* Commented out Branch field */}
-                    {/* <div className="col-12 col-md-6">
-                      <label className="form-label">
-                        Branch <span className="text-danger">*</span>
-                      </label>
-                      <select
-                        className="form-select"
-                        value={newMember.branchId}
-                        onChange={(e) =>
-                          setNewMember({
-                            ...newMember,
-                            branchId: e.target.value,
-                          })
-                        }
-                        required
-                      >
-                        <option value="">Select Branch</option>
-                        {branchesLoading ? (
-                          <option>Loading branches...</option>
-                        ) : branchesError ? (
-                          <option className="text-danger">
-                            {branchesError}
-                          </option>
-                        ) : (
-                          branches.map((branch) => (
-                            <option key={branch.id} value={branch.id}>
-                              {branch.name}
-                            </option>
-                          ))
-                        )}
-                      </select>
-                    </div> */}
                     <div className="col-12 col-md-6">
                       <label className="form-label">
                         Plan <span className="text-danger">*</span>
@@ -1128,10 +1075,15 @@ const getPlanNameById = (planId) => {
                             })
                           }
                           required
+                          disabled={!newMember.interestedIn} // Disable if no interest selected
                         >
-                          <option value="">Select Plan</option>
+                          <option value="">
+                            {newMember.interestedIn
+                              ? "Select Plan"
+                              : "Please select 'Interested In' first"}
+                          </option>
                           {plansLoaded &&
-                            apiPlans.map((plan) => (
+                            getFilteredPlans(newMember.interestedIn).map((plan) => (
                               <option key={plan.id} value={plan.id}>
                                 {plan.name} - {plan.price} ({plan.validity}{" "}
                                 days)
@@ -1234,7 +1186,7 @@ const getPlanNameById = (planId) => {
         </div>
       )}
 
-      {/* ✅ FIX: Edit Member Modal - Fixed with Status field and correct API payload */}
+      {/* Edit Member Modal */}
       {showEditForm && (
         <div
           className="modal fade show d-block"
@@ -1317,33 +1269,8 @@ const getPlanNameById = (planId) => {
                       >
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
-                        {/* <option value="Expired">Expired</option>
-                        <option value="Frozen">Frozen</option>
-                        <option value="Pending">Pending</option> */}
                       </select>
                     </div>
-                    {/* Commented out Branch field */}
-                    {/* <div className="col-12 col-md-6">
-                      <label className="form-label">Branch</label>
-                      <select
-                        className="form-select"
-                        value={editMember.branchId}
-                        onChange={(e) =>
-                          setEditMember({
-                            ...editMember,
-                            branchId: e.target.value,
-                          })
-                        }
-                        required
-                      >
-                        <option value="">Select Branch</option>
-                        {branches.map((branch) => (
-                          <option key={branch.id} value={branch.id}>
-                            {branch.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div> */}
                     <div className="col-12 col-md-6">
                       <label className="form-label">Membership Plan</label>
                       <select
@@ -1356,10 +1283,15 @@ const getPlanNameById = (planId) => {
                           })
                         }
                         required
+                        disabled={!editMember.interestedIn} // Disable if no interest selected
                       >
-                        <option value="">Select Plan</option>
+                        <option value="">
+                          {editMember.interestedIn
+                            ? "Select Plan"
+                            : "Please select 'Interested In' first"}
+                        </option>
                         {plansLoaded &&
-                          apiPlans.map((plan) => (
+                          getFilteredPlans(editMember.interestedIn).map((plan) => (
                             <option key={plan.id} value={plan.id}>
                               {plan.name} - {plan.price} ({plan.validity} days)
                             </option>
@@ -1412,7 +1344,6 @@ const getPlanNameById = (planId) => {
                         <option value="Other">Other</option>
                       </select>
                     </div>
-                    {/* Added Interested In section to Edit form */}
                     <div className="col-12">
                       <label className="form-label">Interested In</label>
                       <div className="d-flex gap-3">
@@ -1426,12 +1357,13 @@ const getPlanNameById = (planId) => {
                             checked={
                               editMember.interestedIn === "Personal Training"
                             }
-                            onChange={(e) =>
+                            onChange={(e) => {
                               setEditMember({
                                 ...editMember,
                                 interestedIn: e.target.value,
-                              })
-                            }
+                                planId: "", // Reset plan selection when interested in changes
+                              });
+                            }}
                           />
                           <label
                             className="form-check-label"
@@ -1445,23 +1377,24 @@ const getPlanNameById = (planId) => {
                             className="form-check-input"
                             type="radio"
                             name="editInterestedIn"
-                            id="editGroupClasses"
-                            value="Group Classes"
+                            id="editGeneral"
+                            value="General"
                             checked={
-                              editMember.interestedIn === "Group Classes"
+                              editMember.interestedIn === "General"
                             }
-                            onChange={(e) =>
+                            onChange={(e) => {
                               setEditMember({
                                 ...editMember,
                                 interestedIn: e.target.value,
-                              })
-                            }
+                                planId: "", // Reset plan selection when interested in changes
+                              });
+                            }}
                           />
                           <label
                             className="form-check-label"
-                            htmlFor="editGroupClasses"
+                            htmlFor="editGeneral"
                           >
-                            Group Classes
+                            General
                           </label>
                         </div>
                         <div className="form-check">
@@ -1469,21 +1402,24 @@ const getPlanNameById = (planId) => {
                             className="form-check-input"
                             type="radio"
                             name="editInterestedIn"
-                            id="editBoth"
-                            value="Both"
-                            checked={editMember.interestedIn === "Both"}
-                            onChange={(e) =>
+                            id="editGroupClasses"
+                            value="Group Classes"
+                            checked={
+                              editMember.interestedIn === "Group Classes"
+                            }
+                            onChange={(e) => {
                               setEditMember({
                                 ...editMember,
                                 interestedIn: e.target.value,
-                              })
-                            }
+                                planId: "", // Reset plan selection when interested in changes
+                              });
+                            }}
                           />
                           <label
                             className="form-check-label"
-                            htmlFor="editBoth"
+                            htmlFor="editGroupClasses"
                           >
-                            Both
+                            Group Classes
                           </label>
                         </div>
                       </div>
@@ -1541,7 +1477,7 @@ const getPlanNameById = (planId) => {
         </div>
       )}
 
-      {/* Renew Plan Modal - Fixed */}
+      {/* Renew Plan Modal */}
       {showRenewForm && (
         <div
           className="modal fade show d-block"
@@ -1661,7 +1597,7 @@ const getPlanNameById = (planId) => {
         </div>
       )}
 
-      {/* View Member Modal - Fixed with Interested In field */}
+      {/* View Member Modal */}
       {showViewModal && selectedMember && (
         <div
           className="modal fade show d-block"
@@ -1718,11 +1654,6 @@ const getPlanNameById = (planId) => {
                         <strong>Gender:</strong>
                         <div>{selectedMember.gender}</div>
                       </div>
-                      {/* Commented out Branch display */}
-                      {/* <div className="col-12 col-sm-6">
-                        <strong>Branch:</strong>
-                        <div>{getBranchNameById(selectedMember.branchId)}</div>
-                      </div> */}
                       <div className="col-12 col-sm-6">
                         <strong>Plan:</strong>
                         <div>{getPlanNameById(selectedMember.planId)}</div>
@@ -1739,6 +1670,9 @@ const getPlanNameById = (planId) => {
                         <strong>Expiry:</strong>
                         <div>
                           {new Date(selectedMember.expiry).toLocaleDateString()}
+                          {isExpiringIn7Days(selectedMember.expiry) && (
+                            <span className="badge bg-warning ms-2">Expiring Soon</span>
+                          )}
                         </div>
                       </div>
                       <div className="col-12 col-sm-6">
@@ -1751,7 +1685,6 @@ const getPlanNameById = (planId) => {
                           {new Date(selectedMember.dob).toLocaleDateString()}
                         </div>
                       </div>
-                      {/* Added Interested In field to View modal */}
                       <div className="col-12 col-sm-6">
                         <strong>Interested In:</strong>
                         <div>{selectedMember.interestedIn}</div>

@@ -279,9 +279,9 @@ const fetchAllData = async () => {
                         <button className="btn btn-sm btn-outline-secondary" title="View" onClick={() => handleView(gymClass)}>
                             <FaEye size={14} />
                         </button>
-                        <button className="btn btn-sm btn-outline-danger" title="Delete" onClick={() => handleDeleteClick(gymClass)}>
+                        {/* <button className="btn btn-sm btn-outline-danger" title="Delete" onClick={() => handleDeleteClick(gymClass)}>
                             <FaTrashAlt size={14} />
-                        </button>
+                        </button> */}
                     </div>
                 </div>
                 <div className="row mb-2">
@@ -364,9 +364,9 @@ const fetchAllData = async () => {
                                                         <button className="btn btn-sm btn-outline-secondary" title="View" onClick={() => handleView(c)}>
                                                             <FaEye size={14} />
                                                         </button>
-                                                        <button className="btn btn-sm btn-outline-danger" title="Delete" onClick={() => handleDeleteClick(c)}>
+                                                        {/* <button className="btn btn-sm btn-outline-danger" title="Delete" onClick={() => handleDeleteClick(c)}>
                                                             <FaTrashAlt size={14} />
-                                                        </button>
+                                                        </button> */}
                                                     </div>
                                                 </td>
                                             </tr>

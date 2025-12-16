@@ -199,7 +199,7 @@ const RequestPlan = () => {
         <Col md={3} sm={6}>
           <Card className="shadow-sm border-0 h-100 bg-info bg-opacity-10">
             <Card.Body className="text-center">
-              <h2 className="display-6 text-info">${stats.totalAmount.toFixed(2)}</h2>
+              <h2 className="display-6 text-info">₹{stats.totalAmount.toFixed(2)}</h2>
               <p className="text-muted mb-0">Total Amount</p>
             </Card.Body>
           </Card>
@@ -258,7 +258,7 @@ const RequestPlan = () => {
                             <StatusBadge status={request.status} />
                           </td>
                           <td className="fw-bold text-primary">
-                            ${parseFloat(request.price).toFixed(2)}
+                            ₹{parseFloat(request.price).toFixed(2)}
                           </td>
                           <td>
                             <div className="small">
@@ -283,7 +283,7 @@ const RequestPlan = () => {
                     <tfoot>
                       <tr className="table-light">
                         <td colSpan="3" className="text-end fw-bold">Total:</td>
-                        <td className="fw-bold text-primary">${stats.totalAmount.toFixed(2)}</td>
+                        <td className="fw-bold text-primary">₹{stats.totalAmount.toFixed(2)}</td>
                         <td colSpan="4"></td>
                       </tr>
                     </tfoot>
