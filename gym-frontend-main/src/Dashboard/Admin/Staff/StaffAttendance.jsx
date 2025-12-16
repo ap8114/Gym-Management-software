@@ -267,12 +267,12 @@ const StaffAttendance = () => {
             : r
         ));
         
-        // Using the correct API endpoint for deleting attendance records
-        // Send the member attendance ID in the URL path
+        // Using correct API endpoint for deleting attendance records
+        // Send member attendance ID in URL path
         const response = await axiosInstance.delete(`${BaseUrl}memberattendence/delete/${selectedRecord.attendance_id}`);
         
-        if (response.data.success) {
-          // Remove the deleted record from state
+        if (response.data && response.data.success) {
+          // Remove deleted record from state
           setRecords(prev => prev.filter(r => r.attendance_id !== selectedRecord.attendance_id));
           alert(`Deleted attendance record for ${selectedRecord.staff_name} (${selectedRecord.role}).`);
         } else {
@@ -282,7 +282,7 @@ const StaffAttendance = () => {
               ? { ...r, deleting: false } 
               : r
           ));
-          alert(response.data.message || 'Delete failed');
+          alert(response.data?.message || 'Delete failed');
         }
       } catch (err) {
         console.error('Error deleting attendance record:', err);
@@ -545,14 +545,14 @@ const StaffAttendance = () => {
           </div>
         )}
         <div className="d-flex justify-content-end gap-1">
-          <button
+          {/* <button
             className="btn btn-sm action-btn"
             title="View"
             onClick={() => handleView(record)}
             style={{ borderColor: customColor, color: customColor }}
           >
             <FaEye size={12} />
-          </button>
+          </button> */}
           {/* <button
             className="btn btn-sm action-btn"
             title="Edit"
@@ -725,14 +725,14 @@ const StaffAttendance = () => {
                         <td className="text-nowrap" style={{ padding: '0.5rem' }}>{getStatusBadge(record.status)}</td>
                         <td className="text-center text-nowrap" style={{ padding: '0.5rem' }}>
                           <div className="d-flex justify-content-center gap-1">
-                            <button
+                            {/* <button
                               className="btn btn-sm action-btn"
                               title="View"
                               onClick={() => handleView(record)}
                               style={{ borderColor: customColor, color: customColor }}
                             >
                               <FaEye size={12} />
-                            </button>
+                            </button> */}
                             {/* <button
                               className="btn btn-sm action-btn"
                               title="Edit"
@@ -789,7 +789,7 @@ const StaffAttendance = () => {
         </div>
       </div>
 
-      {/* MAIN MODAL */}
+      {/* MAIN MODAL - FIXED: Using controlled inputs for view/edit modes */}
       {isModalOpen && (
         <div
           className="modal fade show"
@@ -826,7 +826,8 @@ const StaffAttendance = () => {
                       <select
                         name="staff_id"
                         className="form-select form-select-sm"
-                        defaultValue={selectedRecord?.staff_id || ''}
+                        value={selectedRecord?.staff_id || ''}
+                        onChange={(e) => setSelectedRecord({...selectedRecord, staff_id: e.target.value})}
                         disabled={modalType === 'view'}
                         required
                       >
@@ -844,7 +845,8 @@ const StaffAttendance = () => {
                         name="date"
                         type="date"
                         className="form-control form-control-sm"
-                        defaultValue={selectedRecord?.date || new Date().toISOString().split('T')[0]}
+                        value={selectedRecord?.date || new Date().toISOString().split('T')[0]}
+                        onChange={(e) => setSelectedRecord({...selectedRecord, date: e.target.value})}
                         readOnly={modalType === 'view'}
                         required
                       />
@@ -854,7 +856,8 @@ const StaffAttendance = () => {
                       <select
                         name="shift_id"
                         className="form-select form-select-sm"
-                        defaultValue={selectedRecord?.shift_id || ''}
+                        value={selectedRecord?.shift_id || ''}
+                        onChange={(e) => setSelectedRecord({...selectedRecord, shift_id: e.target.value})}
                         disabled={modalType === 'view'}
                       >
                         <option value="">No Shift</option>
@@ -870,7 +873,8 @@ const StaffAttendance = () => {
                       <select
                         name="mode"
                         className="form-select form-select-sm"
-                        defaultValue={selectedRecord?.mode || 'QR'}
+                        value={selectedRecord?.mode || 'QR'}
+                        onChange={(e) => setSelectedRecord({...selectedRecord, mode: e.target.value})}
                         disabled={modalType === 'view'}
                         required
                       >
@@ -883,7 +887,8 @@ const StaffAttendance = () => {
                       <select
                         name="status"
                         className="form-select form-select-sm"
-                        defaultValue={selectedRecord?.status || 'Present'}
+                        value={selectedRecord?.status || 'Present'}
+                        onChange={(e) => setSelectedRecord({...selectedRecord, status: e.target.value})}
                         disabled={modalType === 'view'}
                         required
                       >
@@ -899,7 +904,8 @@ const StaffAttendance = () => {
                         name="checkin_time"
                         type="datetime-local"
                         className="form-control form-control-sm"
-                        defaultValue={selectedRecord?.checkin_time || ''}
+                        value={selectedRecord?.checkin_time || ''}
+                        onChange={(e) => setSelectedRecord({...selectedRecord, checkin_time: e.target.value})}
                         readOnly={modalType === 'view'}
                       />
                     </div>
@@ -909,7 +915,8 @@ const StaffAttendance = () => {
                         name="checkout_time"
                         type="datetime-local"
                         className="form-control form-control-sm"
-                        defaultValue={selectedRecord?.checkout_time || ''}
+                        value={selectedRecord?.checkout_time || ''}
+                        onChange={(e) => setSelectedRecord({...selectedRecord, checkout_time: e.target.value})}
                         readOnly={modalType === 'view'}
                       />
                     </div>
@@ -920,7 +927,8 @@ const StaffAttendance = () => {
                         type="text"
                         className="form-control form-control-sm"
                         placeholder="Reason for absence or late entry..."
-                        defaultValue={selectedRecord?.notes || ''}
+                        value={selectedRecord?.notes || ''}
+                        onChange={(e) => setSelectedRecord({...selectedRecord, notes: e.target.value})}
                         readOnly={modalType === 'view'}
                       />
                     </div>
