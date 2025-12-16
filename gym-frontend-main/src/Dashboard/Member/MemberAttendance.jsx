@@ -8,10 +8,7 @@ const MemberAttendance = () => {
   const [search, setSearch] = useState("");
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewMember, setViewMember] = useState(null);
-  const [filters, setFilters] = useState({
-    memberId: "",
-    memberName: "",
-  });
+  const [dateFilter, setDateFilter] = useState(""); // New date filter
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -25,6 +22,29 @@ const MemberAttendance = () => {
   useEffect(() => {
     fetchAttendanceData();
   }, [memberId, branchId]);
+
+  // Function to format date consistently
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    // Get the date in YYYY-MM-DD format in local timezone
+    return date.toLocaleDateString('en-GB', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).split('/').reverse().join('-');
+  };
+
+  // Function to format date for display in UI
+  const formatDateForUI = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   // Function to fetch attendance data
   const fetchAttendanceData = async () => {
@@ -50,13 +70,14 @@ const MemberAttendance = () => {
           attendance_id: entry.id,
           member_id: entry.memberId,
           name: entry.fullName || `Member ID: ${entry.memberId}`,
-          status: entry.computedStatus === 'Active' ? 'Present' :
-            entry.computedStatus === 'Completed' ? 'Present' : 'Absent',
+          status: entry.status || 'Present', // Using status directly from API
           checkin_time: entry.checkIn ? new Date(entry.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "",
           checkout_time: entry.checkOut ? new Date(entry.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "",
+          checkin_date: entry.checkIn ? formatDateForDisplay(entry.checkIn) : "", // Using our new date formatting function
+          checkin_date_ui: entry.checkIn ? formatDateForUI(entry.checkIn) : "", // For UI display
           mode: entry.mode,
           notes: entry.notes,
-          computedStatus: entry.computedStatus,
+          computedStatus: entry.status, // Using status directly from API
           checkedOut: entry.checkOut ? true : false // Add checkedOut status
         }));
 
@@ -173,17 +194,13 @@ const MemberAttendance = () => {
     }
   };
 
-  // Filtered attendance
+  // Filtered attendance with date filter
   const filteredAttendance = attendance.filter((m) => {
-    return (
-      (filters.memberId
-        ? m.member_id.toString().includes(filters.memberId)
-        : true) &&
-      (filters.memberName
-        ? m.name.toLowerCase().includes(filters.memberName.toLowerCase())
-        : true) &&
-      (search ? m.name.toLowerCase().includes(search.toLowerCase()) : true)
-    );
+    // If no date filter is set, return all records
+    if (!dateFilter) return true;
+    
+    // Filter by date - compare in YYYY-MM-DD format
+    return m.checkin_date === dateFilter;
   });
 
   return (
@@ -209,31 +226,18 @@ const MemberAttendance = () => {
         </div>
       ) : (
         <>
-          {/* Filters Row */}
+          {/* Date Filter Row */}
           <Row className="mb-4 g-2 g-md-3">
             <Col xs={12} sm={6} md={4}>
               <Form.Control
-                type="text"
-                placeholder="Filter by Member ID"
-                value={filters.memberId}
-                onChange={(e) =>
-                  setFilters({ ...filters, memberId: e.target.value })
-                }
-              />
-            </Col>
-            <Col xs={12} sm={6} md={4}>
-              <Form.Control
-                type="text"
-                placeholder="Filter by Member Name"
-                value={filters.memberName}
-                onChange={(e) =>
-                  setFilters({ ...filters, memberName: e.target.value })
-                }
+                type="date"
+                placeholder="Filter by date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
               />
             </Col>
             <Col xs={12} sm={6} md={4} className="d-flex justify-content-start justify-content-md-end">
-              <Button variant="outline-secondary me-2">Filter</Button>
-              <Button variant="outline-secondary">Export</Button>
+              <Button variant="outline-secondary me-2">Export</Button>
             </Col>
           </Row>
 
@@ -242,8 +246,8 @@ const MemberAttendance = () => {
             <Table bordered hover responsive className="align-middle">
               <thead style={{ backgroundColor: "#f8f9fa" }}>
                 <tr>
-                  <th>Attendance ID</th>
                   <th>Member ID</th>
+                  <th>Date</th>
                   <th>Check-in</th>
                   <th>Check-out</th>
                   <th>Mode</th>
@@ -254,14 +258,13 @@ const MemberAttendance = () => {
               <tbody>
                 {filteredAttendance.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="text-center text-muted">No attendance records found</td>
+                    <td colSpan="7" className="text-center text-muted">No attendance records found</td>
                   </tr>
                 ) : (
                   filteredAttendance.map((member) => (
                     <tr key={member.attendance_id}>
-                      <td>{member.attendance_id}</td>
                       <td>{member.member_id}</td>
-
+                      <td>{member.checkin_date_ui || "--"}</td>
                       <td>{member.checkin_time || "--"}</td>
                       <td>{member.checkout_time || "--"}</td>
                       <td>
@@ -374,9 +377,15 @@ const MemberAttendance = () => {
                   <Card.Body>
                     <Row className="mb-2">
                       <Col xs={6}>
+                        <small className="text-muted">Date:</small>
+                        <div>{member.checkin_date_ui || "--"}</div>
+                      </Col>
+                      <Col xs={6}>
                         <small className="text-muted">Check-in:</small>
                         <div>{member.checkin_time || "--"}</div>
                       </Col>
+                    </Row>
+                    <Row className="mb-2">
                       <Col xs={6}>
                         <small className="text-muted">Check-out:</small>
                         <div>{member.checkout_time || "--"}</div>
@@ -452,9 +461,9 @@ const MemberAttendance = () => {
                           ) : (
                             <>
                               <FaTimesCircle />
-                              <span className="ms-1">Check-out</span>
-                            </>
-                          )}
+                                  <span className="ms-1">Check-out</span>
+                                </>
+                              )}
                         </Button>
                       ) : (
                         <Button
@@ -499,9 +508,9 @@ const MemberAttendance = () => {
         <Modal.Body>
           {viewMember && (
             <>
-              <p><b>Attendance ID:</b> {viewMember.attendance_id}</p>
               <p><b>Member ID:</b> {viewMember.member_id}</p>
               <p><b>Name:</b> {viewMember.name}</p>
+              <p><b>Date:</b> {viewMember.checkin_date_ui || "--"}</p>
               <p><b>Check-in:</b> {viewMember.checkin_time || "--"}</p>
               <p><b>Check-out:</b> {viewMember.checkout_time || "--"}</p>
               <p><b>Mode:</b> {viewMember.mode || "--"}</p>

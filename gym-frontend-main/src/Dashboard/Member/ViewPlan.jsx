@@ -769,6 +769,8 @@ const ViewPlans = () => {
                 planType = 'GROUP';
               } else if (lowerType.includes('personal')) {
                 planType = 'PERSONAL';
+              } else if (lowerType.includes('member')) {
+                planType = 'MEMBER';
               }
             }
             
@@ -777,6 +779,8 @@ const ViewPlans = () => {
               type: planType, // ✅ Mapped type
               displayPrice: `₹${(plan.price || 0).toLocaleString()}`,
               numericPrice: plan.price || 0,
+              // Trainer type mapping
+              trainerType: plan.trainerType || 'general' // Default to 'general' if null
             };
           });
           
@@ -846,8 +850,14 @@ const ViewPlans = () => {
     return allPlans.filter(plan => plan.type === 'PERSONAL');
   }, [allPlans]);
 
+  // New filter for membership plans
+  const membershipPlans = useMemo(() => {
+    return allPlans.filter(plan => plan.type === 'MEMBER');
+  }, [allPlans]);
+
   console.log('Filtered Group Plans:', groupPlans);
   console.log('Filtered Personal Plans:', personalPlans);
+  console.log('Filtered Membership Plans:', membershipPlans);
 
   const handleBookNow = (plan, planType) => {
     setSelectedPlan({ ...plan, type: planType });
@@ -990,6 +1000,26 @@ const ViewPlans = () => {
               </span>
             )}
           </Button>
+          <Button
+            variant={activeTab === 'membership' ? 'primary' : 'outline-primary'}
+            onClick={() => setActiveTab('membership')}
+            className="px-3 px-md-4 py-2 fw-bold d-flex align-items-center justify-content-center gap-2 flex-grow-2"
+            style={{
+              backgroundColor: activeTab === 'membership' ? '#2f6a87' : 'transparent',
+              borderColor: '#2f6a87',
+              color: activeTab === 'membership' ? 'white' : '#2f6a87',
+              borderRadius: '12px',
+              fontSize: 'clamp(0.9rem, 2vw, 1.1rem)',
+              transition: 'all 0.3s ease',
+            }}
+          >
+            <span>Membership Plans</span>
+            {membershipPlans.length > 0 && (
+              <span className="badge bg-light text-dark ms-1">
+                {membershipPlans.length}
+              </span>
+            )}
+          </Button>
         </div>
 
         {/* Debug Info (Remove in production) */}
@@ -998,7 +1028,8 @@ const ViewPlans = () => {
             <small className="text-muted">
               Debug: Total Plans: {allPlans.length} | 
               Group: {groupPlans.length} | 
-              Personal: {personalPlans.length}
+              Personal: {personalPlans.length} |
+              Membership: {membershipPlans.length}
             </small>
           </div>
         )}
@@ -1175,6 +1206,102 @@ const ViewPlans = () => {
           </Row>
         )}
 
+        {/* Membership Plans */}
+        {activeTab === 'membership' && (
+          <Row className="g-3 g-md-4">
+            {membershipPlans.length === 0 ? (
+              <Col xs={12}>
+                <div className="text-center py-5">
+                  <div className="text-muted mb-2">No membership plans available.</div>
+                  <small className="text-muted">Membership plans will be added soon.</small>
+                </div>
+              </Col>
+            ) : (
+              membershipPlans.map((plan) => (
+                <Col xs={12} sm={6} lg={4} key={plan.id} className="d-flex">
+                  <Card className="h-100 shadow-sm border-0 flex-fill" style={{
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                    border: '1px solid #e9ecef'
+                  }}
+                    onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                    onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                  >
+                    <div style={{ height: '6px', backgroundColor: '#2f6a87', width: '100%' }}></div>
+                    <Card.Body className="d-flex flex-column p-3 p-md-4">
+                      <div className="text-center mb-2 mb-md-3">
+                        <div className="badge mb-2 px-3 py-1" style={{
+                          backgroundColor: '#2f6a87',
+                          color: 'white',
+                          fontSize: '0.75rem',
+                          borderRadius: '50px'
+                        }}>
+                          MEMBERSHIP PLAN
+                        </div>
+                        <h4 className="fw-bold mb-1" style={{ color: '#2f6a87', fontSize: 'clamp(1rem, 2.5vw, 1.2rem)' }}>{plan.name}</h4>
+                      </div>
+                      <ul className="list-unstyled mb-2 mb-md-3 flex-grow-1">
+                        <li className="mb-2 d-flex align-items-center gap-2">
+                          <div className="bg-light rounded-circle p-1" style={{ width: '32px', height: '32px' }}>
+                            <span className="text-muted" style={{ fontSize: '0.9rem' }}>🎯</span>
+                          </div>
+                          <div>
+                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>{plan.sessions} Sessions</div>
+                          </div>
+                        </li>
+                        <li className="mb-2 d-flex align-items-center gap-2">
+                          <div className="bg-light rounded-circle p-1" style={{ width: '32px', height: '32px' }}>
+                            <span className="text-muted" style={{ fontSize: '0.9rem' }}>📅</span>
+                          </div>
+                          <div>
+                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>Validity: {plan.validityDays} Days</div>
+                          </div>
+                        </li>
+                        <li className="mb-2 d-flex align-items-center gap-2">
+                          <div className="bg-light rounded-circle p-1" style={{ width: '32px', height: '32px' }}>
+                            <span className="text-muted" style={{ fontSize: '0.9rem' }}>👨‍🏫</span>
+                          </div>
+                          <div>
+                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
+                              Trainer Type: {plan.trainerType === 'personal' ? 'Personal' : 'General'}
+                            </div>
+                          </div>
+                        </li>
+                        <li className="mb-2 d-flex align-items-center gap-2">
+                          <div className="bg-light rounded-circle p-1" style={{ width: '32px', height: '32px' }}>
+                            <span className="text-muted" style={{ fontSize: '0.9rem' }}>💰</span>
+                          </div>
+                          <div>
+                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>Price: {plan.displayPrice}</div>
+                          </div>
+                        </li>
+                      </ul>
+                      <Button
+                        style={{
+                          backgroundColor: '#2f6a87',
+                          borderColor: '#2f6a87',
+                          transition: 'background-color 0.3s ease',
+                          borderRadius: '50px',
+                          padding: '8px 16px',
+                          fontSize: 'clamp(0.9rem, 2vw, 1rem)',
+                          fontWeight: '600'
+                        }}
+                        onMouseOver={(e) => e.target.style.backgroundColor = '#25556e'}
+                        onMouseOut={(e) => e.target.style.backgroundColor = '#2f6a87'}
+                        onClick={() => handleBookNow(plan, 'membership')}
+                        className="mt-auto fw-bold"
+                      >
+                        📅 Book Now
+                      </Button>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              ))
+            )}
+          </Row>
+        )}
+
         {/* Payment Modal */}
         <Modal show={showPaymentModal} onHide={() => {
           setShowPaymentModal(false);
@@ -1195,7 +1322,7 @@ const ViewPlans = () => {
                 <div className="text-center mb-3 p-3 rounded" style={{ backgroundColor: '#f0f7fa', border: '2px dashed #2f6a87', borderRadius: '12px' }}>
                   <h5 className="mb-2" style={{ color: '#333', fontSize: '1.1rem' }}>Booking Details</h5>
                   <p className="mb-1" style={{ fontSize: '0.95rem' }}>
-                    <strong>Plan:</strong> {selectedPlan?.name} ({selectedPlan?.type === 'personal' ? 'Personal' : 'Group'})
+                    <strong>Plan:</strong> {selectedPlan?.name} ({selectedPlan?.type === 'personal' ? 'Personal' : selectedPlan?.type === 'membership' ? 'Membership' : 'Group'})
                   </p>
                   <p className="mb-0">
                     <strong>Amount:</strong> <span className="fw-bold" style={{ fontSize: '1.2rem', color: '#2f6a87' }}>{selectedPlan?.displayPrice}</span>

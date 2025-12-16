@@ -484,7 +484,7 @@ const Account = () => {
           </div>
 
           {/* Membership Info */}
-          {/* <div className="card border-0 shadow-sm mb-4">
+          <div className="card border-0 shadow-sm mb-4">
             <div className="card-body">
               <h5 className="fw-bold mb-3">Membership Information</h5>
               <div className="row g-3">
@@ -565,7 +565,7 @@ const Account = () => {
                 </div>
               </div>
             </div>
-          </div> */}
+          </div>
 
           {/* Password Change Section */}
           <div className="card border-0 shadow-sm">
