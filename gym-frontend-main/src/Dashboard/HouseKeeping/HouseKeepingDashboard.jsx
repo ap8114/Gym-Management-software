@@ -48,13 +48,15 @@ const HouseKeepingDashboard = () => {
 
   const user = getUserFromStorage();
   const name = user?.fullName || 'Housekeeping Staff';
+  const adminId = user?.adminId || 'null';
 
   // Fetch data from API
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const response = await axiosInstance.get('housekeepingdashboard');
+        // ?adminId=${adminId}
+        const response = await axiosInstance.get(`housekeepingdashboard?adminId=${adminId}`);
         if (response.data && response.data.success) {
           setDashboardData(response.data.housekeepingDashboard);
         } else {
@@ -321,11 +323,11 @@ const HouseKeepingDashboard = () => {
                     }
                   </p>
                 </div>
-                <div className="ms-2">
+                {/* <div className="ms-2">
                   <button className="btn btn-sm btn-light rounded-circle p-1">
                     <RiArrowRightSLine className="text-primary" />
                   </button>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
@@ -350,11 +352,11 @@ const HouseKeepingDashboard = () => {
                     <span className="text-success small fw-medium">{tasksPercentage}%</span>
                   </div>
                 </div>
-                <div className="ms-2">
+                {/* <div className="ms-2">
                   <button className="btn btn-sm btn-light rounded-circle p-1">
                     <RiArrowRightSLine className="text-success" />
                   </button>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
@@ -374,11 +376,11 @@ const HouseKeepingDashboard = () => {
                   <h3 className="h6 fw-semibold mb-1">Pending Maintenance</h3>
                   <p className="text-muted small mb-0">Requires attention</p>
                 </div>
-                <div className="ms-2">
+                {/* <div className="ms-2">
                   <button className="btn btn-sm btn-light rounded-circle p-1">
                     <RiArrowRightSLine className="text-warning" />
                   </button>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
@@ -403,11 +405,11 @@ const HouseKeepingDashboard = () => {
                     </span>
                   </div>
                 </div>
-                <div className="ms-2">
+                {/* <div className="ms-2">
                   <button className="btn btn-sm btn-light rounded-circle p-1">
                     <RiArrowRightSLine className="text-info" />
                   </button>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>

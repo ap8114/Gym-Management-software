@@ -67,20 +67,20 @@
 //    const handlePaymentSubmit = async (e) => {
 //       e.preventDefault();
 //       const upi = paymentDetails.upi.trim();
-  
+
 //       if (!upi) {
 //         setBookingMessage('Please enter a valid UPI ID.');
 //         return;
 //       }
-  
+
 //       if (!memberId || !adminId || !selectedPlan) {
 //         setBookingMessage('Missing user or plan details. Please log in again.');
 //         return;
 //       }
-  
+
 //       setBookingStatus('pending');
 //       setBookingMessage('');
-  
+
 //       try {
 //         const payload = {
 //           memberId: memberId,
@@ -90,18 +90,18 @@
 //           price: selectedPlan.numericPrice,
 //           upiId: upi,
 //         };
-  
+
 //         console.log('Booking payload:', payload);
-  
+
 //         const response = await axiosInstance.post('booking/create', payload);
 //         console.log('Booking response:', response.data);
-  
+
 //         if (response.data.success) {
 //           setBookingStatus('success');
 //           setBookingMessage(response.data.message || 'Booking request sent to admin.');
 //           setShowPaymentModal(false);
 //           setPaymentDetails({ upi: '' });
-  
+
 //           // Refresh bookings
 //           const bookingsRes = await axiosInstance.get('booking/requests');
 //           if (bookingsRes.data.success && Array.isArray(bookingsRes.data.bookings)) {
@@ -140,7 +140,7 @@
 
 //   return (
 //     <div style={{ background: "#f8f9fa"}}>
-      
+
 //       {/* ================= HERO SECTION ================= */}
 //       <div
 //         style={{
@@ -169,7 +169,7 @@
 //                 {settings.description}
 //               </p>
 
-             
+
 //             </div>
 
 //             {/* RIGHT LOGO */}
@@ -357,10 +357,9 @@ const DynamicPage = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [bookingMessage, setBookingMessage] = useState('');
   const [bookingStatus, setBookingStatus] = useState(null); // 'pending', 'success', 'error'
-  
-  // जो variables undefined हैं, उन्हें state में ले लें
-  const [memberId, setMemberId] = useState(null); // ये आपको किसी auth context से मिलना चाहिए
-  const [branchId, setBranchId] = useState(null); // ये settings से आ सकता है
+
+  const [memberId, setMemberId] = useState(null);
+  const [branchId, setBranchId] = useState(null);
 
   useEffect(() => {
     const fetchPageData = async () => {
@@ -385,7 +384,7 @@ const DynamicPage = () => {
         }
 
         setSettings(appSettings);
-        
+
         // Branch ID settings से set करें (अगर available हो)
         if (appSettings.branchId) {
           setBranchId(appSettings.branchId);
@@ -397,11 +396,11 @@ const DynamicPage = () => {
         );
 
         setPlans(plansRes.data?.plans || []);
-        
+
         // 4️⃣ Fetch current user/member data (अगर authenticated हो)
         // ये part आपको अपने authentication system के according implement करना होगा
         // fetchCurrentUser();
-        
+
       } catch (err) {
         console.error("Dynamic page error:", err);
       } finally {
@@ -426,10 +425,10 @@ const DynamicPage = () => {
 
 
     const price =
-  selectedPlan.numericPrice ??
-  (typeof selectedPlan.price === 'string'
-    ? selectedPlan.price.replace(/[^\d.]/g, '')
-    : selectedPlan.price);
+      selectedPlan.numericPrice ??
+      (typeof selectedPlan.price === 'string'
+        ? selectedPlan.price.replace(/[^\d.]/g, '')
+        : selectedPlan.price);
     if (!upi) {
       setBookingMessage('Please enter a valid UPI ID.');
       return;
@@ -437,7 +436,7 @@ const DynamicPage = () => {
 
     // Temporary memberId - ये आपको actual authentication से लेना होगा
     const tempMemberId = memberId || "temp-member-id";
-    
+
     if (!tempMemberId || !adminId || !selectedPlan) {
       setBookingMessage('Missing user or plan details. Please log in again.');
       return;
@@ -447,15 +446,15 @@ const DynamicPage = () => {
     setBookingMessage('');
 
     try {
-     const payload = {
-  memberId: tempMemberId,
-  classId: selectedPlan.id,
-  branchId: branchId || settings?.branchId || "default-branch",
-  adminId: adminId,
-  price: price, // ✅ FIXED
-  upiId: upi,
-  planId: selectedPlan.id,
-};
+      const payload = {
+        memberId: tempMemberId,
+        classId: selectedPlan.id,
+        branchId: branchId || settings?.branchId || "default-branch",
+        adminId: adminId,
+        price: price, // ✅ FIXED
+        upiId: upi,
+        planId: selectedPlan.id,
+      };
 
       console.log('Booking payload:', payload);
 
@@ -466,14 +465,14 @@ const DynamicPage = () => {
       if (response.data.success) {
         setBookingStatus('success');
         setBookingMessage(response.data.message || 'Booking request sent to admin.');
-        
+
         // Auto close modal after success
         setTimeout(() => {
           setShowPaymentModal(false);
           setPaymentDetails({ upi: '' });
           setSelectedPlan(null);
         }, 2000);
-        
+
       } else {
         const errorMsg = response.data.message || 'Booking failed. Please try again.';
         setBookingMessage(errorMsg);
@@ -503,8 +502,8 @@ const DynamicPage = () => {
   }
 
   return (
-    <div style={{ background: "#f8f9fa"}}>
-      
+    <div style={{ background: "#f8f9fa" }}>
+
       {/* ================= HERO SECTION ================= */}
       <div
         style={{
@@ -626,25 +625,25 @@ const DynamicPage = () => {
       </div>
 
       {/* ================= PAYMENT MODAL ================= */}
-      <Modal 
-        show={showPaymentModal} 
+      <Modal
+        show={showPaymentModal}
         onHide={() => {
           setShowPaymentModal(false);
           setBookingMessage('');
           setBookingStatus(null);
-        }} 
-        centered 
+        }}
+        centered
         size="md"
       >
-        <Modal.Header 
-          closeButton 
+        <Modal.Header
+          closeButton
           style={{ backgroundColor: '#f8f9fa', borderBottom: '3px solid #2f6a87' }}
         >
           <Modal.Title style={{ color: '#333', fontWeight: '600', fontSize: '1.2rem' }}>
             Complete Payment
           </Modal.Title>
         </Modal.Header>
-        
+
         <Modal.Body>
           {bookingStatus === 'pending' ? (
             <div className="text-center py-4">
@@ -655,12 +654,12 @@ const DynamicPage = () => {
             </div>
           ) : (
             <Form onSubmit={handlePaymentSubmit}>
-              <div 
-                className="text-center mb-3 p-3 rounded" 
-                style={{ 
-                  backgroundColor: '#f0f7fa', 
-                  border: '2px dashed #2f6a87', 
-                  borderRadius: '12px' 
+              <div
+                className="text-center mb-3 p-3 rounded"
+                style={{
+                  backgroundColor: '#f0f7fa',
+                  border: '2px dashed #2f6a87',
+                  borderRadius: '12px'
                 }}
               >
                 <h5 className="mb-2" style={{ color: '#333', fontSize: '1.1rem' }}>
@@ -673,7 +672,7 @@ const DynamicPage = () => {
                   <strong>Validity:</strong> {selectedPlan?.validityDays} days
                 </p>
                 <p className="mb-0">
-                  <strong>Amount:</strong> 
+                  <strong>Amount:</strong>
                   <span className="fw-bold" style={{ fontSize: '1.2rem', color: '#2f6a87' }}>
                     ₹{selectedPlan?.price}
                   </span>
@@ -681,11 +680,11 @@ const DynamicPage = () => {
               </div>
 
               {bookingMessage && (
-                <Alert 
+                <Alert
                   variant={
-                    bookingStatus === 'error' ? 'danger' : 
-                    bookingStatus === 'success' ? 'success' : 'info'
-                  } 
+                    bookingStatus === 'error' ? 'danger' :
+                      bookingStatus === 'success' ? 'success' : 'info'
+                  }
                   className="mb-3"
                 >
                   {bookingMessage}
@@ -715,7 +714,7 @@ const DynamicPage = () => {
                   Enter your UPI ID (e.g., yourname@upi, yournumber@ybl)
                 </Form.Text>
               </Form.Group>
-              
+
               <div className="d-flex justify-content-center">
                 <Button
                   type="submit"
@@ -730,9 +729,9 @@ const DynamicPage = () => {
                     maxWidth: '400px'
                   }}
                 >
-                  {bookingStatus === 'pending' ? 'Processing...' : 
-                   bookingStatus === 'success' ? 'Booking Successful!' : 
-                   'Confirm Booking'}
+                  {bookingStatus === 'pending' ? 'Processing...' :
+                    bookingStatus === 'success' ? 'Booking Successful!' :
+                      'Confirm Booking'}
                 </Button>
               </div>
             </Form>

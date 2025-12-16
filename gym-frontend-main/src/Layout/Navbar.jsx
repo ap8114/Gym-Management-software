@@ -9,7 +9,7 @@ import axiosInstance from "../Api/axiosInstance";
 const Navbar = ({ toggleSidebar }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  
+
   // State for dynamic logo and loading status
   const [appLogo, setAppLogo] = useState(Logo); // Initialize with default logo
   const [loading, setLoading] = useState(true); // For initial loading state
@@ -56,11 +56,11 @@ const Navbar = ({ toggleSidebar }) => {
 
       // Use axiosInstance.get() instead of fetch()
       const response = await axiosInstance.get(endpoint);
-      
+
       // Axios automatically throws an error for non-2xx responses, so no need for response.ok check.
       // The data from the server is available in response.data
       const result = response.data;
-      
+
       if (result.success && result.data && result.data.logo) {
         setAppLogo(result.data.logo);
         console.log("Logo successfully fetched from API.");
@@ -81,7 +81,7 @@ const Navbar = ({ toggleSidebar }) => {
   useEffect(() => {
     fetchAppSettings(); // Initial fetch when component mounts
 
-    const intervalId = setInterval(fetchAppSettings, 5000 ); // Fetch every 60 seconds
+    const intervalId = setInterval(fetchAppSettings, 5000); // Fetch every 60 seconds
 
     return () => clearInterval(intervalId); // Cleanup on unmount
   }, []);
@@ -200,7 +200,7 @@ const Navbar = ({ toggleSidebar }) => {
                 src={appLogo}
                 alt="Logo"
                 style={{
-                  height: "50px",  
+                  height: "50px",
                   width: "200px",
                   objectFit: "contain"
                 }}
@@ -214,14 +214,14 @@ const Navbar = ({ toggleSidebar }) => {
         </div>
 
         {/* Notification and User */}
-        <div className="d-flex align-items-center gap-3 position-relative">
+        <div className="me-2 d-flex align-items-center gap-3 position-relative">
           {/* Notification */}
-          <div className="position-relative">
+          {/* <div className="position-relative">
             <FaBell size={18} color="white" />
             <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
               3
             </span>
-          </div>
+          </div> */}
 
           {/* User Profile */}
           <div className="dropdown" ref={dropdownRef}>
@@ -230,7 +230,7 @@ const Navbar = ({ toggleSidebar }) => {
               role="button"
               onClick={() => setDropdownOpen(!dropdownOpen)}
             >
-              <FaUserCircle size={24} />
+              <FaUserCircle size={35} />
               <div className="d-none d-sm-block text-white">
                 <small className="mb-0">Welcome    {profile.role} </small>
                 <div className="fw-bold">{profile.name}</div>
@@ -259,14 +259,14 @@ const Navbar = ({ toggleSidebar }) => {
                       }}
                     >
                       Profile
-                    </button> 
+                    </button>
                   </Link>
                 </li>
                 <li>
                   <hr className="dropdown-divider" />
                 </li>
                 <li>
-                  <a className="dropdown-item text-danger" href="/">Logout</a>
+                  <Link className="dropdown-item text-danger" to="/">Logout</Link>
                 </li>
               </ul>
             )}
