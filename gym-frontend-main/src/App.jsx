@@ -3,12 +3,13 @@ import "./App.css";
 import { useState, useEffect } from "react";
 import * as echarts from "echarts";
 
-
 import Navbar from "./Layout/Navbar";
 import Login from "./Auth/Login";
 import Signup from "./Auth/Signup";
 import ForgotPassword from "./Auth/ForgotPassword";
 import Sidebar from "./Layout/Sidebar";
+import ProtectedRoute from "./Components/ProtectedRoute";
+import ErrorBoundary from "./Components/ErrorBoundary";
 // import DepartmentOKRs from "./Component/Okrs-management/Departement/DepartmentOKRs";
 import AdminDashbaord from "./Dashboard/Admin/AdminDashbaord";
 import MemberManagement from "./Dashboard/Manager/MemberManagement";
@@ -189,120 +190,122 @@ function App() {
               className={`right-side-content ${isSidebarCollapsed ? "collapsed" : ""
                 }`}
             >
-              <Routes>
+              <ErrorBoundary>
+                <Routes>
 
-                <Route path="/superadmin/dashboard" element={<DashboardHomePage />} />
-                <Route path="/superadmin/Admin" element={<SuperAdminOwner />} />
-                <Route path="/superadmin/Plans&Pricing" element={<Plans />} />
-                <Route path="superadmin/payments" element={<Payments />} />
-                <Route path="/superadmin/setting" element={<Setting />} />
-                <Route path="/superadmin/request-plan" element={<Request />} />
-                <Route path="/admin/dashboard" element={<AdminDashbaord />} />
-                <Route path="admin/admindashboard" element={<AdminDashbaord />} />
-                <Route path="admin/group" element={<Groups />} />
-                <Route path="admin/CreatePlan" element={<CreatePlan />} />
+                <Route path="/superadmin/dashboard" element={<ProtectedRoute allowedRoles="SUPERADMIN"><DashboardHomePage /></ProtectedRoute>} />
+                <Route path="/superadmin/Admin" element={<ProtectedRoute allowedRoles="SUPERADMIN"><SuperAdminOwner /></ProtectedRoute>} />
+                <Route path="/superadmin/Plans&Pricing" element={<ProtectedRoute allowedRoles="SUPERADMIN"><Plans /></ProtectedRoute>} />
+                <Route path="superadmin/payments" element={<ProtectedRoute allowedRoles="SUPERADMIN"><Payments /></ProtectedRoute>} />
+                <Route path="/superadmin/setting" element={<ProtectedRoute allowedRoles="SUPERADMIN"><Setting /></ProtectedRoute>} />
+                <Route path="/superadmin/request-plan" element={<ProtectedRoute allowedRoles="SUPERADMIN"><Request /></ProtectedRoute>} />
+                <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><AdminDashbaord /></ProtectedRoute>} />
+                <Route path="admin/admindashboard" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><AdminDashbaord /></ProtectedRoute>} />
+                <Route path="admin/group" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><Groups /></ProtectedRoute>} />
+                <Route path="admin/CreatePlan" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><CreatePlan /></ProtectedRoute>} />
 
                 {/* admin dahsboard */}
-                <Route path="admin/admin-dashboard" element={<AdminDashbaord />} />
-                <Route path="admin/qrcheckin" element={<QrCheckin />} />
-                <Route path="admin/AdminMember" element={<AdminMember />} />
+                <Route path="admin/admin-dashboard" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><AdminDashbaord /></ProtectedRoute>} />
+                <Route path="/admin/qrcheckin" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><QrCheckin /></ProtectedRoute>} />
+                <Route path="admin/AdminMember" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><AdminMember /></ProtectedRoute>} />
 
                 {/* booking */}
-                <Route path="/admin/booking/attendance" element={<AttendanceReport />} />
-                <Route path="/admin/booking/personal-training" element={<PersonalTraining />} />
-                <Route path="/admin/AdminBranches" element={<SuperAdminBranches />} />
-                <Route path="/admin/ClassesSchedule" element={<ClassesSchedule />} />
-                <Route path="/admin/bookings" element={<PersonalTrainerSessionBookings />} />
+                <Route path="/admin/booking/attendance" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><AttendanceReport /></ProtectedRoute>} />
+                <Route path="/admin/booking/personal-training" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><PersonalTraining /></ProtectedRoute>} />
+                <Route path="/admin/AdminBranches" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><SuperAdminBranches /></ProtectedRoute>} />
+                <Route path="/admin/ClassesSchedule" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><ClassesSchedule /></ProtectedRoute>} />
+                <Route path="/admin/bookings" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><PersonalTrainerSessionBookings /></ProtectedRoute>} />
 
                 {/* Marketibg */}
-                <Route path="marketing/campaigns" element={<Campaigns />} />
-                <Route path="marketing/email-sms" element={<EmailsSms />} />
+                <Route path="marketing/campaigns" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><Campaigns /></ProtectedRoute>} />
+                <Route path="marketing/email-sms" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><EmailsSms /></ProtectedRoute>} />
 
                 {/* Members */}
-                <Route path="/admin/members/manage-members" element={<ManageMembers />} />
-                <Route path="/admin/members/qr-code-attendance" element={<QrCodeAttendance />} />
-                <Route path="/admin/members/walk-in-registration" element={<WalkInRegistration />} />
+                <Route path="/admin/members/manage-members" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><ManageMembers /></ProtectedRoute>} />
+                <Route path="/admin/members/qr-code-attendance" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN", "RECEPTIONIST"]}><QrCodeAttendance /></ProtectedRoute>} />
+                <Route path="/admin/members/walk-in-registration" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN", "RECEPTIONIST"]}><WalkInRegistration /></ProtectedRoute>} />
 
                 {/* Payments Routes */}
-                <Route path="/admin/payments/membership" element={<Membership />} />
+                <Route path="/admin/payments/membership" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><Membership /></ProtectedRoute>} />
 
                 {/* Reports  */}
-                <Route path="/admin/reports/sales" element={<SalesReport />} />
-                <Route path="/admin/reports/AttendanceReport" element={<AttendanceReport />} />
+                <Route path="/admin/reports/sales" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN", "MANAGER"]}><SalesReport /></ProtectedRoute>} />
+                <Route path="/admin/reports/AttendanceReport" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN", "MANAGER"]}><AttendanceReport /></ProtectedRoute>} />
 
                 {/* Staff Routes */}
-                <Route path="/admin/staff/manage-staff" element={<ManageStaff />} />
-                <Route path="/admin/staff/roles-permissions" element={<RolesPermissions />} />
-                <Route path="/admin/staff/attendance" element={<StaffAttendance />} />
-                <Route path="/admin/staff/duty-roster" element={<DutyRoster />} />
-                <Route path="/admin/staff/salary-calculator" element={<SalaryCalculator />} />
-                <Route path="/admin/shift-managment" element={<ShiftManagement />} />
-                <Route path="/admin/task-managment" element={<AdminTaskManagement />} />
+                <Route path="/admin/staff/manage-staff" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><ManageStaff /></ProtectedRoute>} />
+                <Route path="/admin/staff/roles-permissions" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><RolesPermissions /></ProtectedRoute>} />
+                <Route path="/admin/staff/attendance" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><StaffAttendance /></ProtectedRoute>} />
+                <Route path="/admin/staff/duty-roster" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><DutyRoster /></ProtectedRoute>} />
+                <Route path="/admin/staff/salary-calculator" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><SalaryCalculator /></ProtectedRoute>} />
+                <Route path="/admin/shift-managment" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><ShiftManagement /></ProtectedRoute>} />
+                <Route path="/admin/task-managment" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><AdminTaskManagement /></ProtectedRoute>} />
                 {/* setting routes */}
-                <Route path="/admin/settings/BranchManagement" element={< BranchManagement />} />
-                <Route path="/admin/settings/RoleManagement" element={< RoleManagement />} />
-                <Route path="/admin/settings" element={< AdminSetting />} />
+                <Route path="/admin/settings/BranchManagement" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><BranchManagement /></ProtectedRoute>} />
+                <Route path="/admin/settings/RoleManagement" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><RoleManagement /></ProtectedRoute>} />
+                <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]}><AdminSetting /></ProtectedRoute>} />
 
                 {/* admin dahsboard end */}
 
                 {/* Manager Dashbaord */}
-                <Route path="/manager/dashboard" element={<Dashboard />} />
-                <Route path="/manager/members" element={<MemberManagement />} />
+                <Route path="/manager/dashboard" element={<ProtectedRoute allowedRoles={["MANAGER", "ADMIN", "SUPERADMIN"]}><Dashboard /></ProtectedRoute>} />
+                <Route path="/manager/members" element={<ProtectedRoute allowedRoles={["MANAGER", "ADMIN", "SUPERADMIN"]}><MemberManagement /></ProtectedRoute>} />
                 {/* <Route path="/manager/membership-plan" element={<MembershipPlans />} /> */}
-                <Route path="/manager/duty-roster" element={<StaffManagement />} />
-                <Route path="/manager/class-schedule" element={<ClassScheduling />} />
-                <Route path="/manager/reports" element={<Reports />} />
-                <Route path="/manager/communication" element={<Communication />} />
-                <Route path="/housekeeping/dashboard" element={<HouseKeepingDashboard />} />
+                <Route path="/manager/duty-roster" element={<ProtectedRoute allowedRoles={["MANAGER", "ADMIN", "SUPERADMIN"]}><StaffManagement /></ProtectedRoute>} />
+                <Route path="/manager/class-schedule" element={<ProtectedRoute allowedRoles={["MANAGER", "ADMIN", "SUPERADMIN"]}><ClassScheduling /></ProtectedRoute>} />
+                <Route path="/manager/reports" element={<ProtectedRoute allowedRoles={["MANAGER", "ADMIN", "SUPERADMIN"]}><Reports /></ProtectedRoute>} />
+                <Route path="/manager/communication" element={<ProtectedRoute allowedRoles={["MANAGER", "ADMIN", "SUPERADMIN"]}><Communication /></ProtectedRoute>} />
+                <Route path="/housekeeping/dashboard" element={<ProtectedRoute allowedRoles={["HOUSEKEEPING", "ADMIN", "SUPERADMIN"]}><HouseKeepingDashboard /></ProtectedRoute>} />
 
-                <Route path="/generaltrainer/dashboard" element={<GeneralTrainerDashboard />} />
-                <Route path="/generaltrainer/classesschedule" element={<GeneralClassesSchedule />} />
-                <Route path="/generaltrainer/bookings" element={<GeneralSessionBooking />} />
-                <Route path="/GeneralTrainer/attendance" element={<Attendance />} />
-                <Route path="/GeneralTrainer/shift-managment" element={<GeneralTrainerShiftManagement />} />
+                <Route path="/generaltrainer/dashboard" element={<ProtectedRoute allowedRoles={["GENERALTRAINER", "ADMIN", "SUPERADMIN"]}><GeneralTrainerDashboard /></ProtectedRoute>} />
+                <Route path="/generaltrainer/classesschedule" element={<ProtectedRoute allowedRoles={["GENERALTRAINER", "ADMIN", "SUPERADMIN"]}><GeneralClassesSchedule /></ProtectedRoute>} />
+                <Route path="/generaltrainer/bookings" element={<ProtectedRoute allowedRoles={["GENERALTRAINER", "ADMIN", "SUPERADMIN"]}><GeneralSessionBooking /></ProtectedRoute>} />
+                <Route path="/GeneralTrainer/attendance" element={<ProtectedRoute allowedRoles={["GENERALTRAINER", "ADMIN", "SUPERADMIN"]}><Attendance /></ProtectedRoute>} />
+                <Route path="/GeneralTrainer/shift-managment" element={<ProtectedRoute allowedRoles={["GENERALTRAINER", "ADMIN", "SUPERADMIN"]}><GeneralTrainerShiftManagement /></ProtectedRoute>} />
                 {/* <Route path="/GeneralTrainer/MemberInteraction" element={<MemberInteraction />} /> */}
-                <Route path="/GeneralTrainer/qrcheckin" element={<GeneralQrCheckin />} />
-                <Route path="/GeneralTrainer/Reports" element={<Report />} />
-                <Route path="/GeneralTrainer/DailyScedule" element={< DailyScedule />} />
-                <Route path="/GeneralTrainer/GroupPlansBookings" element={<GroupPlansBookings />} />
+                <Route path="/GeneralTrainer/qrcheckin" element={<ProtectedRoute allowedRoles={["GENERALTRAINER", "ADMIN", "SUPERADMIN"]}><GeneralQrCheckin /></ProtectedRoute>} />
+                <Route path="/GeneralTrainer/Reports" element={<ProtectedRoute allowedRoles={["GENERALTRAINER", "ADMIN", "SUPERADMIN"]}><Report /></ProtectedRoute>} />
+                <Route path="/GeneralTrainer/DailyScedule" element={<ProtectedRoute allowedRoles={["GENERALTRAINER", "ADMIN", "SUPERADMIN"]}><DailyScedule /></ProtectedRoute>} />
+                <Route path="/GeneralTrainer/GroupPlansBookings" element={<ProtectedRoute allowedRoles={["GENERALTRAINER", "ADMIN", "SUPERADMIN"]}><GroupPlansBookings /></ProtectedRoute>} />
 
-                <Route path="/member/dashboard" element={<MemberDashboard />} />
-                <Route path="/member/account" element={<Account />} />
-                <Route path="/member/classschedule" element={<ClassSchedule />} />
-                <Route path="/member/attendance-history" element={<AttendanceHistory />} />
-                <Route path="/member/qrcheckin" element={<MemberQrCheckin />} />
-                <Route path="/member/memberattendance" element={<MemberAttendance />} />
-                <Route path="/member/viewplan" element={<ViewPlan />} />
-                <Route path="/member/requestplan" element={<RequestPlan />} />
+                <Route path="/member/dashboard" element={<ProtectedRoute allowedRoles={["MEMBER", "ADMIN"]}><MemberDashboard /></ProtectedRoute>} />
+                <Route path="/member/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+                <Route path="/member/classschedule" element={<ProtectedRoute allowedRoles={["MEMBER", "ADMIN"]}><ClassSchedule /></ProtectedRoute>} />
+                <Route path="/member/attendance-history" element={<ProtectedRoute allowedRoles={["MEMBER", "ADMIN"]}><AttendanceHistory /></ProtectedRoute>} />
+                <Route path="/member/qrcheckin" element={<ProtectedRoute allowedRoles={["MEMBER", "ADMIN"]}><MemberQrCheckin /></ProtectedRoute>} />
+                <Route path="/member/memberattendance" element={<ProtectedRoute allowedRoles={["MEMBER", "ADMIN"]}><MemberAttendance /></ProtectedRoute>} />
+                <Route path="/member/viewplan" element={<ProtectedRoute allowedRoles={["MEMBER", "ADMIN"]}><ViewPlan /></ProtectedRoute>} />
+                <Route path="/member/requestplan" element={<ProtectedRoute allowedRoles={["MEMBER", "ADMIN"]}><RequestPlan /></ProtectedRoute>} />
 
                 {/* <Route path="/member/memberbooking" element={<MemberBooking />} /> */}
-                <Route path="/receptionist/dashboard" element={<ReceptionistDashboard />} />
-                <Route path="/receptionist/walk-in-registration" element={<ReceptionistWalkinMember />} />
-                <Route path="/receptionist/new-sign-ups" element={<ReceptionistMembershipSignups />} />
-                <Route path="/receptionist/qr-attendance" element={<ReceptionistQRCode />} />
-                <Route path="/receptionist/qrcheckin" element={<ReceptionistQrCheckin />} />
-                <Route path="/receptionist/book-classes-sessions" element={<ReceptionistBookGroupClasses />} />
-                <Route path="/receptionist/payemnet" element={<ReceptionistPaymentCollection />} />
+                <Route path="/receptionist/dashboard" element={<ProtectedRoute allowedRoles={["RECEPTIONIST", "ADMIN", "SUPERADMIN"]}><ReceptionistDashboard /></ProtectedRoute>} />
+                <Route path="/receptionist/walk-in-registration" element={<ProtectedRoute allowedRoles={["RECEPTIONIST", "ADMIN", "SUPERADMIN"]}><ReceptionistWalkinMember /></ProtectedRoute>} />
+                <Route path="/receptionist/new-sign-ups" element={<ProtectedRoute allowedRoles={["RECEPTIONIST", "ADMIN", "SUPERADMIN"]}><ReceptionistMembershipSignups /></ProtectedRoute>} />
+                <Route path="/receptionist/qr-attendance" element={<ProtectedRoute allowedRoles={["RECEPTIONIST", "ADMIN", "SUPERADMIN"]}><ReceptionistQRCode /></ProtectedRoute>} />
+                <Route path="/receptionist/qrcheckin" element={<ProtectedRoute allowedRoles={["RECEPTIONIST", "ADMIN", "SUPERADMIN"]}><ReceptionistQrCheckin /></ProtectedRoute>} />
+                <Route path="/receptionist/book-classes-sessions" element={<ProtectedRoute allowedRoles={["RECEPTIONIST", "ADMIN", "SUPERADMIN"]}><ReceptionistBookGroupClasses /></ProtectedRoute>} />
+                <Route path="/receptionist/payemnet" element={<ProtectedRoute allowedRoles={["RECEPTIONIST", "ADMIN", "SUPERADMIN"]}><ReceptionistPaymentCollection /></ProtectedRoute>} />
 
-                <Route path="/personaltrainer/dashboard" element={<PersonalTrainerDashboard />} />
-                <Route path="/personaltrainer/classesschedule" element={<PersonalTrainerClassesSchedule />} />
-                <Route path="/personaltrainer/messages" element={<PersonalTrainerMessages />} />
-                <Route path="/personaltrainer/group-classes" element={<PersonalTrainerGroupClasses />} />
-                <Route path="/personaltrainer/bookings" element={<PersonalSessionBooking />} />
-                <Route path="/personaltrainer/qrcheckin" element={<PersonalTrainerQrCheckin />} />
-                <Route path="/personaltrainer/personalattendance" element={<PersonalAttendance />} />
-                <Route path="/personaltrainer/personalplansbookings" element={<PersonalPlansBookings />} />
-                <Route path="/personaltrainer/shift-managment" element={<PersonsalTrainerShiftManagement />} />
+                <Route path="/personaltrainer/dashboard" element={<ProtectedRoute allowedRoles={["PERSONALTRAINER", "ADMIN", "SUPERADMIN"]}><PersonalTrainerDashboard /></ProtectedRoute>} />
+                <Route path="/personaltrainer/classesschedule" element={<ProtectedRoute allowedRoles={["PERSONALTRAINER", "ADMIN", "SUPERADMIN"]}><PersonalTrainerClassesSchedule /></ProtectedRoute>} />
+                <Route path="/personaltrainer/messages" element={<ProtectedRoute allowedRoles={["PERSONALTRAINER", "ADMIN", "SUPERADMIN"]}><PersonalTrainerMessages /></ProtectedRoute>} />
+                <Route path="/personaltrainer/group-classes" element={<ProtectedRoute allowedRoles={["PERSONALTRAINER", "ADMIN", "SUPERADMIN"]}><PersonalTrainerGroupClasses /></ProtectedRoute>} />
+                <Route path="/personaltrainer/bookings" element={<ProtectedRoute allowedRoles={["PERSONALTRAINER", "ADMIN", "SUPERADMIN"]}><PersonalSessionBooking /></ProtectedRoute>} />
+                <Route path="/personaltrainer/qrcheckin" element={<ProtectedRoute allowedRoles={["PERSONALTRAINER", "ADMIN", "SUPERADMIN"]}><PersonalTrainerQrCheckin /></ProtectedRoute>} />
+                <Route path="/personaltrainer/personalattendance" element={<ProtectedRoute allowedRoles={["PERSONALTRAINER", "ADMIN", "SUPERADMIN"]}><PersonalAttendance /></ProtectedRoute>} />
+                <Route path="/personaltrainer/personalplansbookings" element={<ProtectedRoute allowedRoles={["PERSONALTRAINER", "ADMIN", "SUPERADMIN"]}><PersonalPlansBookings /></ProtectedRoute>} />
+                <Route path="/personaltrainer/shift-managment" element={<ProtectedRoute allowedRoles={["PERSONALTRAINER", "ADMIN", "SUPERADMIN"]}><PersonsalTrainerShiftManagement /></ProtectedRoute>} />
 
-                <Route path="/housekeeping/dashboard" element={<HouseKeepingDashboard />} />
-                <Route path="/housekeeping/qrcheckin" element={<HouseKeepingQrCheckin />} />
-                <Route path="//housekeeping/members" element={<HousekeepingShiftView />} />
-                <Route path="/housekeeping/membership-plan" element={<HouseKeepingAttendance />} />
-                <Route path="/housekeeping/duty-roster" element={<HousekeepingTask />} />
-                <Route path="/housekeeping/class-schedule" element={<HouseKeepingNotifications />} />
-                <Route path="/housekeeping/shift-management" element={<HouseKeepingShiftManagement />} />
+                <Route path="/housekeeping/dashboard" element={<ProtectedRoute allowedRoles={["HOUSEKEEPING", "ADMIN", "SUPERADMIN"]}><HouseKeepingDashboard /></ProtectedRoute>} />
+                <Route path="/housekeeping/qrcheckin" element={<ProtectedRoute allowedRoles={["HOUSEKEEPING", "ADMIN", "SUPERADMIN"]}><HouseKeepingQrCheckin /></ProtectedRoute>} />
+                <Route path="/housekeeping/members" element={<ProtectedRoute allowedRoles={["HOUSEKEEPING", "ADMIN", "SUPERADMIN"]}><HousekeepingShiftView /></ProtectedRoute>} />
+                <Route path="/housekeeping/membership-plan" element={<ProtectedRoute allowedRoles={["HOUSEKEEPING", "ADMIN", "SUPERADMIN"]}><HouseKeepingAttendance /></ProtectedRoute>} />
+                <Route path="/housekeeping/duty-roster" element={<ProtectedRoute allowedRoles={["HOUSEKEEPING", "ADMIN", "SUPERADMIN"]}><HousekeepingTask /></ProtectedRoute>} />
+                <Route path="/housekeeping/class-schedule" element={<ProtectedRoute allowedRoles={["HOUSEKEEPING", "ADMIN", "SUPERADMIN"]}><HouseKeepingNotifications /></ProtectedRoute>} />
+                <Route path="/housekeeping/shift-management" element={<ProtectedRoute allowedRoles={["HOUSEKEEPING", "ADMIN", "SUPERADMIN"]}><HouseKeepingShiftManagement /></ProtectedRoute>} />
 
-              </Routes>
+                </Routes>
+              </ErrorBoundary>
             </div>
           </div>
         </>

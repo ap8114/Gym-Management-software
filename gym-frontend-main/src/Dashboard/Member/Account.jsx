@@ -338,10 +338,7 @@ const Account = () => {
 
               {/* Profile Picture Section - Enhanced */}
               <div className="text-center mb-4">
-<<<<<<< HEAD
-=======
                
->>>>>>> a469c87eaf2cdd0e862f80349af07c295f249bfd
               </div>
 
               <form onSubmit={handleUpdateProfile}>

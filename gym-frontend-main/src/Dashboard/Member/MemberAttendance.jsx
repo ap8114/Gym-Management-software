@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Form, Button, Table, Modal, Row, Col, Card, Spinner, Alert } from "react-bootstrap";
 import { FaEye, FaTrash, FaTimesCircle } from "react-icons/fa";
-import BaseUrl from '../../Api/BaseUrl';
+import axiosInstance from '../../Api/axiosInstance';
 import { House } from "react-bootstrap-icons";
 
 const MemberAttendance = () => {
@@ -53,16 +53,8 @@ const MemberAttendance = () => {
       setError(null);
 
       // Using API endpoint for member attendance
-      const response = await fetch(`${BaseUrl}memberattendence/${memberId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
-      const data = await response.json();
-
-      console.log('API Response:', data);
+      const response = await axiosInstance.get(`memberattendence/${memberId}`);
+      const data = response.data;
 
       if (data.success && data.attendance) {
         // Transform API response to match expected format
@@ -87,8 +79,8 @@ const MemberAttendance = () => {
         setAttendance([]);
       }
     } catch (err) {
-      console.error('Error fetching attendance data:', err);
-      setError(`Error fetching data: ${err.message}`);
+      const errorMessage = err.response?.data?.message || err.message || 'Error fetching data';
+      setError(errorMessage);
       setAttendance([]);
     } finally {
       setLoading(false);
@@ -151,14 +143,22 @@ const MemberAttendance = () => {
           : member
       ));
 
-      const response = await fetch(`${BaseUrl}memberattendence/checkout/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
+      // Try PUT first (correct method), fallback to POST if needed
+      let response;
+      try {
+        response = await axiosInstance.put(`memberattendence/checkout/${id}`, {
+          memberId: memberId,
+          branchId: branchId
+        });
+      } catch (putErr) {
+        // If PUT fails, try POST (some backends use POST)
+        response = await axiosInstance.post(`memberattendence/checkout/${id}`, {
+          memberId: memberId,
+          branchId: branchId
+        });
+      }
 
-      const data = await response.json();
+      const data = response.data;
 
       if (data.success) {
         // Update the specific member to show checked out status
@@ -183,8 +183,8 @@ const MemberAttendance = () => {
         ));
       }
     } catch (err) {
-      console.error('Error during checkout:', err);
-      alert(`Error during check-out: ${err.message}`);
+      const errorMessage = err.response?.data?.message || err.message || 'Error during check-out';
+      alert(errorMessage);
       // Remove loading state
       setAttendance(attendance.map(member =>
         member.attendance_id === id

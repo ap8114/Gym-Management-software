@@ -2,11 +2,12 @@ import React, { useState, useRef, useEffect } from "react";
 import { FaBell, FaUserCircle, FaBars } from "react-icons/fa";
 import Logo from "../assets/Logo/Logo.png"; // Default fallback logo
 import Account from "../Dashboard/Member/Account";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axiosInstance from "../Api/axiosInstance";
 
 
 const Navbar = ({ toggleSidebar }) => {
+  const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   
@@ -154,6 +155,39 @@ const Navbar = ({ toggleSidebar }) => {
     }
   };
 
+  // Proper logout handler
+  const handleLogout = async () => {
+    try {
+      // Optionally call logout API endpoint to invalidate token on server
+      try {
+        await axiosInstance.post('/auth/logout');
+      } catch (err) {
+        // Continue with logout even if API call fails
+        console.error('Logout API call failed:', err);
+      }
+
+      // Clear all authentication data from localStorage
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('user');
+      localStorage.removeItem('userData');
+      localStorage.removeItem('isAuthenticated');
+
+      // Close dropdown
+      setDropdownOpen(false);
+
+      // Redirect to login page
+      navigate('/login');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Even if there's an error, clear localStorage and redirect
+      localStorage.clear();
+      navigate('/login');
+    }
+  };
+
   return (
     <>
       <nav
@@ -266,7 +300,13 @@ const Navbar = ({ toggleSidebar }) => {
                   <hr className="dropdown-divider" />
                 </li>
                 <li>
-                  <a className="dropdown-item text-danger" href="/">Logout</a>
+                  <button
+                    className="dropdown-item text-danger"
+                    onClick={handleLogout}
+                    style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}
+                  >
+                    Logout
+                  </button>
                 </li>
               </ul>
             )}

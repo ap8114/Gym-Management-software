@@ -93,6 +93,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
     ADMIN: [
       { name: "Dashboard", icon: faChartBar, path: "/admin/admin-dashboard" },
       { name: "Members", icon: faUsers, path: "/admin/AdminMember" },
+      { name: "QR Check-in", icon: faQrcode, path: "/admin/qrcheckin" },
       { name: "Create Plan", icon: faPlusCircle, path: "/admin/createplan" },
       { name: "Classes Schedule", icon: faChalkboardTeacher, path: "/admin/classesSchedule" },
       { name: "Session Bookings", icon: faCalendarCheck, path: "/admin/bookings" },
