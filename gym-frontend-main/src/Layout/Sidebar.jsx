@@ -137,7 +137,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       { name: "Dashboard", icon: faChartBar, path: "/generaltrainer/dashboard" },
       { name: "Classes Schedule", icon: faCalendar, path: "/generaltrainer/classesschedule" },
       { name: "Shift Management", icon: faClock, path: "/GeneralTrainer/shift-managment" },
-      { name: "Task Checklist", icon: faTasks, path: "/housekeeping/duty-roster" },
+      // { name: "Task Checklist", icon: faTasks, path: "/housekeeping/duty-roster" },
       { name: "Session Bookings", icon: faCalendarCheck, path: "/generaltrainer/bookings" },
       { name: "QR Check-in", icon: faQrcode, path: "/generaltrainer/qrcheckin" },
       { name: "Attendance", icon: faClipboardCheck, path: "/generaltrainer/attendance" },

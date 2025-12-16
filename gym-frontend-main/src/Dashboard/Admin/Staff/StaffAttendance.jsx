@@ -85,11 +85,11 @@ const StaffAttendance = () => {
     }
   };
 
-  // ✅ UPDATED: Modified fetchAttendanceRecords to use the new API endpoint
+  // ✅ UPDATED: Modified fetchAttendanceRecords to use new API endpoint
   const fetchAttendanceRecords = async () => {
     try {
       setLoading(true);
-      // Using the new API endpoint
+      // Using new API endpoint
       const response = await axiosInstance.get(`${BaseUrl}memberattendence/admin?adminId=${adminId}`);
       
       if (response.data?.success && Array.isArray(response.data.attendance)) {
@@ -101,19 +101,19 @@ const StaffAttendance = () => {
           
           return {
             attendance_id: record.id || Date.now(), // Using timestamp as fallback for ID
-            staff_id: null, // No staffId in the new API response
+            staff_id: null, // No staffId in new API response
             staff_name: record.name || 'Unknown',
             role: formattedRole,
-            branch: 'Unknown', // No branch info in the new API response
+            branch: 'Unknown', // No branch info in new API response
             date: record.date ? record.date.split('T')[0] : '',
             checkin_time: record.checkIn,
             checkout_time: record.checkOut,
             mode: record.mode,
-            shift_id: null, // No shiftId in the new API response
+            shift_id: null, // No shiftId in new API response
             shift_name: record.shift || calculateShiftType(record.checkIn),
             status: record.status || 'Unknown',
-            notes: '', // No notes in the new API response
-            member_id: null // No memberId in the new API response
+            notes: '', // No notes in new API response
+            member_id: null // No memberId in new API response
           };
         });
         
@@ -256,14 +256,42 @@ const StaffAttendance = () => {
     setIsDeleteModalOpen(true);
   };
 
+  // ✅ FIXED: Updated delete function to use correct API endpoint with member attendance ID
   const confirmDelete = async () => {
     if (selectedRecord) {
       try {
-        await axiosInstance.delete(`${BaseUrl}admin-staff-attendance/${selectedRecord.attendance_id}`);
-        setRecords(prev => prev.filter(r => r.attendance_id !== selectedRecord.attendance_id));
-        alert(`Deleted attendance record for ${selectedRecord.staff_name} (${selectedRecord.role}).`);
+        // Show loading state for specific record
+        setRecords(prev => prev.map(r => 
+          r.attendance_id === selectedRecord.attendance_id 
+            ? { ...r, deleting: true } 
+            : r
+        ));
+        
+        // Using the correct API endpoint for deleting attendance records
+        // Send the member attendance ID in the URL path
+        const response = await axiosInstance.delete(`${BaseUrl}memberattendence/delete/${selectedRecord.attendance_id}`);
+        
+        if (response.data.success) {
+          // Remove the deleted record from state
+          setRecords(prev => prev.filter(r => r.attendance_id !== selectedRecord.attendance_id));
+          alert(`Deleted attendance record for ${selectedRecord.staff_name} (${selectedRecord.role}).`);
+        } else {
+          // Remove loading state and show error
+          setRecords(prev => prev.map(r => 
+            r.attendance_id === selectedRecord.attendance_id 
+              ? { ...r, deleting: false } 
+              : r
+          ));
+          alert(response.data.message || 'Delete failed');
+        }
       } catch (err) {
         console.error('Error deleting attendance record:', err);
+        // Remove loading state
+        setRecords(prev => prev.map(r => 
+          r.attendance_id === selectedRecord.attendance_id 
+            ? { ...r, deleting: false } 
+            : r
+        ));
         alert('Failed to delete attendance record');
       }
     }
@@ -525,20 +553,25 @@ const StaffAttendance = () => {
           >
             <FaEye size={12} />
           </button>
-          <button
+          {/* <button
             className="btn btn-sm action-btn"
             title="Edit"
             onClick={() => handleEdit(record)}
             style={{ borderColor: customColor, color: customColor }}
           >
             <FaEdit size={12} />
-          </button>
+          </button> */}
           <button
             className="btn btn-sm btn-outline-danger action-btn"
             title="Delete"
             onClick={() => handleDeleteClick(record)}
+            disabled={record.deleting}
           >
-            <FaTrashAlt size={12} />
+            {record.deleting ? (
+              <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            ) : (
+              <FaTrashAlt size={12} />
+            )}
           </button>
         </div>
       </div>
@@ -644,7 +677,8 @@ const StaffAttendance = () => {
       <div className="card shadow-sm border-0">
         <div className="card-header bg-light py-2 py-md-3">
           <h6 className="mb-0 fw-bold" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
-            Attendance Records ({filteredRecords.length})
+            Attendance Records 
+            {/* ({filteredRecords.length}) */}
           </h6>
         </div>
         <div className="card-body p-0">
@@ -699,20 +733,25 @@ const StaffAttendance = () => {
                             >
                               <FaEye size={12} />
                             </button>
-                            <button
+                            {/* <button
                               className="btn btn-sm action-btn"
                               title="Edit"
                               onClick={() => handleEdit(record)}
                               style={{ borderColor: customColor, color: customColor }}
                             >
                               <FaEdit size={12} />
-                            </button>
+                            </button> */}
                             <button
                               className="btn btn-sm btn-outline-danger action-btn"
                               title="Delete"
                               onClick={() => handleDeleteClick(record)}
+                              disabled={record.deleting}
                             >
-                              <FaTrashAlt size={12} />
+                              {record.deleting ? (
+                                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                              ) : (
+                                <FaTrashAlt size={12} />
+                              )}
                             </button>
                           </div>
                         </td>
