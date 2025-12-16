@@ -180,13 +180,13 @@ const LendingPage = () => {
       color: "#1A535C",
       bg: "rgba(26, 83, 92, 0.1)"
     },
-    {
-      icon: <FaDumbbell className="feature-icon" />,
-      title: "Equipment Management",
-      description: "Monitor equipment usage, maintenance schedules, and availability.",
-      color: "#FF9F1C",
-      bg: "rgba(255, 159, 28, 0.1)"
-    }
+    // {
+    //   icon: <FaDumbbell className="feature-icon" />,
+    //   title: "Equipment Management",
+    //   description: "Monitor equipment usage, maintenance schedules, and availability.",
+    //   color: "#FF9F1C",
+    //   bg: "rgba(255, 159, 28, 0.1)"
+    // }
   ];
 
   const testimonials = [

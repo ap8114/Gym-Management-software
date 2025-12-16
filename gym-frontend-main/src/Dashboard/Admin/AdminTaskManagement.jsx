@@ -10,6 +10,7 @@ import { FaTrash } from 'react-icons/fa';
 const AdminTaskManagement = () => {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [staffMembers, setStaffMembers] = useState([]);
+  const [housekeepingStaff, setHousekeepingStaff] = useState([]); // New state for housekeeping staff
   const [branches, setBranches] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +33,10 @@ const AdminTaskManagement = () => {
         // Fetch staff data based on admin ID
         const staffResponse = await axios.get(`${BaseUrl}staff/admin/${adminId}`);
         setStaffMembers(staffResponse.data.staff);
+        
+        // Filter housekeeping staff (roleId = 8)
+        const housekeeping = staffResponse.data.staff.filter(staff => staff.roleId === 8);
+        setHousekeepingStaff(housekeeping);
 
         // Fetch branches data
         const branchesResponse = await axios.get(`${BaseUrl}/branches/by-admin/${adminId}`);
@@ -163,6 +168,7 @@ const AdminTaskManagement = () => {
       alert('An error occurred while updating the task. Please try again.');
     }
   };
+  
   const handleCreateTask = async () => {
     try {
       // Validate form
@@ -259,30 +265,14 @@ const AdminTaskManagement = () => {
                         value={taskForm.staffId}
                         onChange={handleTaskFormChange}
                       >
-                        <option value="">Select Staff</option>
-                        {staffMembers.map(staff => (
+                        <option value="">Select Housekeeping Staff</option>
+                        {housekeepingStaff.map(staff => (
                           <option key={staff.staffId} value={staff.staffId}>
                             {staff.fullName}
                           </option>
                         ))}
                       </select>
                     </div>
-                    {/* <div className="col-md-6">
-                      <label className="form-label">Branch</label>
-                      <select
-                        className="form-select"
-                        name="branchId"
-                        value={taskForm.branchId}
-                        onChange={handleTaskFormChange}
-                      >
-                        <option value="">Select Branch</option>
-                        {branches.map(branch => (
-                          <option key={branch.id} value={branch.id}>
-                            {branch.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div> */}
                      <div className="col-md-6">
                       <label className="form-label">Task Title</label>
                       <input
@@ -295,8 +285,6 @@ const AdminTaskManagement = () => {
                       />
                     </div>
                   </div>
-
-                 
 
                   <div className="row mb-3">
                     <div className="col-md-12">
@@ -379,7 +367,6 @@ const AdminTaskManagement = () => {
     <Plus size={18} className="me-1" /> Create Task
   </button>
 </div>
-
 
       {/* Task Table */}
       <div className="table-responsive mb-4">

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useEffect, useMemo, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { format } from "date-fns";
@@ -284,14 +285,22 @@ const HouseKeepingQrCheckin = ({ member_id, member_name }) => {
       </div>
     </div>
   );
-};
+=======
+import React from 'react';
+import UniversalQRAttendance from '../../Components/UniversalQRAttendance';
 
-// Helper function to generate random nonce
-function generateNonce(len = 8) {
-  const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const arr = new Uint8Array(len);
-  crypto.getRandomValues(arr);
-  return Array.from(arr, (n) => alpha[n % alpha.length]).join("");
-}
+/**
+ * HouseKeepingQrCheckin - Housekeeping QR Code Check-in Component
+ * 
+ * Uses the UniversalQRAttendance component which:
+ * - Scans the admin's global QR code
+ * - Works for all user roles
+ * - Provides check-in/checkout functionality
+ * - Displays attendance history
+ */
+const HouseKeepingQrCheckin = () => {
+  return <UniversalQRAttendance />;
+>>>>>>> ca7bddea173ce40ed07ede983436184041549b84
+};
 
 export default HouseKeepingQrCheckin;

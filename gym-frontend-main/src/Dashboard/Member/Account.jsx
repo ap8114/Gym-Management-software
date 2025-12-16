@@ -8,10 +8,18 @@ const Account = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showErrorAlert, setShowErrorAlert] = useState(false);
+<<<<<<< HEAD
   const [isEditMode, setIsEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
+=======
+  const [isEditMode, setIsEditMode] = useState(false); // New state for edit mode
+  const [saving, setSaving] = useState(false); // State for saving
+  const [updatingPassword, setUpdatingPassword] = useState(false); // State for password update
+  const [userRole, setUserRole] = useState(""); // New state for user role
+  
+>>>>>>> ca7bddea173ce40ed07ede983436184041549b84
   const [personal, setPersonal] = useState({
     member_id: "M23456789",
     first_name: "",
@@ -62,14 +70,39 @@ const Account = () => {
 
         if (response.data.success && response.data.profile) {
           const profile = response.data.profile;
+<<<<<<< HEAD
 
           // ✅ CORRECT FIELD MAPPING FROM API RESPONSE
+=======
+          
+          // Set user role if available in the response
+          if (profile.role) {
+            setUserRole(profile.role);
+          } else {
+            // Try to get role from GetAdminId or localStorage
+            const storedRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
+            if (storedRole) {
+              setUserRole(storedRole);
+            } else {
+              // If role is not explicitly provided, assume it's a member
+              setUserRole("MEMBER");
+            }
+          }
+          
+          // Update personal information
+>>>>>>> ca7bddea173ce40ed07ede983436184041549b84
           setPersonal({
             member_id: `M${profile.userId}`,
             first_name: profile.first_name || "",
+<<<<<<< HEAD
             last_name: profile.last_name || "", // ✅ Fixed: was profile.first_name!
             gender: profile.gender || "",
             dob: profile.date_of_birth || "", // ✅ API field is date_of_birth
+=======
+            last_name: profile.last_name || "",
+            gender: profile.gender || "",
+            dob: profile.date_of_birth ? profile.date_of_birth.split('T')[0] : "",
+>>>>>>> ca7bddea173ce40ed07ede983436184041549b84
             email: profile.email || "",
             phone: profile.phone || "",
             address_street: profile.address_street || "",
@@ -85,7 +118,12 @@ const Account = () => {
             membership_plan: profile.membership_plan || "",
             plan_start_date: profile.plan_start_date || "",
             plan_end_date: profile.plan_end_date || "",
+<<<<<<< HEAD
             status: profile.membership_status || "", // ✅ Correct field
+=======
+            status: profile.membership_status || "",
+            membership_type: profile.membership_type || "",
+>>>>>>> ca7bddea173ce40ed07ede983436184041549b84
             membership_fee: profile.membership_fee || "",
           });
 
@@ -163,7 +201,11 @@ const Account = () => {
           email: personal.email,
           phone: personal.phone,
           gender: personal.gender,
+<<<<<<< HEAD
           date_of_birth: personal.dob, // ✅ snake_case
+=======
+          date_of_birth: personal.dob,
+>>>>>>> ca7bddea173ce40ed07ede983436184041549b84
           address_street: personal.address_street,
           address_city: personal.address_city,
           address_state: personal.address_state,
@@ -179,7 +221,11 @@ const Account = () => {
             first_name: updatedProfile.first_name || "",
             last_name: updatedProfile.last_name || "",
             gender: updatedProfile.gender || "",
+<<<<<<< HEAD
             dob: updatedProfile.date_of_birth || "", // ✅
+=======
+            dob: updatedProfile.date_of_birth ? updatedProfile.date_of_birth.split('T')[0] : "",
+>>>>>>> ca7bddea173ce40ed07ede983436184041549b84
             email: updatedProfile.email || "",
             phone: updatedProfile.phone || "",
             address_street: updatedProfile.address_street || "",
@@ -194,7 +240,12 @@ const Account = () => {
             membership_plan: updatedProfile.membership_plan || "",
             plan_start_date: updatedProfile.plan_start_date || "",
             plan_end_date: updatedProfile.plan_end_date || "",
+<<<<<<< HEAD
             status: updatedProfile.membership_status || "", // ✅
+=======
+            status: updatedProfile.membership_status || "",
+            membership_type: updatedProfile.membership_type || "",
+>>>>>>> ca7bddea173ce40ed07ede983436184041549b84
             membership_fee: updatedProfile.membership_fee || "",
           });
 
@@ -294,6 +345,14 @@ const Account = () => {
                 </button>
               </div>
 
+<<<<<<< HEAD
+=======
+              {/* Profile Picture Section - Enhanced */}
+              <div className="text-center mb-4">
+               
+              </div>
+
+>>>>>>> ca7bddea173ce40ed07ede983436184041549b84
               <form onSubmit={handleUpdateProfile}>
                 <div className="row g-3">
                   <div className="col-12 col-sm-6">
@@ -449,6 +508,95 @@ const Account = () => {
             </div>
           </div>
 
+<<<<<<< HEAD
+=======
+          {/* Membership Info - Only show for members */}
+          {userRole === "MEMBER" && (
+            <div className="card border-0 shadow-sm mb-4">
+              <div className="card-body">
+                <h5 className="fw-bold mb-3">Membership Information</h5>
+                <div className="row g-3">
+                  <div className="col-12 col-sm-6">
+                    <label className="form-label">Membership Plan</label>
+                    <input
+                      name="membership_plan"
+                      className="form-control"
+                      placeholder="e.g. Gold 12 Months"
+                      value={membership.membership_plan}
+                      onChange={handleMembershipChange}
+                      readOnly
+                    />
+                  </div>
+                  <div className="col-6 col-sm-3">
+                    <label className="form-label">Start Date</label>
+                    <input
+                      type="date"
+                      name="plan_start_date"
+                      className="form-control"
+                      value={membership.plan_start_date}
+                      onChange={handleMembershipChange}
+                      readOnly
+                    />
+                  </div>
+                  <div className="col-6 col-sm-3">
+                    <label className="form-label">End Date</label>
+                    <input
+                      type="date"
+                      name="plan_end_date"
+                      className="form-control"
+                      value={membership.plan_end_date}
+                      onChange={handleMembershipChange}
+                      readOnly
+                    />
+                  </div>
+                  <div className="col-6 col-sm-3">
+                    <label className="form-label">Status</label>
+                    <select
+                      name="status"
+                      className="form-select"
+                      value={membership.status}
+                      onChange={handleMembershipChange}
+                      disabled
+                    >
+                      <option>Active</option>
+                      <option>Inactive</option>
+                      <option>Expired</option>
+                    </select>
+                  </div>
+                  <div className="col-6 col-sm-3">
+                    <label className="form-label">Membership Type</label>
+                    <select
+                      name="membership_type"
+                      className="form-select"
+                      value={membership.membership_type}
+                      onChange={handleMembershipChange}
+                      disabled
+                    >
+                      <option>Standard</option>
+                      <option>Premium</option>
+                      <option>VIP</option>
+                    </select>
+                  </div>
+                  <div className="col-12 col-sm-3">
+                    <label className="form-label">Membership Fee</label>
+                    <input
+                      type="number"
+                      name="membership_fee"
+                      className="form-control"
+                      placeholder="₹"
+                      value={membership.membership_fee}
+                      onChange={handleMembershipChange}
+                      min="0"
+                      step="0.01"
+                      readOnly
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+>>>>>>> ca7bddea173ce40ed07ede983436184041549b84
           {/* Password Change Section */}
           <div className="card border-0 shadow-sm">
             <div className="card-body">

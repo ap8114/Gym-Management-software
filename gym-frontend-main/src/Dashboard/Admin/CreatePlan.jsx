@@ -159,38 +159,39 @@ const CreatePlan = () => {
     }
   };
 
-  const fetchBookingRequests = async () => {
-    try {
-      const adminId = localStorage.getItem("userId") || "4";
-      const response = await axiosInstance.get(
-        `${BaseUrl}booking/requests?adminId=${adminId}`
-      );
-      if (response.data.success) {
-        const formattedRequests = response.data.requests.map((request) => ({
-          id: request.id,
-          memberName: request.memberName,
-          planName: request.className || "Personal Training",
-          planType: request.className ? "group" : "personal",
-          price: `₹${parseFloat(request.price).toLocaleString()}`,
-          sessions: "N/A",
-          validity: "N/A",
-          sessionsUsed: "N/A",
-          requestedAt: new Date(request.createdAt).toLocaleString(),
-          status: request.status.toLowerCase(),
-          upiId: request.upiId,
-          classId: request.classId,
-          memberId: request.memberId,
-          branchId: request.branchId,
-          requestType: "booking",
-        }));
-        setBookingRequests(formattedRequests);
-      }
-    } catch (err) {
-      console.error("Error fetching booking requests:", err);
-      // Don't set the global error state here to avoid showing it in the create plan modal
-      // Instead, we could show a toast notification or handle it differently
+const fetchBookingRequests = async () => {
+  try {
+    const adminId = localStorage.getItem("userId") || "4";
+    const response = await axiosInstance.get(
+      `${BaseUrl}booking/requests?adminId=${adminId}`
+    );
+    
+    if (response.data.success && response.data.data) {
+      const formattedRequests = response.data.data.map((request) => ({
+        id: request.id,
+        memberName: request.memberName || `Member ID: ${request.memberId}`,
+        planName: request.className || "Personal Training",
+        planType: request.className ? "group" : "personal",
+        price: `₹${parseFloat(request.price).toLocaleString()}`,
+        sessions: "N/A",
+        validity: "N/A",
+        sessionsUsed: "N/A",
+        requestedAt: new Date(request.createdAt).toLocaleString(),
+        status: request.status.toLowerCase(),
+        upiId: request.upiId,
+        classId: request.classId,
+        memberId: request.memberId,
+        branchId: request.branchId,
+        requestType: "booking",
+      }));
+      setBookingRequests(formattedRequests);
     }
-  };
+  } catch (err) {
+    console.error("Error fetching booking requests:", err);
+    // Don't set the global error state here to avoid showing it in the create plan modal
+    // Instead, we could show a toast notification or handle it differently
+  }
+};
 
   const fetchRenewalRequests = async () => {
     try {

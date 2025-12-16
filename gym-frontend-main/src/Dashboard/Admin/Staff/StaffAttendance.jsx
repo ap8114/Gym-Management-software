@@ -85,32 +85,38 @@ const StaffAttendance = () => {
     }
   };
 
+  // ✅ UPDATED: Modified fetchAttendanceRecords to use new API endpoint
   const fetchAttendanceRecords = async () => {
     try {
       setLoading(true);
+      // Using new API endpoint
       const response = await axiosInstance.get(`${BaseUrl}memberattendence/admin?adminId=${adminId}`);
+      
       if (response.data?.success && Array.isArray(response.data.attendance)) {
+        // Transform API data to match component expectations
         const transformedRecords = response.data.attendance.map(record => {
-          const isStaff = record.staffId !== null;
-          const name = isStaff ? record.staffName : record.memberName || 'Unknown';
-          const role = isStaff ? record.staffRole : record.memberRole || 'Member';
+          // Format role name for display
+          const formattedRole = record.role ? 
+            record.role.charAt(0).toUpperCase() + record.role.slice(1) : 'Unknown';
+          
           return {
-            attendance_id: record.id,
-            staff_id: record.staffId,
-            staff_name: name,
-            role: role,
-            branch: getBranchName(record.branchId),
-            date: record.checkIn ? record.checkIn.split('T')[0] : '',
+            attendance_id: record.id || Date.now(), // Using timestamp as fallback for ID
+            staff_id: null, // No staffId in new API response
+            staff_name: record.name || 'Unknown',
+            role: formattedRole,
+            branch: 'Unknown', // No branch info in new API response
+            date: record.date ? record.date.split('T')[0] : '',
             checkin_time: record.checkIn,
             checkout_time: record.checkOut,
             mode: record.mode,
-            shift_id: record.shiftId,
-            shift_name: record.shiftType || calculateShiftType(record.checkIn),
-            status: record.status,
-            notes: record.notes,
-            member_id: record.memberId
+            shift_id: null, // No shiftId in new API response
+            shift_name: record.shift || calculateShiftType(record.checkIn),
+            status: record.status || 'Unknown',
+            notes: '', // No notes in new API response
+            member_id: null // No memberId in new API response
           };
         });
+        
         setRecords(transformedRecords);
       } else {
         setError('Failed to load attendance records');
@@ -207,13 +213,25 @@ const StaffAttendance = () => {
   const allStatuses = ['All', 'Present', 'Late', 'Absent', 'Overtime'];
   const allBranches = ['All', ...new Set(branches.map(b => b.name))];
 
-  const filteredRecords = records.filter(record =>
-    (record.staff_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     record.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     record.status.toLowerCase().includes(searchTerm.toLowerCase())) &&
-    (roleFilter === 'All' || record.role === roleFilter) &&
-    (statusFilter === 'All' || record.status === statusFilter)
-  );
+  // ✅ FIXED: Added null checks before calling toLowerCase()
+  const filteredRecords = records.filter(record => {
+    // Ensure record exists and has required properties
+    if (!record) return false;
+    
+    // Safe property access with fallback values
+    const staffName = record.staff_name || '';
+    const role = record.role || '';
+    const status = record.status || '';
+    const searchTermLower = searchTerm.toLowerCase();
+    
+    return (
+      (staffName.toLowerCase().includes(searchTermLower) ||
+       role.toLowerCase().includes(searchTermLower) ||
+       status.toLowerCase().includes(searchTermLower)) &&
+      (roleFilter === 'All' || role === roleFilter) &&
+      (statusFilter === 'All' || status === statusFilter)
+    );
+  });
 
   const handleAddNew = () => {
     setModalType('add');
@@ -238,14 +256,42 @@ const StaffAttendance = () => {
     setIsDeleteModalOpen(true);
   };
 
+  // ✅ FIXED: Updated delete function to use correct API endpoint with member attendance ID
   const confirmDelete = async () => {
     if (selectedRecord) {
       try {
-        await axiosInstance.delete(`${BaseUrl}admin-staff-attendance/${selectedRecord.attendance_id}`);
-        setRecords(prev => prev.filter(r => r.attendance_id !== selectedRecord.attendance_id));
-        alert(`Deleted attendance record for ${selectedRecord.staff_name} (${selectedRecord.role}).`);
+        // Show loading state for specific record
+        setRecords(prev => prev.map(r => 
+          r.attendance_id === selectedRecord.attendance_id 
+            ? { ...r, deleting: true } 
+            : r
+        ));
+        
+        // Using correct API endpoint for deleting attendance records
+        // Send member attendance ID in URL path
+        const response = await axiosInstance.delete(`${BaseUrl}memberattendence/delete/${selectedRecord.attendance_id}`);
+        
+        if (response.data && response.data.success) {
+          // Remove deleted record from state
+          setRecords(prev => prev.filter(r => r.attendance_id !== selectedRecord.attendance_id));
+          alert(`Deleted attendance record for ${selectedRecord.staff_name} (${selectedRecord.role}).`);
+        } else {
+          // Remove loading state and show error
+          setRecords(prev => prev.map(r => 
+            r.attendance_id === selectedRecord.attendance_id 
+              ? { ...r, deleting: false } 
+              : r
+          ));
+          alert(response.data?.message || 'Delete failed');
+        }
       } catch (err) {
         console.error('Error deleting attendance record:', err);
+        // Remove loading state
+        setRecords(prev => prev.map(r => 
+          r.attendance_id === selectedRecord.attendance_id 
+            ? { ...r, deleting: false } 
+            : r
+        ));
         alert('Failed to delete attendance record');
       }
     }
@@ -275,6 +321,8 @@ const StaffAttendance = () => {
   }, [isModalOpen, isDeleteModalOpen]);
 
   const getStatusBadge = (status) => {
+    if (!status) return <span className="badge rounded-pill bg-secondary px-2 py-1" style={{ fontSize: '0.7rem' }}>Unknown</span>;
+    
     const badgeClasses = {
       Present: "bg-success text-white",
       Late: "bg-warning text-dark",
@@ -289,11 +337,17 @@ const StaffAttendance = () => {
   };
 
   const getRoleBadge = (role) => {
+    if (!role) return <span className="badge rounded-pill bg-light text-light px-2 py-1" style={{ fontSize: '0.65rem', whiteSpace: 'nowrap' }}>Unknown</span>;
+    
     const colors = {
       "Personal Trainer": "bg-primary",
       "Receptionist": "bg-info",
       "Housekeeping": "bg-secondary",
       "General Trainer": "bg-success",
+      "Personaltrainer": "bg-primary", // Added for API response format
+      "Generaltrainer": "bg-success", // Added for API response format
+      "Housekeeping": "bg-secondary", // Added for API response format
+      "Receptionist": "bg-info", // Added for API response format
       "Member": "bg-dark",
       "Admin": "bg-danger",
       "Manager": "bg-warning",
@@ -418,14 +472,14 @@ const StaffAttendance = () => {
     const header = ["Date", "Staff Name", "Role", "Check-in", "Check-out", "Mode", "Shift", "Status", "Notes"];
     const rows = filteredRecords.map(record => [
       record.date,
-      record.staff_name,
-      record.role,
+      record.staff_name || '',
+      record.role || '',
       formatTime(record.checkin_time),
       formatTime(record.checkout_time),
-      record.mode,
-      record.shift_name,
-      record.status,
-      record.notes
+      record.mode || '',
+      record.shift_name || '',
+      record.status || '',
+      record.notes || ''
     ]);
     const csv = [header, ...rows].map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -459,7 +513,7 @@ const StaffAttendance = () => {
       <div className="card-body p-3">
         <div className="d-flex justify-content-between align-items-start mb-2">
           <div>
-            <h6 className="mb-1 fw-bold" style={{ fontSize: '0.95rem' }}>{record.staff_name}</h6>
+            <h6 className="mb-1 fw-bold" style={{ fontSize: '0.95rem' }}>{record.staff_name || 'Unknown'}</h6>
             <div className="d-flex gap-1 flex-wrap">
               {getRoleBadge(record.role)}
             </div>
@@ -473,7 +527,7 @@ const StaffAttendance = () => {
           </div>
           <div className="col-6">
             <small className="text-muted d-block">Shift</small>
-            <span style={{ fontSize: '0.85rem' }}>{record.shift_name}</span>
+            <span style={{ fontSize: '0.85rem' }}>{record.shift_name || 'Unknown'}</span>
           </div>
           <div className="col-6">
             <small className="text-muted d-block">Check-in</small>
@@ -491,28 +545,33 @@ const StaffAttendance = () => {
           </div>
         )}
         <div className="d-flex justify-content-end gap-1">
-          <button
+          {/* <button
             className="btn btn-sm action-btn"
             title="View"
             onClick={() => handleView(record)}
             style={{ borderColor: customColor, color: customColor }}
           >
             <FaEye size={12} />
-          </button>
-          <button
+          </button> */}
+          {/* <button
             className="btn btn-sm action-btn"
             title="Edit"
             onClick={() => handleEdit(record)}
             style={{ borderColor: customColor, color: customColor }}
           >
             <FaEdit size={12} />
-          </button>
+          </button> */}
           <button
             className="btn btn-sm btn-outline-danger action-btn"
             title="Delete"
             onClick={() => handleDeleteClick(record)}
+            disabled={record.deleting}
           >
-            <FaTrashAlt size={12} />
+            {record.deleting ? (
+              <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            ) : (
+              <FaTrashAlt size={12} />
+            )}
           </button>
         </div>
       </div>
@@ -618,7 +677,8 @@ const StaffAttendance = () => {
       <div className="card shadow-sm border-0">
         <div className="card-header bg-light py-2 py-md-3">
           <h6 className="mb-0 fw-bold" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
-            Attendance Records ({filteredRecords.length})
+            Attendance Records 
+            {/* ({filteredRecords.length}) */}
           </h6>
         </div>
         <div className="card-body p-0">
@@ -647,7 +707,7 @@ const StaffAttendance = () => {
                           <span className="d-lg-none">{new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                         </td>
                         <td className="text-nowrap" style={{ padding: '0.5rem' }}>
-                          <strong>{record.staff_name}</strong>
+                          <strong>{record.staff_name || 'Unknown'}</strong>
                         </td>
                         <td className="text-nowrap" style={{ padding: '0.5rem' }}>{getRoleBadge(record.role)}</td>
                         <td className="text-nowrap" style={{ padding: '0.5rem' }}>{formatTime(record.checkin_time)}</td>
@@ -656,37 +716,42 @@ const StaffAttendance = () => {
                           <span className={`badge rounded-pill ${
                             record.mode === 'QR' ? 'bg-info text-white' : 'bg-secondary text-white'
                           } px-2 py-1`} style={{ fontSize: '0.65rem' }}>
-                            {record.mode}
+                            {record.mode || 'Unknown'}
                           </span>
                         </td>
                         <td className="text-nowrap d-none d-md-table-cell" style={{ padding: '0.5rem' }}>
-                          <span style={{ fontSize: '0.75rem' }}>{record.shift_name}</span>
+                          <span style={{ fontSize: '0.75rem' }}>{record.shift_name || 'Unknown'}</span>
                         </td>
                         <td className="text-nowrap" style={{ padding: '0.5rem' }}>{getStatusBadge(record.status)}</td>
                         {/* <td className="text-center text-nowrap" style={{ padding: '0.5rem' }}>
                           <div className="d-flex justify-content-center gap-1">
-                            <button
+                            {/* <button
                               className="btn btn-sm action-btn"
                               title="View"
                               onClick={() => handleView(record)}
                               style={{ borderColor: customColor, color: customColor }}
                             >
                               <FaEye size={12} />
-                            </button>
-                            <button
+                            </button> */}
+                            {/* <button
                               className="btn btn-sm action-btn"
                               title="Edit"
                               onClick={() => handleEdit(record)}
                               style={{ borderColor: customColor, color: customColor }}
                             >
                               <FaEdit size={12} />
-                            </button>
+                            </button> */}
                             <button
                               className="btn btn-sm btn-outline-danger action-btn"
                               title="Delete"
                               onClick={() => handleDeleteClick(record)}
+                              disabled={record.deleting}
                             >
-                              <FaTrashAlt size={12} />
+                              {record.deleting ? (
+                                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                              ) : (
+                                <FaTrashAlt size={12} />
+                              )}
                             </button>
                           </div>
                         </td> */}
@@ -724,7 +789,7 @@ const StaffAttendance = () => {
         </div>
       </div>
 
-      {/* MAIN MODAL */}
+      {/* MAIN MODAL - FIXED: Using controlled inputs for view/edit modes */}
       {isModalOpen && (
         <div
           className="modal fade show"
@@ -761,7 +826,8 @@ const StaffAttendance = () => {
                       <select
                         name="staff_id"
                         className="form-select form-select-sm"
-                        defaultValue={selectedRecord?.staff_id || ''}
+                        value={selectedRecord?.staff_id || ''}
+                        onChange={(e) => setSelectedRecord({...selectedRecord, staff_id: e.target.value})}
                         disabled={modalType === 'view'}
                         required
                       >
@@ -779,7 +845,8 @@ const StaffAttendance = () => {
                         name="date"
                         type="date"
                         className="form-control form-control-sm"
-                        defaultValue={selectedRecord?.date || new Date().toISOString().split('T')[0]}
+                        value={selectedRecord?.date || new Date().toISOString().split('T')[0]}
+                        onChange={(e) => setSelectedRecord({...selectedRecord, date: e.target.value})}
                         readOnly={modalType === 'view'}
                         required
                       />
@@ -789,7 +856,8 @@ const StaffAttendance = () => {
                       <select
                         name="shift_id"
                         className="form-select form-select-sm"
-                        defaultValue={selectedRecord?.shift_id || ''}
+                        value={selectedRecord?.shift_id || ''}
+                        onChange={(e) => setSelectedRecord({...selectedRecord, shift_id: e.target.value})}
                         disabled={modalType === 'view'}
                       >
                         <option value="">No Shift</option>
@@ -805,7 +873,8 @@ const StaffAttendance = () => {
                       <select
                         name="mode"
                         className="form-select form-select-sm"
-                        defaultValue={selectedRecord?.mode || 'QR'}
+                        value={selectedRecord?.mode || 'QR'}
+                        onChange={(e) => setSelectedRecord({...selectedRecord, mode: e.target.value})}
                         disabled={modalType === 'view'}
                         required
                       >
@@ -818,7 +887,8 @@ const StaffAttendance = () => {
                       <select
                         name="status"
                         className="form-select form-select-sm"
-                        defaultValue={selectedRecord?.status || 'Present'}
+                        value={selectedRecord?.status || 'Present'}
+                        onChange={(e) => setSelectedRecord({...selectedRecord, status: e.target.value})}
                         disabled={modalType === 'view'}
                         required
                       >
@@ -834,7 +904,8 @@ const StaffAttendance = () => {
                         name="checkin_time"
                         type="datetime-local"
                         className="form-control form-control-sm"
-                        defaultValue={selectedRecord?.checkin_time || ''}
+                        value={selectedRecord?.checkin_time || ''}
+                        onChange={(e) => setSelectedRecord({...selectedRecord, checkin_time: e.target.value})}
                         readOnly={modalType === 'view'}
                       />
                     </div>
@@ -844,7 +915,8 @@ const StaffAttendance = () => {
                         name="checkout_time"
                         type="datetime-local"
                         className="form-control form-control-sm"
-                        defaultValue={selectedRecord?.checkout_time || ''}
+                        value={selectedRecord?.checkout_time || ''}
+                        onChange={(e) => setSelectedRecord({...selectedRecord, checkout_time: e.target.value})}
                         readOnly={modalType === 'view'}
                       />
                     </div>
@@ -855,7 +927,8 @@ const StaffAttendance = () => {
                         type="text"
                         className="form-control form-control-sm"
                         placeholder="Reason for absence or late entry..."
-                        defaultValue={selectedRecord?.notes || ''}
+                        value={selectedRecord?.notes || ''}
+                        onChange={(e) => setSelectedRecord({...selectedRecord, notes: e.target.value})}
                         readOnly={modalType === 'view'}
                       />
                     </div>
@@ -924,7 +997,7 @@ const StaffAttendance = () => {
                 </div>
                 <h5 style={{ fontSize: '1rem' }}>Are you sure?</h5>
                 <p className="text-muted" style={{ fontSize: '0.85rem' }}>
-                  This will permanently delete attendance record for <strong>{selectedRecord?.staff_name}</strong> ({selectedRecord?.role}) on <strong>{selectedRecord ? formatDate(selectedRecord.date) : ''}</strong>.<br />
+                  This will permanently delete attendance record for <strong>{selectedRecord?.staff_name || 'Unknown'}</strong> ({selectedRecord?.role || 'Unknown'}) on <strong>{selectedRecord ? formatDate(selectedRecord.date) : ''}</strong>.<br />
                   This action cannot be undone.
                 </p>
               </div>
