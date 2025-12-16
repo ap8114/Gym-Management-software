@@ -1,9 +1,8 @@
-import React from 'react'
+import React from 'react';
+import AdminGlobalQRCode from './AdminGlobalQRCode';
 
-const qrcheckin = () => {
-  return (
-    <div>qrcheckin</div>
-  )
-}
+const QrCheckin = () => {
+  return <AdminGlobalQRCode />;
+};
 
-export default qrcheckin
+export default QrCheckin;

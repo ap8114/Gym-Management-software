@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { FaEye, FaEdit, FaTrashAlt, FaCalendarAlt, FaUser, FaClock, FaQrcode, FaMobileAlt, FaCheckCircle, FaExclamationTriangle, FaTimesCircle } from 'react-icons/fa';
+import React from 'react';
+import QRAttendanceSystem from '../../../Components/QRAttendanceSystem';
 
 const QRCodeAttendance = () => {
+  return <QRAttendanceSystem />;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [modalType, setModalType] = useState('view'); // Only 'view' and 'edit' now

@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { Form, Button, Table, Modal, Row, Col, Card, Spinner, Alert } from "react-bootstrap";
-import { FaEye, FaTrash, FaTimesCircle } from "react-icons/fa";
-import BaseUrl from '../../Api/BaseUrl';
+import React from "react";
+import QRAttendanceSystem from '../../Components/QRAttendanceSystem';
 
 const ReceptionistQRCode = () => {
+  return <QRAttendanceSystem />;
   const [search, setSearch] = useState("");
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewMember, setViewMember] = useState(null);
@@ -32,16 +31,8 @@ const ReceptionistQRCode = () => {
       setError(null);
       
       // Using API endpoint for member attendance
-      const response = await fetch(`${BaseUrl}memberattendence/${memberId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      
-      const data = await response.json();
-      
-      console.log('API Response:', data);
+      const response = await axiosInstance.get(`memberattendence/${memberId}`);
+      const data = response.data;
       
       if (data.success && data.attendance) {
         // Transform API response to match expected format
@@ -80,8 +71,8 @@ const ReceptionistQRCode = () => {
         setAttendance([]);
       }
     } catch (err) {
-      console.error('Error fetching attendance data:', err);
-      setError(`Error fetching data: ${err.message}`);
+      const errorMessage = err.response?.data?.message || err.message || 'Error fetching data';
+      setError(errorMessage);
       setAttendance([]);
     } finally {
       setLoading(false);
@@ -99,14 +90,8 @@ const ReceptionistQRCode = () => {
             : member
         ));
 
-        const response = await fetch(`${BaseUrl}memberattendence/delete/${id}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-        
-        const data = await response.json();
+        const response = await axiosInstance.delete(`memberattendence/delete/${id}`);
+        const data = response.data;
         
         if (data.success) {
           // Refresh attendance data after successful deletion
@@ -122,8 +107,8 @@ const ReceptionistQRCode = () => {
           ));
         }
       } catch (err) {
-        console.error('Error during deletion:', err);
-        alert(`Error during deletion: ${err.message}`);
+        const errorMessage = err.response?.data?.message || err.message || 'Error during deletion';
+        alert(errorMessage);
         // Remove loading state
         setAttendance(attendance.map(member => 
           member.attendance_id === id 
@@ -144,14 +129,12 @@ const ReceptionistQRCode = () => {
           : member
       ));
 
-      const response = await fetch(`${BaseUrl}memberattendence/checkout/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        }
+      const response = await axiosInstance.put(`memberattendence/checkout/${id}`, {
+        memberId: memberId,
+        branchId: branchId
       });
       
-      const data = await response.json();
+      const data = response.data;
       
       if (data.success) {
         // Update specific member to show checked out status
@@ -176,8 +159,8 @@ const ReceptionistQRCode = () => {
         ));
       }
     } catch (err) {
-      console.error('Error during checkout:', err);
-      alert(`Error during check-out: ${err.message}`);
+      const errorMessage = err.response?.data?.message || err.message || 'Error during check-out';
+      alert(errorMessage);
       // Remove loading state
       setAttendance(attendance.map(member => 
         member.attendance_id === id 
