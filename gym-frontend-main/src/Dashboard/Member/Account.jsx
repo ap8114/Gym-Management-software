@@ -323,8 +323,6 @@ const Account = () => {
 
               {/* Profile Picture Section - Enhanced */}
               <div className="text-center mb-4">
-         
-               
               </div>
 
               <form onSubmit={handleUpdateProfile}>
