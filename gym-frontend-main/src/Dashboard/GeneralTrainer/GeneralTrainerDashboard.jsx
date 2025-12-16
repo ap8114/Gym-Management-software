@@ -29,6 +29,11 @@ const GeneralTrainerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+    // Get user data from localStorage
+  const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+  const branchId = userData.branchId || 1; // Default to 1 if not found
+  const adminId = userData.adminId || 90; // Default to 90 if not found
+
   // Fetch data from API using axios
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -49,7 +54,7 @@ const GeneralTrainerDashboard = () => {
         }
         
         // Using axios instead of fetch
-        const response = await axiosInstance.get(`generaltrainer/dashboard?branchId=${branchId}`);
+        const response = await axiosInstance.get(`generaltrainer/dashboard?adminId=${adminId}`);
         
         // Process the response data to convert statistics to English
         const data = response.data;
