@@ -21,7 +21,7 @@ const ReceptionistBookGroupClasses = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
 
 
-  
+
   const [members, setMembers] = useState([]);
   const [trainers, setTrainers] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -65,7 +65,7 @@ const ReceptionistBookGroupClasses = () => {
 
   console.log(adminId)
 
-  
+
 
   const normalizeBooking = (apiBooking) => {
     const isGroup = apiBooking.bookingType === 'GROUP';
@@ -245,15 +245,15 @@ const ReceptionistBookGroupClasses = () => {
     const badgeMap =
       type === 'booking'
         ? {
-            Booked: 'bg-primary-subtle text-primary-emphasis',
-            Completed: 'bg-success-subtle text-success-emphasis',
-            Canceled: 'bg-danger-subtle text-danger-emphasis',
-          }
+          Booked: 'bg-primary-subtle text-primary-emphasis',
+          Completed: 'bg-success-subtle text-success-emphasis',
+          Canceled: 'bg-danger-subtle text-danger-emphasis',
+        }
         : {
-            Paid: 'bg-success-subtle text-success-emphasis',
-            Pending: 'bg-warning-subtle text-warning-emphasis',
-            Refunded: 'bg-info-subtle text-info-emphasis',
-          };
+          Paid: 'bg-success-subtle text-success-emphasis',
+          Pending: 'bg-warning-subtle text-warning-emphasis',
+          Refunded: 'bg-info-subtle text-info-emphasis',
+        };
     return (
       <span className={`badge rounded-pill ${badgeMap[status] || 'bg-secondary'} px-3 py-1`}>
         {status}
@@ -266,8 +266,8 @@ const ReceptionistBookGroupClasses = () => {
     return modalType === 'add'
       ? `Book New ${typeName}`
       : modalType === 'edit'
-      ? `Edit ${typeName} Booking`
-      : `View ${typeName} Booking`;
+        ? `Edit ${typeName} Booking`
+        : `View ${typeName} Booking`;
   };
 
   const formatDate = (dateString) => {
@@ -336,7 +336,7 @@ const ReceptionistBookGroupClasses = () => {
     const formatTime = (t) => (t.length === 5 ? `${t}:00` : t);
 
     const payload = {
-     
+
       memberId: parseInt(member_id, 10),
       memberName: member_name,
       bookingType: bookingType === 'group' ? 'GROUP' : 'PT',
@@ -438,16 +438,6 @@ const ReceptionistBookGroupClasses = () => {
             />
           </div>
         </div>
-        {/* <div className="col-6 col-md-3 col-lg-2">
-          <button className="btn btn-outline-secondary w-100">
-            <i className="fas fa-filter me-1"></i> Filter
-          </button>
-        </div>
-        <div className="col-6 col-md-3 col-lg-2">
-          <button className="btn btn-outline-secondary w-100">
-            <i className="fas fa-file-export me-1"></i> Export
-          </button>
-        </div> */}
       </div>
 
       {/* Show Entries */}
@@ -500,11 +490,10 @@ const ReceptionistBookGroupClasses = () => {
                   </td>
                   <td>
                     <span
-                      className={`badge rounded-pill ${
-                        booking.type === 'group'
-                          ? 'bg-info-subtle text-info-emphasis'
-                          : 'bg-secondary-subtle text-secondary-emphasis'
-                      } px-2 py-1`}
+                      className={`badge rounded-pill ${booking.type === 'group'
+                        ? 'bg-info-subtle text-info-emphasis'
+                        : 'bg-secondary-subtle text-secondary-emphasis'
+                        } px-2 py-1`}
                     >
                       {booking.type === 'group' ? 'Group Class' : 'PT Session'}
                     </span>

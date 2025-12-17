@@ -1,8 +1,9 @@
-import React from "react";
-import QRAttendanceSystem from '../../Components/QRAttendanceSystem';
+import React, { useState, useEffect } from "react";
+import { Form, Button, Table, Modal, Row, Col, Card, Spinner, Alert } from "react-bootstrap";
+import { FaEye, FaTrash, FaTimesCircle } from "react-icons/fa";
+import axiosInstance from '../../Api/axiosInstance';
 
 const ReceptionistQRCode = () => {
-  return <QRAttendanceSystem />;
   const [search, setSearch] = useState("");
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewMember, setViewMember] = useState(null);
@@ -29,11 +30,11 @@ const ReceptionistQRCode = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Using API endpoint for member attendance
       const response = await axiosInstance.get(`memberattendence/${memberId}`);
       const data = response.data;
-      
+
       if (data.success && data.attendance) {
         // Transform API response to match expected format
         const transformedAttendance = data.attendance.map(entry => {
@@ -41,20 +42,20 @@ const ReceptionistQRCode = () => {
           const checkInTime = entry.checkIn ? new Date(entry.checkIn) : null;
           const checkOutTime = entry.checkOut ? new Date(entry.checkOut) : null;
           let workHours = "--";
-          
+
           if (checkInTime && checkOutTime) {
             const diffMs = checkOutTime - checkInTime;
             const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
             const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
             workHours = `${diffHours}h ${diffMinutes}m`;
           }
-          
+
           return {
             attendance_id: entry.id,
             member_id: entry.memberId,
             name: entry.fullName || `Member ID: ${entry.memberId}`,
-            status: entry.computedStatus === 'Active' ? 'Present' : 
-                    entry.computedStatus === 'Completed' ? 'Present' : 'Absent',
+            status: entry.computedStatus === 'Active' ? 'Present' :
+              entry.computedStatus === 'Completed' ? 'Present' : 'Absent',
             checkin_time: entry.checkIn ? new Date(entry.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "",
             checkout_time: entry.checkOut ? new Date(entry.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "",
             mode: entry.mode,
@@ -64,7 +65,7 @@ const ReceptionistQRCode = () => {
             workHours: workHours
           };
         });
-        
+
         setAttendance(transformedAttendance);
       } else {
         // If there's no data or an error, set empty array
@@ -84,15 +85,15 @@ const ReceptionistQRCode = () => {
     if (window.confirm("Are you sure you want to delete this record?")) {
       try {
         // Show loading state for specific member
-        setAttendance(attendance.map(member => 
-          member.attendance_id === id 
+        setAttendance(attendance.map(member =>
+          member.attendance_id === id
             ? { ...member, deleting: true }
             : member
         ));
 
         const response = await axiosInstance.delete(`memberattendence/delete/${id}`);
         const data = response.data;
-        
+
         if (data.success) {
           // Refresh attendance data after successful deletion
           fetchAttendanceData();
@@ -100,8 +101,8 @@ const ReceptionistQRCode = () => {
         } else {
           alert(data.message || 'Delete failed');
           // Remove loading state
-          setAttendance(attendance.map(member => 
-            member.attendance_id === id 
+          setAttendance(attendance.map(member =>
+            member.attendance_id === id
               ? { ...member, deleting: false }
               : member
           ));
@@ -110,8 +111,8 @@ const ReceptionistQRCode = () => {
         const errorMessage = err.response?.data?.message || err.message || 'Error during deletion';
         alert(errorMessage);
         // Remove loading state
-        setAttendance(attendance.map(member => 
-          member.attendance_id === id 
+        setAttendance(attendance.map(member =>
+          member.attendance_id === id
             ? { ...member, deleting: false }
             : member
         ));
@@ -123,8 +124,8 @@ const ReceptionistQRCode = () => {
   const handleCheckout = async (id) => {
     try {
       // Show loading state for specific member
-      setAttendance(attendance.map(member => 
-        member.attendance_id === id 
+      setAttendance(attendance.map(member =>
+        member.attendance_id === id
           ? { ...member, checkingOut: true }
           : member
       ));
@@ -133,27 +134,27 @@ const ReceptionistQRCode = () => {
         memberId: memberId,
         branchId: branchId
       });
-      
+
       const data = response.data;
-      
+
       if (data.success) {
         // Update specific member to show checked out status
-        setAttendance(attendance.map(member => 
-          member.attendance_id === id 
-            ? { 
-                ...member, 
-                checkingOut: false,
-                checkedOut: true,
-                checkout_time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              }
+        setAttendance(attendance.map(member =>
+          member.attendance_id === id
+            ? {
+              ...member,
+              checkingOut: false,
+              checkedOut: true,
+              checkout_time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
             : member
         ));
         alert('Check-out successful!');
       } else {
         alert(data.message || 'Check-out failed');
         // Remove loading state
-        setAttendance(attendance.map(member => 
-          member.attendance_id === id 
+        setAttendance(attendance.map(member =>
+          member.attendance_id === id
             ? { ...member, checkingOut: false }
             : member
         ));
@@ -162,8 +163,8 @@ const ReceptionistQRCode = () => {
       const errorMessage = err.response?.data?.message || err.message || 'Error during check-out';
       alert(errorMessage);
       // Remove loading state
-      setAttendance(attendance.map(member => 
-        member.attendance_id === id 
+      setAttendance(attendance.map(member =>
+        member.attendance_id === id
           ? { ...member, checkingOut: false }
           : member
       ));
@@ -284,9 +285,9 @@ const ReceptionistQRCode = () => {
                           size="sm"
                           value={member.notes || ""}
                           onChange={(e) => {
-                            setAttendance(attendance.map(m => 
-                              m.attendance_id === member.attendance_id 
-                                ? { ...m, notes: e.target.value } 
+                            setAttendance(attendance.map(m =>
+                              m.attendance_id === member.attendance_id
+                                ? { ...m, notes: e.target.value }
                                 : m
                             ));
                           }}
@@ -378,7 +379,7 @@ const ReceptionistQRCode = () => {
                         <div>{member.checkout_time || "--"}</div>
                       </Col>
                     </Row>
-                    
+
                     <Row className="mb-2">
                       <Col xs={6}>
                         <small className="text-muted">Work Hours:</small>
@@ -405,7 +406,7 @@ const ReceptionistQRCode = () => {
                         </Form.Select>
                       </Col>
                     </Row>
-                    
+
                     <Row className="mb-2">
                       <Col xs={12}>
                         <small className="text-muted">Notes:</small>
@@ -414,9 +415,9 @@ const ReceptionistQRCode = () => {
                           size="sm"
                           value={member.notes || ""}
                           onChange={(e) => {
-                            setAttendance(attendance.map(m => 
-                              m.attendance_id === member.attendance_id 
-                                ? { ...m, notes: e.target.value } 
+                            setAttendance(attendance.map(m =>
+                              m.attendance_id === member.attendance_id
+                                ? { ...m, notes: e.target.value }
                                 : m
                             ));
                           }}
@@ -424,7 +425,7 @@ const ReceptionistQRCode = () => {
                         />
                       </Col>
                     </Row>
-                    
+
                     <div className="d-flex gap-2 mt-3">
                       <Button
                         variant="outline-dark"
