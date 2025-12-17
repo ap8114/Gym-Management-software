@@ -4,6 +4,7 @@ import { FaQrcode, FaCheckCircle } from 'react-icons/fa';
 import { Html5Qrcode } from 'html5-qrcode';
 import { format } from 'date-fns';
 import axiosInstance from '../Api/axiosInstance';
+import Qr from './QR';
 
 /**
  * Universal QR Attendance Component
@@ -533,4 +534,3 @@ const UniversalQRAttendance = () => {
 };
 
 export default UniversalQRAttendance;
-

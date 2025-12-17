@@ -8,7 +8,7 @@ import axiosInstance from "../Api/axiosInstance";
 const Navbar = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
+  // const [showProfileModal, setShowProfileModal] = useState(false);
 
   // State for dynamic logo and loading status
   const [appLogo, setAppLogo] = useState(Logo); // Initialize with default logo
@@ -138,10 +138,10 @@ const Navbar = ({ toggleSidebar }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    document.body.style.overflow = showProfileModal ? "hidden" : "unset";
-    return () => (document.body.style.overflow = "unset");
-  }, [showProfileModal]);
+  // useEffect(() => {
+  //   document.body.style.overflow = showProfileModal ? "hidden" : "unset";
+  //   return () => (document.body.style.overflow = "unset");
+  // }, [showProfileModal]);
 
   const handleSaveProfile = () => {
     try {
@@ -265,26 +265,26 @@ const Navbar = ({ toggleSidebar }) => {
 
           {/* User Profile */}
           <div className="dropdown" ref={dropdownRef}>
-          <div
-  className="d-flex align-items-center gap-2 cursor-pointer text-white"
-  role="button"
-  onClick={() => setDropdownOpen(!dropdownOpen)}
->
-  {profile?.profileImage ? (
-    <img
-      src={profile.profileImage}
-      alt="Profile"
-      className="rounded-circle"
-      style={{ width: "35px", height: "35px", objectFit: "cover" }}
-    />
-  ) : (
-    <FaUserCircle size={35} />
-  )}
-  <div className="d-none d-sm-block text-white">
-    <small className="mb-0">Welcome {profile?.role || "User"}</small>
-    <div className="fw-bold">{profile?.name || "Guest"}</div>
-  </div>
-</div>
+            <div
+              className="d-flex align-items-center gap-2 cursor-pointer text-white"
+              role="button"
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+            >
+              {profile?.profileImage ? (
+                <img
+                  src={profile.profileImage}
+                  alt="Profile"
+                  className="rounded-circle"
+                  style={{ width: "35px", height: "35px", objectFit: "cover" }}
+                />
+              ) : (
+                <FaUserCircle size={35} />
+              )}
+              <div className="d-none d-sm-block text-white">
+                <small className="mb-0">Welcome {profile?.role || "User"}</small>
+                <div className="fw-bold">{profile?.name || "Guest"}</div>
+              </div>
+            </div>
 
             {dropdownOpen && (
               <ul
@@ -300,15 +300,18 @@ const Navbar = ({ toggleSidebar }) => {
                 }}
               >
                 <li>
-                  <button
-                    className="dropdown-item"
-                    onClick={() => {
-                      setDropdownOpen(false);
-                      setShowProfileModal(true);
-                    }}
-                  >
-                    Profile
-                  </button>
+                  <Link className="text-decoration-none" to="/member/account">
+                    <button
+                      className="dropdown-item"
+                      onClick={() => {
+                        setDropdownOpen(false);
+
+                      }}
+                    >
+                      Profile
+                    </button>
+                  </Link>
+
                 </li>
                 <li>
                   <hr className="dropdown-divider" />
@@ -327,68 +330,6 @@ const Navbar = ({ toggleSidebar }) => {
           </div>
         </div>
       </nav>
-
-      {/* Profile Modal */}
-      {showProfileModal && (
-        <div
-          className="modal fade show d-block"
-          tabIndex="-1"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Profile</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowProfileModal(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <div className="d-flex flex-column align-items-center">
-                  {profile.profileImage ? (
-                    <img
-                      src={profile.profileImage}
-                      alt="Profile"
-                      className="rounded-circle mb-3"
-                      style={{ width: "120px", height: "120px", objectFit: "cover" }}
-                    />
-                  ) : (
-                    <div
-                      className="d-flex justify-content-center align-items-center rounded-circle bg-primary text-white mb-3"
-                      style={{ width: "120px", height: "120px" }}
-                    >
-                      <span className="fs-1 fw-bold">
-                        {profile.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </span>
-                    </div>
-                  )}
-                  <h4 className="mb-3">{profile.name}</h4>
-                  <div className="mb-3">
-                    <p><strong>Email:</strong> {profile.email}</p>
-                    <p><strong>Phone:</strong> {profile.phone}</p>
-                    <p><strong>Role:</strong> {profile.role}</p>
-                    <p><strong>Branch:</strong> {profile.branch}</p>
-                    <p><strong>Admin ID:</strong> {profile.adminId}</p>
-                    <p><strong>Branch ID:</strong> {profile.branchId}</p>
-                    <p><strong>Staff ID:</strong> {profile.staffId}</p>
-                  </div>
-                  <button
-                    className="btn btn-primary"
-                    onClick={handleSaveProfile}
-                  >
-                    Save Profile
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };
