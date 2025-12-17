@@ -8,11 +8,11 @@ const Account = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showErrorAlert, setShowErrorAlert] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false); // New state for edit mode
-  const [saving, setSaving] = useState(false); // State for saving
-  const [updatingPassword, setUpdatingPassword] = useState(false); // State for password update
-  const [userRole, setUserRole] = useState(""); // New state for user role
-  
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [userRole, setUserRole] = useState("");
+
   const [personal, setPersonal] = useState({
     member_id: "M23456789",
     first_name: "",
@@ -33,7 +33,8 @@ const Account = () => {
     membership_plan: "",
     plan_start_date: "",
     plan_end_date: "",
-    status: "", // maps to membership_status
+    status: "",
+    membership_type: "",
     membership_fee: "",
   });
 
@@ -47,6 +48,11 @@ const Account = () => {
     newMatch: "",
     minLength: "",
   });
+
+  const getFallbackAvatar = (gender) => {
+    if (gender === "Female") return "https://randomuser.me/api/portraits/women/44.jpg";
+    return "https://randomuser.me/api/portraits/men/32.jpg";
+  };
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -63,22 +69,15 @@ const Account = () => {
 
         if (response.data.success && response.data.profile) {
           const profile = response.data.profile;
-          
-          // Set user role if available in the response
-          if (profile.role) {
-            setUserRole(profile.role);
-          } else {
-            // Try to get role from GetAdminId or localStorage
-            const storedRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
-            if (storedRole) {
-              setUserRole(storedRole);
-            } else {
-              // If role is not explicitly provided, assume it's a member
-              setUserRole("MEMBER");
-            }
-          }
-          
-          // Update personal information
+
+          const storedRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
+          setUserRole(profile.role || storedRole || "MEMBER");
+
+          // ✅ Use 'profilePhoto' (not profileImage)
+          let profileImageUrl = profile.profilePhoto?.trim()
+            ? profile.profilePhoto
+            : getFallbackAvatar(profile.gender);
+
           setPersonal({
             member_id: `M${profile.userId}`,
             first_name: profile.first_name || "",
@@ -92,17 +91,16 @@ const Account = () => {
             address_state: profile.address_state || "",
             address_zip: profile.address_zip || "",
             profile_picture: null,
-            profile_preview: "https://randomuser.me/api/portraits/men/32.jpg",
+            profile_preview: profileImageUrl,
           });
 
-          // ✅ Membership: only use fields that exist
           setMembership({
             membership_plan: profile.membership_plan || "",
             plan_start_date: profile.plan_start_date || "",
             plan_end_date: profile.plan_end_date || "",
             status: profile.membership_status || "",
-            membership_type: profile.membership_type || "",
-            membership_fee: profile.membership_fee || "",
+            membership_type: profile.membership_type || "Standard",
+            membership_fee: profile.membership_fee?.toString() || "",
           });
 
           setError(null);
@@ -127,6 +125,10 @@ const Account = () => {
     const { name, value, files } = e.target;
     if (name === "profile_picture" && files?.[0]) {
       const file = files[0];
+      if (!file.type.startsWith("image/")) {
+        alert("Please upload an image file.");
+        return;
+      }
       setPersonal((p) => ({
         ...p,
         profile_picture: file,
@@ -164,6 +166,13 @@ const Account = () => {
 
   const handleEditModeToggle = () => {
     setIsEditMode(!isEditMode);
+    if (isEditMode) {
+      setPersonal((prev) => ({
+        ...prev,
+        profile_picture: null,
+        profile_preview: prev.profile_preview,
+      }));
+    }
   };
 
   const handleUpdateProfile = async (e) => {
@@ -172,24 +181,37 @@ const Account = () => {
     if (isEditMode) {
       setSaving(true);
       try {
-        // ✅ Send correct field names (snake_case as per API)
-        const payload = {
-          first_name: personal.first_name,
-          last_name: personal.last_name,
-          email: personal.email,
-          phone: personal.phone,
-          gender: personal.gender,
-          date_of_birth: personal.dob,
-          address_street: personal.address_street,
-          address_city: personal.address_city,
-          address_state: personal.address_state,
-          address_zip: personal.address_zip,
-        };
+        const formData = new FormData();
+        formData.append("first_name", personal.first_name);
+        formData.append("last_name", personal.last_name);
+        formData.append("email", personal.email);
+        formData.append("phone", personal.phone);
+        formData.append("gender", personal.gender || "");
+        formData.append("date_of_birth", personal.dob || "");
+        formData.append("address_street", personal.address_street);
+        formData.append("address_city", personal.address_city);
+        formData.append("address_state", personal.address_state);
+        formData.append("address_zip", personal.address_zip);
 
-        const response = await axiosInstance.put(`member-self/profile/${adminId}`, payload);
+        // ✅ Send as 'profilePhoto' to match backend
+        if (personal.profile_picture) {
+          formData.append("profilePhoto", personal.profile_picture);
+        }
+
+        const response = await axiosInstance.put(`member-self/profile/${adminId}`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
 
         if (response.data.success) {
           const updatedProfile = response.data.profile;
+
+          // ✅ Use 'profilePhoto' from response
+          let newImageUrl = updatedProfile.profilePhoto?.trim()
+            ? updatedProfile.profilePhoto
+            : personal.profile_picture
+              ? URL.createObjectURL(personal.profile_picture)
+              : getFallbackAvatar(updatedProfile.gender);
+
           setPersonal({
             member_id: `M${updatedProfile.userId}`,
             first_name: updatedProfile.first_name || "",
@@ -202,8 +224,8 @@ const Account = () => {
             address_city: updatedProfile.address_city || "",
             address_state: updatedProfile.address_state || "",
             address_zip: updatedProfile.address_zip || "",
-            profile_picture: personal.profile_picture,
-            profile_preview: personal.profile_preview,
+            profile_picture: null,
+            profile_preview: newImageUrl,
           });
 
           setMembership({
@@ -211,8 +233,8 @@ const Account = () => {
             plan_start_date: updatedProfile.plan_start_date || "",
             plan_end_date: updatedProfile.plan_end_date || "",
             status: updatedProfile.membership_status || "",
-            membership_type: updatedProfile.membership_type || "",
-            membership_fee: updatedProfile.membership_fee || "",
+            membership_type: updatedProfile.membership_type || "Standard",
+            membership_fee: updatedProfile.membership_fee?.toString() || "",
           });
 
           alert("Profile updated successfully!");
@@ -311,20 +333,35 @@ const Account = () => {
                 </button>
               </div>
 
-              {/* Profile Picture Section - Enhanced */}
               <div className="text-center mb-4">
-               
+                <img
+                  src={personal.profile_preview}
+                  alt="Profile"
+                  className="rounded-circle mb-3"
+                  style={{ width: "120px", height: "120px", objectFit: "cover", border: "2px solid #e9ecef" }}
+                />
+                {isEditMode && (
+                  <div>
+                    <label htmlFor="profile_picture" className="btn btn-outline-primary btn-sm">
+                      Change Photo
+                    </label>
+                    <input
+                      type="file"
+                      id="profile_picture"
+                      name="profile_picture"
+                      accept="image/*"
+                      className="d-none"
+                      onChange={handlePersonalChange}
+                    />
+                  </div>
+                )}
               </div>
 
               <form onSubmit={handleUpdateProfile}>
                 <div className="row g-3">
                   <div className="col-12 col-sm-6">
                     <label className="form-label">Member ID</label>
-                    <input
-                      className="form-control"
-                      value={personal.member_id}
-                      readOnly
-                    />
+                    <input className="form-control" value={personal.member_id} readOnly />
                   </div>
                   <div className="col-12 col-sm-6">
                     <label className="form-label">
@@ -471,7 +508,6 @@ const Account = () => {
             </div>
           </div>
 
-          {/* Membership Info - Only show for members */}
           {userRole === "MEMBER" && (
             <div className="card border-0 shadow-sm mb-4">
               <div className="card-body">
@@ -480,11 +516,8 @@ const Account = () => {
                   <div className="col-12 col-sm-6">
                     <label className="form-label">Membership Plan</label>
                     <input
-                      name="membership_plan"
                       className="form-control"
-                      placeholder="e.g. Gold 12 Months"
                       value={membership.membership_plan}
-                      onChange={handleMembershipChange}
                       readOnly
                     />
                   </div>
@@ -492,10 +525,8 @@ const Account = () => {
                     <label className="form-label">Start Date</label>
                     <input
                       type="date"
-                      name="plan_start_date"
                       className="form-control"
                       value={membership.plan_start_date}
-                      onChange={handleMembershipChange}
                       readOnly
                     />
                   </div>
@@ -503,52 +534,33 @@ const Account = () => {
                     <label className="form-label">End Date</label>
                     <input
                       type="date"
-                      name="plan_end_date"
                       className="form-control"
                       value={membership.plan_end_date}
-                      onChange={handleMembershipChange}
                       readOnly
                     />
                   </div>
                   <div className="col-6 col-sm-3">
                     <label className="form-label">Status</label>
-                    <select
-                      name="status"
-                      className="form-select"
-                      value={membership.status}
-                      onChange={handleMembershipChange}
-                      disabled
-                    >
-                      <option>Active</option>
-                      <option>Inactive</option>
-                      <option>Expired</option>
-                    </select>
+                    <input
+                      className="form-control"
+                      value={membership.status || "N/A"}
+                      readOnly
+                    />
                   </div>
                   <div className="col-6 col-sm-3">
                     <label className="form-label">Membership Type</label>
-                    <select
-                      name="membership_type"
-                      className="form-select"
+                    <input
+                      className="form-control"
                       value={membership.membership_type}
-                      onChange={handleMembershipChange}
-                      disabled
-                    >
-                      <option>Standard</option>
-                      <option>Premium</option>
-                      <option>VIP</option>
-                    </select>
+                      readOnly
+                    />
                   </div>
                   <div className="col-12 col-sm-3">
                     <label className="form-label">Membership Fee</label>
                     <input
-                      type="number"
-                      name="membership_fee"
+                      type="text"
                       className="form-control"
-                      placeholder="₹"
-                      value={membership.membership_fee}
-                      onChange={handleMembershipChange}
-                      min="0"
-                      step="0.01"
+                      value={membership.membership_fee ? `₹${membership.membership_fee}` : "Free"}
                       readOnly
                     />
                   </div>
@@ -557,7 +569,6 @@ const Account = () => {
             </div>
           )}
 
-          {/* Password Change Section */}
           <div className="card border-0 shadow-sm">
             <div className="card-body">
               <h5 className="fw-bold mb-3">Change Password</h5>
