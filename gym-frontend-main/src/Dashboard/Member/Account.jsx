@@ -8,9 +8,9 @@ const Account = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showErrorAlert, setShowErrorAlert] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false); // New state for edit mode
+  const [saving, setSaving] = useState(false); // State for saving
+  const [updatingPassword, setUpdatingPassword] = useState(false); // State for password update
   const [userRole, setUserRole] = useState(""); // New state for user role
   
   const [personal, setPersonal] = useState({
@@ -63,8 +63,6 @@ const Account = () => {
 
         if (response.data.success && response.data.profile) {
           const profile = response.data.profile;
-
-          // ✅ CORRECT FIELD MAPPING FROM API RESPONSE
           
           // Set user role if available in the response
           if (profile.role) {
@@ -84,9 +82,6 @@ const Account = () => {
           setPersonal({
             member_id: `M${profile.userId}`,
             first_name: profile.first_name || "",
-            last_name: profile.last_name || "", // ✅ Fixed: was profile.first_name!
-            gender: profile.gender || "",
-            dob: profile.date_of_birth || "", // ✅ API field is date_of_birth
             last_name: profile.last_name || "",
             gender: profile.gender || "",
             dob: profile.date_of_birth ? profile.date_of_birth.split('T')[0] : "",
@@ -105,7 +100,6 @@ const Account = () => {
             membership_plan: profile.membership_plan || "",
             plan_start_date: profile.plan_start_date || "",
             plan_end_date: profile.plan_end_date || "",
-            status: profile.membership_status || "", // ✅ Correct field
             status: profile.membership_status || "",
             membership_type: profile.membership_type || "",
             membership_fee: profile.membership_fee || "",
@@ -185,7 +179,6 @@ const Account = () => {
           email: personal.email,
           phone: personal.phone,
           gender: personal.gender,
-          date_of_birth: personal.dob, // ✅ snake_case
           date_of_birth: personal.dob,
           address_street: personal.address_street,
           address_city: personal.address_city,
@@ -202,7 +195,6 @@ const Account = () => {
             first_name: updatedProfile.first_name || "",
             last_name: updatedProfile.last_name || "",
             gender: updatedProfile.gender || "",
-            dob: updatedProfile.date_of_birth || "", // ✅
             dob: updatedProfile.date_of_birth ? updatedProfile.date_of_birth.split('T')[0] : "",
             email: updatedProfile.email || "",
             phone: updatedProfile.phone || "",
@@ -218,7 +210,6 @@ const Account = () => {
             membership_plan: updatedProfile.membership_plan || "",
             plan_start_date: updatedProfile.plan_start_date || "",
             plan_end_date: updatedProfile.plan_end_date || "",
-            status: updatedProfile.membership_status || "", // ✅
             status: updatedProfile.membership_status || "",
             membership_type: updatedProfile.membership_type || "",
             membership_fee: updatedProfile.membership_fee || "",
