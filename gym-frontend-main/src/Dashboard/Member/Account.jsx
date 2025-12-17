@@ -73,10 +73,8 @@ const Account = () => {
           const storedRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
           setUserRole(profile.role || storedRole || "MEMBER");
 
-          // ✅ Use 'profilePhoto' (not profileImage)
-          let profileImageUrl = profile.profilePhoto?.trim()
-            ? profile.profilePhoto
-            : getFallbackAvatar(profile.gender);
+          // ✅ Use 'profileImage' (as per your actual API response)
+          let profileImageUrl = profile.profileImage?.trim() || getFallbackAvatar(profile.gender);
 
           setPersonal({
             member_id: `M${profile.userId}`,
@@ -193,9 +191,9 @@ const Account = () => {
         formData.append("address_state", personal.address_state);
         formData.append("address_zip", personal.address_zip);
 
-        // ✅ Send as 'profilePhoto' to match backend
+        // ✅ Send as 'profileImage' to match your backend field
         if (personal.profile_picture) {
-          formData.append("profilePhoto", personal.profile_picture);
+          formData.append("profileImage", personal.profile_picture);
         }
 
         const response = await axiosInstance.put(`member-self/profile/${adminId}`, formData, {
@@ -205,12 +203,9 @@ const Account = () => {
         if (response.data.success) {
           const updatedProfile = response.data.profile;
 
-          // ✅ Use 'profilePhoto' from response
-          let newImageUrl = updatedProfile.profilePhoto?.trim()
-            ? updatedProfile.profilePhoto
-            : personal.profile_picture
-              ? URL.createObjectURL(personal.profile_picture)
-              : getFallbackAvatar(updatedProfile.gender);
+          // ✅ Use 'profileImage' from response
+          let newImageUrl = updatedProfile.profileImage?.trim() ||
+            (personal.profile_picture ? URL.createObjectURL(personal.profile_picture) : getFallbackAvatar(updatedProfile.gender));
 
           setPersonal({
             member_id: `M${updatedProfile.userId}`,
