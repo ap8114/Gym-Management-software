@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axiosInstance from "../../Api/axiosInstance"; // Import your axios instance
+import axiosInstance from "../../Api/axiosInstance";
 import BaseUrl from "../../Api/BaseUrl";
 import {
   Search,
@@ -29,11 +29,13 @@ const AdminMember = () => {
   const [showEditForm, setShowEditForm] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [filterStatus, setFilterStatus] = useState("");
-  const [filterExpiring, setFilterExpiring] = useState(""); // New filter for expiring plans
-  const [loading, setLoading] = useState(false); // Add loading state
-  const [editLoading, setEditLoading] = useState(false); // Add edit loading state
-  const [deleteLoading, setDeleteLoading] = useState(false); // Add delete loading state
-  // Plans state
+  const [filterExpiring, setFilterExpiring] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [membersLoading, setMembersLoading] = useState(false);
+
+  // Plans
   const [apiPlans, setApiPlans] = useState([]);
   const [plansLoaded, setPlansLoaded] = useState(false);
   const [planError, setPlanError] = useState(null);
@@ -52,22 +54,26 @@ const AdminMember = () => {
     startDate: new Date().toISOString().split("T")[0],
     paymentMode: "cash",
     amountPaid: "",
-    interestedIn: "", // Added field for "Interested In" selection
-    status: "Active", // Added status field
+    interestedIn: "",
+    status: "Active",
+    profileImage: null, // Store file object directly
+    profileImagePreview: "", // For preview
   });
 
-  // Updated editMember state to include all necessary fields for API
   const [editMember, setEditMember] = useState({
     id: "",
-    fullName: "", // Changed from 'name' to 'fullName'
+    fullName: "",
     phone: "",
     email: "",
-    planId: "", // Changed from 'plan' to 'planId'
+    planId: "",
     address: "",
     gender: "",
-    dateOfBirth: "", // Changed from 'dob' to 'dateOfBirth'
-    interestedIn: "", // Added field
-    status: "Active", // Added status field
+    dateOfBirth: "",
+    interestedIn: "",
+    status: "Active",
+    profileImage: null, // Store file object directly
+    profileImagePreview: "", // For preview
+    existingProfileImage: "", // Store existing image URL
   });
 
   const [renewPlan, setRenewPlan] = useState({
@@ -77,61 +83,75 @@ const AdminMember = () => {
     amountPaid: "",
   });
 
-  // Function to check if a plan is expiring in the next 7 days
+  // Handle profile image change for both add and edit forms
+  const handleProfileImageChange = (e, isEdit = false) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Create a preview URL for immediate display
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (isEdit) {
+          setEditMember({
+            ...editMember,
+            profileImage: file, // Store the actual file
+            profileImagePreview: reader.result, // For preview
+          });
+        } else {
+          setNewMember({
+            ...newMember,
+            profileImage: file, // Store the actual file
+            profileImagePreview: reader.result, // For preview
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Rest of your utility functions (expiry, filtering, etc.)
   const isExpiringIn7Days = (expiryDate) => {
     if (!expiryDate) return false;
-    
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
-    
+    today.setHours(0, 0, 0, 0);
     const expiry = new Date(expiryDate);
     const daysUntilExpiry = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
-    
     return daysUntilExpiry >= 0 && daysUntilExpiry <= 7;
   };
 
-  // Filter members based on search term, status and expiry
   const filteredMembers = members.filter((member) => {
     const matchesSearch =
       member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.phone.includes(searchTerm);
     const matchesStatus = filterStatus === "" || member.status === filterStatus;
-    const matchesExpiring = filterExpiring === "" || 
+    const matchesExpiring =
+      filterExpiring === "" ||
       (filterExpiring === "expiring" && isExpiringIn7Days(member.expiry));
-    
     return matchesSearch && matchesStatus && matchesExpiring;
   });
 
-  // Fetch members by admin ID
+  // Fetch members
   const fetchMembersByAdminId = async () => {
     setMembersLoading(true);
     try {
-      const response = await axiosInstance.get(
-        `${BaseUrl}members/admin/${adminId}`
-      );
-
-      if (response.data && response.data.success) {
-        // Map API response to match our component structure
+      const response = await axiosInstance.get(`members/admin/${adminId}`);
+      if (response.data?.success) {
         const formattedMembers = response.data.data.map((member) => ({
           id: member.id,
           name: member.fullName,
           phone: member.phone,
           email: member.email,
           gender: member.gender,
-          plan: getPlanNameById(member.planId), // Get plan name by ID
-          planId: member.planId, // Store plan ID
+          plan: getPlanNameById(member.planId),
+          planId: member.planId,
           address: member.address,
           dob: member.dateOfBirth,
           planStart: member.membershipFrom,
           expiry: member.membershipTo,
           status: member.status,
           interestedIn: member.interestedIn,
+          profileImage: member.profileImage || "",
         }));
-
         setMembers(formattedMembers);
-        console.log("Members loaded successfully:", formattedMembers);
-      } else {
-        console.error("API response error:", response.data);
       }
     } catch (err) {
       console.error("Error fetching members:", err);
@@ -140,94 +160,116 @@ const AdminMember = () => {
     }
   };
 
-  // Fetch plans from API
+  // Fetch a single member by ID
+  const fetchMemberById = async (id) => {
+    try {
+      // Add BaseUrl prefix and fix the endpoint
+      const response = await axiosInstance.get(`${BaseUrl}members/detail/${id}`);
+      console.log("API response for member detail:", response.data);
+
+      if (response.data?.success) {
+        const member = response.data.data;
+        return {
+          id: member.id,
+          name: member.fullName,
+          phone: member.phone,
+          email: member.email,
+          gender: member.gender,
+          plan: getPlanNameById(member.planId), // This might fail if plans aren't loaded yet
+          planId: member.planId,
+          address: member.address,
+          dob: member.dateOfBirth,
+          // Fix typos in property names
+          planStart: member.membershipFrom,
+          expiry: member.membershipTo,
+          status: member.status,
+          interestedIn: member.interestedIn,
+          profileImage: member.profileImage || "",
+        };
+      }
+      return null;
+    } catch (err) {
+      console.error("Error fetching member:", err);
+      return null;
+    }
+  };
+
+  // Fetch plans
   const fetchPlansFromAPI = async () => {
     setPlanLoading(true);
     setPlanError(null);
-
     try {
-      // Get adminId from localStorage using "userId" key with fallback to '4'
       const adminId = localStorage.getItem("userId") || "4";
-
-      // Make API call to get plans by admin ID
-      const response = await axiosInstance.get(
-        `${BaseUrl}MemberPlan?adminId=${adminId}`
-      );
-
-      if (response.data && response.data.success) {
-        // Format API response to match our component structure
+      const response = await axiosInstance.get(`${BaseUrl}MemberPlan?adminId=${adminId}`);
+      if (response.data?.success) {
         const formattedPlans = response.data.plans.map((plan) => ({
           id: plan.id,
           name: plan.name,
           sessions: plan.sessions,
           validity: plan.validityDays,
           price: `₹${plan.price.toLocaleString()}`,
-          active: true, // Assuming all plans from API are active by default
-          type: plan.type.toLowerCase(), // Convert to lowercase for our component
-          trainerType: plan.trainerType ? plan.trainerType.toLowerCase() : null, // Convert to lowercase for our component
+          active: true,
+          type: plan.type.toLowerCase(),
+          trainerType: plan.trainerType ? plan.trainerType.toLowerCase() : null,
         }));
-
         setApiPlans(formattedPlans);
         setPlansLoaded(true);
-        console.log("Plans loaded successfully:", formattedPlans);
       } else {
-        setPlanError("Failed to fetch plans. Please try again.");
-        console.error("API response error:", response.data);
+        setPlanError("Failed to fetch plans.");
       }
     } catch (err) {
-      console.error("Error fetching plans:", err);
-      setPlanError(
-        err.response?.data?.message ||
-          "Failed to fetch plans. Please try again."
-      );
+      setPlanError("Failed to fetch plans.");
     } finally {
       setPlanLoading(false);
     }
   };
 
-  // Fetch data when component mounts
   useEffect(() => {
     fetchMembersByAdminId();
     fetchPlansFromAPI();
   }, []);
 
-  // Handle add member with API call
+  // 📤 Handle Add Member (with FormData)
   const handleAddMember = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Prepare payload for API
-      const payload = {
-        adminId: adminId, // Added adminId to payload
-        fullName: newMember.fullName,
-        email: newMember.email,
-        password: newMember.password,
-        phone: newMember.phone,
-        gender: newMember.gender,
-        dateOfBirth: newMember.dateOfBirth,
-        address: newMember.address,
-        interestedIn: newMember.interestedIn,
-        planId: parseInt(newMember.planId), // Convert to number
-        membershipFrom: newMember.startDate, // Map startDate to membershipFrom
-        paymentMode:
-          newMember.paymentMode.charAt(0).toUpperCase() +
-          newMember.paymentMode.slice(1), // Capitalize first letter
-        amountPaid: parseFloat(newMember.amountPaid), // Convert to number
-      };
+      // Create FormData object
+      const formData = new FormData();
 
-      // Make API call using axiosInstance and BaseUrl
-      const response = await axiosInstance.post(
-        `${BaseUrl}members/create`,
-        payload
-      );
+      // Append all member data
+      formData.append("adminId", adminId);
+      formData.append("fullName", newMember.fullName);
+      formData.append("email", newMember.email);
+      formData.append("password", newMember.password);
+      formData.append("phone", newMember.phone);
+      formData.append("gender", newMember.gender);
+      formData.append("dateOfBirth", newMember.dateOfBirth);
+      formData.append("address", newMember.address);
+      formData.append("interestedIn", newMember.interestedIn);
+      formData.append("planId", newMember.planId);
+      formData.append("membershipFrom", newMember.startDate);
+      formData.append("paymentMode", newMember.paymentMode.charAt(0).toUpperCase() + newMember.paymentMode.slice(1));
+      formData.append("amountPaid", newMember.amountPaid);
+      formData.append("status", newMember.status);
 
-      // If API call is successful, add member to local state
+      // Append image if selected
+      if (newMember.profileImage) {
+        formData.append("profileImage", newMember.profileImage);
+      }
+
+      // Make API call with FormData
+      const response = await axiosInstance.post(`${BaseUrl}members/create`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
       if (response.data) {
-        // Refresh members list to get updated data
+        // Refresh the members list
         await fetchMembersByAdminId();
 
-        // Reset form
         setNewMember({
           fullName: "",
           phone: "",
@@ -242,239 +284,179 @@ const AdminMember = () => {
           amountPaid: "",
           interestedIn: "",
           status: "Active",
+          profileImage: null,
+          profileImagePreview: "",
         });
-
         setShowAddForm(false);
         alert("Member added successfully!");
       }
     } catch (error) {
       console.error("Error adding member:", error);
-      alert("Failed to add member. Please try again.");
+      alert("Failed to add member.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle edit member with API call
+  // 📤 Handle Edit Member (with FormData)
   const handleEditMember = async (e) => {
     e.preventDefault();
     setEditLoading(true);
 
     try {
-      // Prepare payload for API to match expected structure
-      const payload = {
-        adminId: adminId, // Added adminId to payload
-        fullName: editMember.fullName,
-        email: editMember.email,
-        phone: editMember.phone,
-        gender: editMember.gender,
-        address: editMember.address,
-        dateOfBirth: editMember.dateOfBirth,
-        interestedIn: editMember.interestedIn,
-        status: editMember.status, // Added status
-        planId: parseInt(editMember.planId), // Added planId
-      };
+      // Create FormData object
+      const formData = new FormData();
 
-      // Make API call using axiosInstance and BaseUrl with correct URL
-      const response = await axiosInstance.put(
-        `${BaseUrl}members/update/${editMember.id}`,
-        payload
-      );
+      // Append all member data
+      formData.append("adminId", adminId);
+      formData.append("fullName", editMember.fullName);
+      formData.append("email", editMember.email);
+      formData.append("phone", editMember.phone);
+      formData.append("gender", editMember.gender);
+      formData.append("address", editMember.address);
+      formData.append("dateOfBirth", editMember.dateOfBirth);
+      formData.append("interestedIn", editMember.interestedIn);
+      formData.append("status", editMember.status);
+      formData.append("planId", editMember.planId);
 
-      // If API call is successful, update member in local state
-      if (response.data && response.data.success) {
-        // Update member in state with response data
-        setMembers(
-          members.map((member) =>
-            member.id === editMember.id
-              ? { ...member, ...response.data.member }
-              : member
-          )
-        );
+      // Append image if selected
+      if (editMember.profileImage) {
+        formData.append("profileImage", editMember.profileImage);
+      }
+
+      // Make API call with FormData
+      const response = await axiosInstance.put(`${BaseUrl}members/update/${editMember.id}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data?.success) {
+        // Refresh the members list to get the updated data
+        await fetchMembersByAdminId();
 
         setShowEditForm(false);
         alert("Member updated successfully!");
       } else {
-        alert("Failed to update member. Please try again.");
+        alert("Failed to update member.");
       }
     } catch (error) {
       console.error("Error updating member:", error);
-      alert("Failed to update member. Please try again.");
+      alert("Failed to update member.");
     } finally {
       setEditLoading(false);
     }
   };
 
-  // Handle delete member with API call
+  // Delete member
   const handleDeleteMember = async (id) => {
     if (window.confirm("Are you sure you want to delete this member?")) {
       setDeleteLoading(true);
-
       try {
-        // Make API call using axiosInstance and BaseUrl
-        const response = await axiosInstance.delete(
-          `${BaseUrl}members/delete/${id}`
-        );
+        const response = await axiosInstance.delete(`${BaseUrl}members/delete/${id}`);
+        if (response.data?.success) {
+          // Refresh the members list
+          await fetchMembersByAdminId();
 
-        // If API call is successful, remove member from local state
-        if (response.data && response.data.success) {
-          setMembers(members.filter((member) => member.id !== id));
           alert("Member deleted successfully!");
         } else {
-          alert("Failed to delete member. Please try again.");
+          alert("Failed to delete member.");
         }
       } catch (error) {
         console.error("Error deleting member:", error);
-        alert("Failed to delete member. Please try again.");
+        alert("Failed to delete member.");
       } finally {
         setDeleteLoading(false);
       }
     }
   };
 
-  // Handle view member
   const handleViewMember = (member) => {
     setSelectedMember(member);
     setShowViewModal(true);
   };
 
-  // Handle edit form open with correct field mapping
   const handleEditFormOpen = (member) => {
-    setEditMember({
-      id: member.id,
-      fullName: member.name, // Map 'name' to 'fullName'
-      email: member.email,
-      phone: member.phone,
-      gender: member.gender,
-      address: member.address,
-      dateOfBirth: member.dob, // Map 'dob' to 'dateOfBirth'
-      interestedIn: member.interestedIn,
-      status: member.status, // Map 'status'
-      planId: member.planId, // Map 'planId'
-    });
-    setShowEditForm(true);
+    try {
+      console.log("Opening edit form for member:", member);
+
+      // Use the member data directly from the list
+      setEditMember({
+        id: member.id,
+        fullName: member.name,
+        email: member.email,
+        phone: member.phone,
+        gender: member.gender,
+        address: member.address,
+        dateOfBirth: member.dob,
+        interestedIn: member.interestedIn,
+        status: member.status,
+        planId: member.planId,
+        profileImage: null,
+        profileImagePreview: member.profileImage || "",
+        existingProfileImage: member.profileImage || "",
+      });
+      setShowEditForm(true);
+    } catch (error) {
+      console.error("Error in handleEditFormOpen:", error);
+      alert("An error occurred while opening the edit form. Please try again.");
+    }
   };
 
-  // Handle renew plan with API call
+  const handleRenewFormOpen = (member) => {
+    setRenewPlan({
+      ...renewPlan,
+      memberId: member.id.toString(),
+      plan: member.planId,
+    });
+    setShowRenewForm(true);
+  };
+
   const handleRenewPlan = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      // Prepare payload for API
       const payload = {
-        adminId: adminId, // Add adminId to payload
-        planId: parseInt(renewPlan.plan), // Convert to number
-        paymentMode:
-          renewPlan.paymentMode.charAt(0).toUpperCase() +
-          renewPlan.paymentMode.slice(1), // Capitalize first letter
-        amountPaid: parseFloat(renewPlan.amountPaid), // Convert to number
+        adminId,
+        planId: parseInt(renewPlan.plan),
+        paymentMode: renewPlan.paymentMode.charAt(0).toUpperCase() + renewPlan.paymentMode.slice(1),
+        amountPaid: parseFloat(renewPlan.amountPaid),
       };
+      const response = await axiosInstance.put(`${BaseUrl}members/renew/${renewPlan.memberId}`, payload);
+      if (response.data?.success) {
+        // Refresh the members list to get the updated data
+        await fetchMembersByAdminId();
 
-      // Make API call to renew membership
-      const response = await axiosInstance.put(
-        `${BaseUrl}members/renew/${renewPlan.memberId}`,
-        payload
-      );
-
-      // If API call is successful, update member in local state
-      if (response.data && response.data.success) {
-        // Find member to update
-        const updatedMemberIndex = members.findIndex(
-          (member) => member.id === parseInt(renewPlan.memberId)
-        );
-
-        if (updatedMemberIndex !== -1) {
-          // Create a copy of members array
-          const updatedMembers = [...members];
-
-          // Update member with new plan information
-          updatedMembers[updatedMemberIndex] = {
-            ...updatedMembers[updatedMemberIndex],
-            planId: response.data.data.planId,
-            plan: getPlanNameById(response.data.data.planId),
-            planStart: new Date(
-              response.data.data.membershipFrom
-            ).toLocaleDateString(),
-            expiry: response.data.data.membershipTo
-              ? new Date(response.data.data.membershipTo).toLocaleDateString()
-              : "N/A", // Handle null membershipTo
-            status: "Active",
-          };
-
-          // Update state with modified members array
-          setMembers(updatedMembers);
-        }
-
-        // Reset form
-        setRenewPlan({
-          memberId: "",
-          plan: "",
-          paymentMode: "cash",
-          amountPaid: "",
-        });
+        setRenewPlan({ memberId: "", plan: "", paymentMode: "cash", amountPaid: "" });
         setShowRenewForm(false);
-        alert("Membership renewed successfully!");
+        alert("Membership renewed!");
       } else {
-        alert("Failed to renew membership. Please try again.");
+        alert("Failed to renew membership.");
       }
     } catch (error) {
-      console.error("Error renewing membership:", error);
-      alert("Failed to renew membership. Please try again.");
+      console.error("Error renewing:", error);
+      alert("Failed to renew.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle renew form open
-  const handleRenewFormOpen = (member) => {
-    setRenewPlan({
-      ...renewPlan,
-      memberId: member.id.toString(),
-      plan: member.plan,
-    });
-    setShowRenewForm(true);
-  };
-
-  // Get status badge class
-  const getStatusClass = (status) => {
-    switch (status) {
-      case "Active":
-        return "bg-success";
-      case "Inactive":
-        return "bg-secondary";
-      default:
-        return "bg-secondary";
-    }
-  };
-
-  // Get plan name by ID
+  const getStatusClass = (status) => (status === "Active" ? "bg-success" : "bg-secondary");
   const getPlanNameById = (planId) => {
     if (!planId || apiPlans.length === 0) return "Unknown Plan";
     const plan = apiPlans.find((p) => p.id === parseInt(planId));
     return plan ? plan.name : "Unknown Plan";
   };
-
-  // Filter plans based on "Interested In" selection
   const getFilteredPlans = (interestedIn) => {
     if (!plansLoaded || apiPlans.length === 0) return [];
-    
     switch (interestedIn) {
-      case "Personal Training":
-        return apiPlans.filter(plan => plan.type === "personal");
-      case "Group Classes":
-        return apiPlans.filter(plan => plan.type === "group");
-      case "General":
-        return apiPlans.filter(plan => plan.trainerType === "general");
-      case "Both":
-        return apiPlans; // Show all plans
-      default:
-        return []; // No selection, return empty array
+      case "Personal Training": return apiPlans.filter((p) => p.type === "personal");
+      case "Group Classes": return apiPlans.filter((p) => p.type === "group");
+      case "General": return apiPlans.filter((p) => p.trainerType === "general");
+      case "Both": return apiPlans;
+      default: return [];
     }
   };
-
-  // Add missing state
-  const [membersLoading, setMembersLoading] = useState(false);
 
   return (
     <div className="container-fluid py-2 py-md-4">
@@ -548,6 +530,7 @@ const AdminMember = () => {
               <table className="table table-hover mb-0">
                 <thead className="table-light">
                   <tr>
+                    <th>Photo</th>
                     <th>Name</th>
                     <th>Phone</th>
                     <th>Email</th>
@@ -573,6 +556,23 @@ const AdminMember = () => {
                   ) : filteredMembers.length > 0 ? (
                     filteredMembers.map((member) => (
                       <tr key={member.id}>
+                        <td>
+                          {member.profileImage ? (
+                            <img
+                              src={member.profileImage}
+                              alt="Profile"
+                              className="rounded-circle"
+                              style={{ width: "36px", height: "36px", objectFit: "cover" }}
+                            />
+                          ) : (
+                            <div
+                              className="d-flex align-items-center justify-content-center rounded-circle bg-secondary text-white"
+                              style={{ width: "36px", height: "36px" }}
+                            >
+                              {member.name.charAt(0)}
+                            </div>
+                          )}
+                        </td>
                         <td>{member.name}</td>
                         <td>{member.phone}</td>
                         <td>{member.email}</td>
@@ -668,13 +668,30 @@ const AdminMember = () => {
               filteredMembers.map((member) => (
                 <div key={member.id} className="border-bottom p-3">
                   <div className="d-flex justify-content-between align-items-start mb-2">
-                    <div>
-                      <h6 className="mb-1 fw-bold">{member.name}</h6>
-                      <span
-                        className={`badge ${getStatusClass(member.status)}`}
-                      >
-                        {member.status}
-                      </span>
+                    <div className="d-flex align-items-center">
+                      {member.profileImage ? (
+                        <img
+                          src={member.profileImage}
+                          alt="Profile"
+                          className="rounded-circle me-3"
+                          style={{ width: "50px", height: "50px", objectFit: "cover" }}
+                        />
+                      ) : (
+                        <div
+                          className="d-flex align-items-center justify-content-center rounded-circle bg-secondary text-white me-3"
+                          style={{ width: "50px", height: "50px" }}
+                        >
+                          {member.name.charAt(0)}
+                        </div>
+                      )}
+                      <div>
+                        <h6 className="mb-1 fw-bold">{member.name}</h6>
+                        <span
+                          className={`badge ${getStatusClass(member.status)}`}
+                        >
+                          {member.status}
+                        </span>
+                      </div>
                     </div>
                     <div className="dropdown">
                       <button
@@ -789,6 +806,27 @@ const AdminMember = () => {
                 style={{ maxHeight: "70vh", overflowY: "auto" }}
               >
                 <form onSubmit={handleAddMember}>
+                  <div className="col-12 text-center mb-3">
+                    {newMember.profileImagePreview ? (
+                      <img
+                        src={newMember.profileImagePreview}
+                        alt="Preview"
+                        className="rounded-circle"
+                        style={{ width: "100px", height: "100px", objectFit: "cover", border: "2px solid #ddd" }}
+                      />
+                    ) : (
+                      <div className="bg-light border rounded-circle d-flex align-items-center justify-content-center" style={{ width: "100px", height: "100px" }}>
+                        <User size={40} className="text-muted" />
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      className="form-control mt-2"
+                      accept="image/*"
+                      onChange={(e) => handleProfileImageChange(e, false)}
+                    />
+                  </div>
+
                   <div className="row g-3">
                     <div className="col-12 col-md-6">
                       <label className="form-label">
@@ -1209,6 +1247,33 @@ const AdminMember = () => {
               >
                 <form onSubmit={handleEditMember}>
                   <div className="row g-3">
+                    <div className="col-12 text-center mb-3">
+                      {editMember.profileImagePreview ? (
+                        <img
+                          src={editMember.profileImagePreview}
+                          alt="Preview"
+                          className="rounded-circle"
+                          style={{ width: "100px", height: "100px", objectFit: "cover", border: "2px solid #ddd" }}
+                        />
+                      ) : editMember.existingProfileImage ? (
+                        <img
+                          src={editMember.existingProfileImage}
+                          alt="Profile"
+                          className="rounded-circle"
+                          style={{ width: "100px", height: "100px", objectFit: "cover", border: "2px solid #ddd" }}
+                        />
+                      ) : (
+                        <div className="bg-light border rounded-circle d-flex align-items-center justify-content-center" style={{ width: "100px", height: "100px" }}>
+                          <User size={40} className="text-muted" />
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        className="form-control mt-2"
+                        accept="image/*"
+                        onChange={(e) => handleProfileImageChange(e, true)}
+                      />
+                    </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Full Name</label>
                       <input
@@ -1271,79 +1336,7 @@ const AdminMember = () => {
                         <option value="Inactive">Inactive</option>
                       </select>
                     </div>
-                    <div className="col-12 col-md-6">
-                      <label className="form-label">Membership Plan</label>
-                      <select
-                        className="form-select"
-                        value={editMember.planId}
-                        onChange={(e) =>
-                          setEditMember({
-                            ...editMember,
-                            planId: e.target.value,
-                          })
-                        }
-                        required
-                        disabled={!editMember.interestedIn} // Disable if no interest selected
-                      >
-                        <option value="">
-                          {editMember.interestedIn
-                            ? "Select Plan"
-                            : "Please select 'Interested In' first"}
-                        </option>
-                        {plansLoaded &&
-                          getFilteredPlans(editMember.interestedIn).map((plan) => (
-                            <option key={plan.id} value={plan.id}>
-                              {plan.name} - {plan.price} ({plan.validity} days)
-                            </option>
-                          ))}
-                        {/* Fallback options if API plans aren't loaded */}
-                        {!plansLoaded && (
-                          <>
-                            <option value="Basic Monthly">Basic Monthly</option>
-                            <option value="Basic Quarterly">
-                              Basic Quarterly
-                            </option>
-                            <option value="Basic Annual">Basic Annual</option>
-                            <option value="Standard Monthly">
-                              Standard Monthly
-                            </option>
-                            <option value="Standard Quarterly">
-                              Standard Quarterly
-                            </option>
-                            <option value="Standard Annual">
-                              Standard Annual
-                            </option>
-                            <option value="Premium Monthly">
-                              Premium Monthly
-                            </option>
-                            <option value="Premium Quarterly">
-                              Premium Quarterly
-                            </option>
-                            <option value="Premium Annual">
-                              Premium Annual
-                            </option>
-                          </>
-                        )}
-                      </select>
-                    </div>
-                    <div className="col-12 col-md-6">
-                      <label className="form-label">Gender</label>
-                      <select
-                        className="form-select"
-                        value={editMember.gender}
-                        onChange={(e) =>
-                          setEditMember({
-                            ...editMember,
-                            gender: e.target.value,
-                          })
-                        }
-                      >
-                        <option value="">Select Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
+
                     <div className="col-12">
                       <label className="form-label">Interested In</label>
                       <div className="d-flex gap-3">
@@ -1424,6 +1417,81 @@ const AdminMember = () => {
                         </div>
                       </div>
                     </div>
+
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">Membership Plan</label>
+                      <select
+                        className="form-select"
+                        value={editMember.planId}
+                        onChange={(e) =>
+                          setEditMember({
+                            ...editMember,
+                            planId: e.target.value,
+                          })
+                        }
+                        required
+                        disabled={!editMember.interestedIn} // Disable if no interest selected
+                      >
+                        <option value="">
+                          {editMember.interestedIn
+                            ? "Select Plan"
+                            : "Please select 'Interested In' first"}
+                        </option>
+                        {plansLoaded &&
+                          getFilteredPlans(editMember.interestedIn).map((plan) => (
+                            <option key={plan.id} value={plan.id}>
+                              {plan.name} - {plan.price} ({plan.validity} days)
+                            </option>
+                          ))}
+                        {/* Fallback options if API plans aren't loaded */}
+                        {!plansLoaded && (
+                          <>
+                            <option value="Basic Monthly">Basic Monthly</option>
+                            <option value="Basic Quarterly">
+                              Basic Quarterly
+                            </option>
+                            <option value="Basic Annual">Basic Annual</option>
+                            <option value="Standard Monthly">
+                              Standard Monthly
+                            </option>
+                            <option value="Standard Quarterly">
+                              Standard Quarterly
+                            </option>
+                            <option value="Standard Annual">
+                              Standard Annual
+                            </option>
+                            <option value="Premium Monthly">
+                              Premium Monthly
+                            </option>
+                            <option value="Premium Quarterly">
+                              Premium Quarterly
+                            </option>
+                            <option value="Premium Annual">
+                              Premium Annual
+                            </option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">Gender</label>
+                      <select
+                        className="form-select"
+                        value={editMember.gender}
+                        onChange={(e) =>
+                          setEditMember({
+                            ...editMember,
+                            gender: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+
                     <div className="col-12 col-md-6">
                       <label className="form-label">Date of Birth</label>
                       <input
@@ -1620,17 +1688,26 @@ const AdminMember = () => {
               >
                 <div className="row">
                   <div className="col-12 col-lg-4 text-center mb-4 mb-lg-0">
-                    <div
-                      className="d-flex justify-content-center align-items-center rounded-circle bg-primary text-white mx-auto mb-3"
-                      style={{ width: "120px", height: "120px" }}
-                    >
-                      <span className="fs-1 fw-bold">
-                        {selectedMember.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </span>
-                    </div>
+                    {selectedMember.profileImage ? (
+                      <img
+                        src={selectedMember.profileImage}
+                        alt="Profile"
+                        className="rounded-circle mb-3"
+                        style={{ width: "120px", height: "120px", objectFit: "cover" }}
+                      />
+                    ) : (
+                      <div
+                        className="d-flex justify-content-center align-items-center rounded-circle bg-primary text-white mx-auto mb-3"
+                        style={{ width: "120px", height: "120px" }}
+                      >
+                        <span className="fs-1 fw-bold">
+                          {selectedMember.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </span>
+                      </div>
+                    )}
                     <h5 className="mb-2">{selectedMember.name}</h5>
                     <span
                       className={`badge ${getStatusClass(
@@ -1682,16 +1759,16 @@ const AdminMember = () => {
                       <div className="col-12 col-sm-6">
                         <strong>Date of Birth:</strong>
                         <div>
-                          {new Date(selectedMember.dob).toLocaleDateString()}
+                          {selectedMember.dob ? new Date(selectedMember.dob).toLocaleDateString() : "Not specified"}
                         </div>
                       </div>
                       <div className="col-12 col-sm-6">
                         <strong>Interested In:</strong>
-                        <div>{selectedMember.interestedIn}</div>
+                        <div>{selectedMember.interestedIn || "Not specified"}</div>
                       </div>
                       <div className="col-12">
                         <strong>Address:</strong>
-                        <div>{selectedMember.address}</div>
+                        <div>{selectedMember.address || "Not specified"}</div>
                       </div>
                     </div>
                   </div>

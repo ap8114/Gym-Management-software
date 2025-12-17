@@ -5,7 +5,6 @@ import Account from "../Dashboard/Member/Account";
 import { Link, useNavigate } from "react-router-dom";
 import axiosInstance from "../Api/axiosInstance";
 
-
 const Navbar = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -36,6 +35,11 @@ const Navbar = ({ toggleSidebar }) => {
     phone: user?.phone || "+91 90000 00000",
     role: user?.roleName || "Super Admin",
     branch: user?.branchName || "All Branches",
+    adminId: user?.adminId || "",
+    branchId: user?.branchId || "",
+    profileImage: user?.profileImage || "",
+    roleId: user?.roleId || "",
+    staffId: user?.staffId || "",
     notifyEmail: true,
     notifySMS: false,
   });
@@ -51,7 +55,7 @@ const Navbar = ({ toggleSidebar }) => {
         return;
       }
 
-      const adminId = userData.id;
+      const adminId = userData.id; // Use user.id instead of userData.id
       // The endpoint path is relative to the baseURL in your axiosInstance
       const endpoint = `/adminSettings/app-settings/admin/${adminId}`;
 
@@ -82,7 +86,7 @@ const Navbar = ({ toggleSidebar }) => {
   useEffect(() => {
     fetchAppSettings(); // Initial fetch when component mounts
 
-    const intervalId = setInterval(fetchAppSettings, 5000); // Fetch every 60 seconds
+    const intervalId = setInterval(fetchAppSettings, 60000); // Fetch every 60 seconds
 
     return () => clearInterval(intervalId); // Cleanup on unmount
   }, []);
@@ -93,11 +97,16 @@ const Navbar = ({ toggleSidebar }) => {
       const updatedUser = getUserFromLocalStorage();
       if (updatedUser) {
         setProfile({
-          name: updatedUser.fullName || "Admin",
-          email: updatedUser.email || "admin@gymapp.com",
-          phone: updatedUser.phone || "+91 90000 00000",
-          role: updatedUser.roleName || "Super Admin",
-          branch: updatedUser.branchName || "All Branches",
+          name: updatedUser.fullName || "",
+          email: updatedUser.email || "",
+          profileImage: updatedUser.profileImage || "",
+          phone: updatedUser.phone || "",
+          role: updatedUser.roleName || "",
+          branch: updatedUser.branchName || "",
+          adminId: updatedUser.adminId || "",
+          branchId: updatedUser.branchId || "",
+          roleId: updatedUser.roleId || "",
+          staffId: updatedUser.staffId || "",
           notifyEmail: true,
           notifySMS: false,
         });
@@ -117,7 +126,7 @@ const Navbar = ({ toggleSidebar }) => {
       window.removeEventListener('storage', handleStorageChange);
       clearInterval(intervalId);
     };
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -142,8 +151,13 @@ const Navbar = ({ toggleSidebar }) => {
           ...currentUser,
           fullName: profile.name,
           email: profile.email,
+          profileImage: profile.profileImage,
           phone: profile.phone,
-          branchName: profile.branch
+          branchName: profile.branch,
+          adminId: profile.adminId,
+          branchId: profile.branchId,
+          roleId: profile.roleId,
+          staffId: profile.staffId,
         };
         localStorage.setItem('user', JSON.stringify(updatedUser));
       }
@@ -247,29 +261,30 @@ const Navbar = ({ toggleSidebar }) => {
           </div>
         </div>
 
-        {/* Notification and User */}
         <div className="me-2 d-flex align-items-center gap-3 position-relative">
-          {/* Notification */}
-          {/* <div className="position-relative">
-            <FaBell size={18} color="white" />
-            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-              3
-            </span>
-          </div> */}
 
           {/* User Profile */}
           <div className="dropdown" ref={dropdownRef}>
-            <div
-              className="d-flex align-items-center gap-2 cursor-pointer text-white"
-              role="button"
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-            >
-              <FaUserCircle size={35} />
-              <div className="d-none d-sm-block text-white">
-                <small className="mb-0">Welcome    {profile.role} </small>
-                <div className="fw-bold">{profile.name}</div>
-              </div>
-            </div>
+          <div
+  className="d-flex align-items-center gap-2 cursor-pointer text-white"
+  role="button"
+  onClick={() => setDropdownOpen(!dropdownOpen)}
+>
+  {profile?.profileImage ? (
+    <img
+      src={profile.profileImage}
+      alt="Profile"
+      className="rounded-circle"
+      style={{ width: "35px", height: "35px", objectFit: "cover" }}
+    />
+  ) : (
+    <FaUserCircle size={35} />
+  )}
+  <div className="d-none d-sm-block text-white">
+    <small className="mb-0">Welcome {profile?.role || "User"}</small>
+    <div className="fw-bold">{profile?.name || "Guest"}</div>
+  </div>
+</div>
 
             {dropdownOpen && (
               <ul
@@ -285,16 +300,15 @@ const Navbar = ({ toggleSidebar }) => {
                 }}
               >
                 <li>
-                  <Link to="/member/account" className="text-decoration-none">
-                    <button
-                      className="dropdown-item"
-                      onClick={() => {
-                        setDropdownOpen(false);
-                      }}
-                    >
-                      Profile
-                    </button>
-                  </Link>
+                  <button
+                    className="dropdown-item"
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      setShowProfileModal(true);
+                    }}
+                  >
+                    Profile
+                  </button>
                 </li>
                 <li>
                   <hr className="dropdown-divider" />
@@ -313,6 +327,68 @@ const Navbar = ({ toggleSidebar }) => {
           </div>
         </div>
       </nav>
+
+      {/* Profile Modal */}
+      {showProfileModal && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Profile</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowProfileModal(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="d-flex flex-column align-items-center">
+                  {profile.profileImage ? (
+                    <img
+                      src={profile.profileImage}
+                      alt="Profile"
+                      className="rounded-circle mb-3"
+                      style={{ width: "120px", height: "120px", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <div
+                      className="d-flex justify-content-center align-items-center rounded-circle bg-primary text-white mb-3"
+                      style={{ width: "120px", height: "120px" }}
+                    >
+                      <span className="fs-1 fw-bold">
+                        {profile.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </span>
+                    </div>
+                  )}
+                  <h4 className="mb-3">{profile.name}</h4>
+                  <div className="mb-3">
+                    <p><strong>Email:</strong> {profile.email}</p>
+                    <p><strong>Phone:</strong> {profile.phone}</p>
+                    <p><strong>Role:</strong> {profile.role}</p>
+                    <p><strong>Branch:</strong> {profile.branch}</p>
+                    <p><strong>Admin ID:</strong> {profile.adminId}</p>
+                    <p><strong>Branch ID:</strong> {profile.branchId}</p>
+                    <p><strong>Staff ID:</strong> {profile.staffId}</p>
+                  </div>
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleSaveProfile}
+                  >
+                    Save Profile
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

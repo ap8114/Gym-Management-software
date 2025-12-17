@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axiosInstance from "../../Api/axiosInstance"; // Import your axios instance
+import axiosInstance from "../../Api/axiosInstance";
 import BaseUrl from "../../Api/BaseUrl";
 import {
   Search,
@@ -70,6 +70,8 @@ const ReceptionistWalkinMember = () => {
     amountPaid: "",
     interestedIn: "",
     status: "Active",
+    profileImage: null, // Store file object directly
+    profileImagePreview: "", // For preview
   });
 
   const [editMember, setEditMember] = useState({
@@ -83,6 +85,9 @@ const ReceptionistWalkinMember = () => {
     dateOfBirth: "",
     interestedIn: "",
     status: "Active",
+    profileImage: null, // Store file object directly
+    profileImagePreview: "", // For preview
+    existingProfileImage: "", // Store existing image URL
   });
 
   const [renewPlan, setRenewPlan] = useState({
@@ -91,6 +96,31 @@ const ReceptionistWalkinMember = () => {
     paymentMode: "cash",
     amountPaid: "",
   });
+
+  // Handle profile image change for both add and edit forms
+  const handleProfileImageChange = (e, isEdit = false) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Create a preview URL for immediate display
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (isEdit) {
+          setEditMember({
+            ...editMember,
+            profileImage: file, // Store the actual file
+            profileImagePreview: reader.result, // For preview
+          });
+        } else {
+          setNewMember({
+            ...newMember,
+            profileImage: file, // Store the actual file
+            profileImagePreview: reader.result, // For preview
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Filter members based on search term and status
   const filteredMembers = members.filter((member) => {
@@ -124,6 +154,7 @@ const ReceptionistWalkinMember = () => {
           expiry: member.membershipTo,
           status: member.status,
           interestedIn: member.interestedIn,
+          profileImage: member.profileImage || "", // ✅ ADD THIS LINE
         }));
 
         setMembers(formattedMembers);
@@ -135,6 +166,40 @@ const ReceptionistWalkinMember = () => {
       console.error("Error fetching members:", err);
     } finally {
       setMembersLoading(false);
+    }
+  };
+
+  // Fetch a single member by ID
+  const fetchMemberById = async (id) => {
+    try {
+      // Add BaseUrl prefix and fix the endpoint
+      const response = await axiosInstance.get(`${BaseUrl}members/detail/${id}`);
+      console.log("API response for member detail:", response.data);
+
+      if (response.data?.success) {
+        const member = response.data.data;
+        return {
+          id: member.id,
+          name: member.fullName,
+          phone: member.phone,
+          email: member.email,
+          gender: member.gender,
+          plan: getPlanNameById(member.planId), // This might fail if plans aren't loaded yet
+          planId: member.planId,
+          address: member.address,
+          dob: member.dateOfBirth,
+          // Fix typos in property names
+          planStart: member.membershipFrom,
+          expiry: member.membershipTo,
+          status: member.status,
+          interestedIn: member.interestedIn,
+          profileImage: member.profileImage || "",
+        };
+      }
+      return null;
+    } catch (err) {
+      console.error("Error fetching member:", err);
+      return null;
     }
   };
 
@@ -172,7 +237,7 @@ const ReceptionistWalkinMember = () => {
       console.error("Error fetching plans:", err);
       setPlanError(
         err.response?.data?.message ||
-          "Failed to fetch plans. Please try again."
+        "Failed to fetch plans. Please try again."
       );
     } finally {
       setPlanLoading(false);
@@ -191,31 +256,45 @@ const ReceptionistWalkinMember = () => {
     setLoading(true);
 
     try {
-      const payload = {
-        adminId: adminId,
-        fullName: newMember.fullName,
-        email: newMember.email,
-        password: newMember.password,
-        phone: newMember.phone,
-        gender: newMember.gender,
-        dateOfBirth: newMember.dateOfBirth,
-        address: newMember.address,
-        interestedIn: newMember.interestedIn,
-        planId: parseInt(newMember.planId),
-        membershipFrom: newMember.startDate,
-        paymentMode:
-          newMember.paymentMode.charAt(0).toUpperCase() +
-          newMember.paymentMode.slice(1),
-        amountPaid: parseFloat(newMember.amountPaid),
-      };
+      // Create FormData object
+      const formData = new FormData();
 
+      // Append all member data
+      formData.append("adminId", adminId);
+      formData.append("fullName", newMember.fullName);
+      formData.append("email", newMember.email);
+      formData.append("password", newMember.password);
+      formData.append("phone", newMember.phone);
+      formData.append("gender", newMember.gender);
+      formData.append("dateOfBirth", newMember.dateOfBirth);
+      formData.append("address", newMember.address);
+      formData.append("interestedIn", newMember.interestedIn);
+      formData.append("planId", newMember.planId);
+      formData.append("membershipFrom", newMember.startDate);
+      formData.append("paymentMode", newMember.paymentMode.charAt(0).toUpperCase() + newMember.paymentMode.slice(1));
+      formData.append("amountPaid", newMember.amountPaid);
+      formData.append("status", newMember.status);
+
+      // Append image if selected
+      if (newMember.profileImage) {
+        formData.append("profileImage", newMember.profileImage);
+      }
+
+      // Make API call with FormData
       const response = await axiosInstance.post(
         `${BaseUrl}members/create`,
-        payload
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
       );
 
       if (response.data) {
+        // Refresh members list
         await fetchMembersByAdminId();
+
         setNewMember({
           fullName: "",
           phone: "",
@@ -230,6 +309,8 @@ const ReceptionistWalkinMember = () => {
           amountPaid: "",
           interestedIn: "",
           status: "Active",
+          profileImage: null,
+          profileImagePreview: "",
         });
 
         setShowAddForm(false);
@@ -243,37 +324,46 @@ const ReceptionistWalkinMember = () => {
     }
   };
 
+  // Handle edit member with API call
   const handleEditMember = async (e) => {
     e.preventDefault();
     setEditLoading(true);
 
     try {
-      const payload = {
-        adminId: adminId,
-        fullName: editMember.fullName,
-        email: editMember.email,
-        phone: editMember.phone,
-        gender: editMember.gender,
-        address: editMember.address,
-        dateOfBirth: editMember.dateOfBirth,
-        interestedIn: editMember.interestedIn,
-        status: editMember.status,
-        planId: parseInt(editMember.planId),
-      };
+      // Create FormData object
+      const formData = new FormData();
 
+      // Append all member data
+      formData.append("adminId", adminId);
+      formData.append("fullName", editMember.fullName);
+      formData.append("email", editMember.email);
+      formData.append("phone", editMember.phone);
+      formData.append("gender", editMember.gender);
+      formData.append("address", editMember.address);
+      formData.append("dateOfBirth", editMember.dateOfBirth);
+      formData.append("interestedIn", editMember.interestedIn);
+      formData.append("status", editMember.status);
+      formData.append("planId", editMember.planId);
+
+      // Append image if selected
+      if (editMember.profileImage) {
+        formData.append("profileImage", editMember.profileImage);
+      }
+
+      // Make API call with FormData
       const response = await axiosInstance.put(
         `${BaseUrl}members/update/${editMember.id}`,
-        payload
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
       );
 
-      if (response.data && response.data.success) {
-        setMembers(
-          members.map((member) =>
-            member.id === editMember.id
-              ? { ...member, ...response.data.member }
-              : member
-          )
-        );
+      if (response.data?.success) {
+        // Refresh members list to get updated data
+        await fetchMembersByAdminId();
 
         setShowEditForm(false);
         alert("Member updated successfully!");
@@ -298,7 +388,9 @@ const ReceptionistWalkinMember = () => {
         );
 
         if (response.data && response.data.success) {
-          setMembers(members.filter((member) => member.id !== id));
+          // Refresh members list
+          await fetchMembersByAdminId();
+
           alert("Member deleted successfully!");
         } else {
           alert("Failed to delete member. Please try again.");
@@ -318,19 +410,30 @@ const ReceptionistWalkinMember = () => {
   };
 
   const handleEditFormOpen = (member) => {
-    setEditMember({
-      id: member.id,
-      fullName: member.name,
-      email: member.email,
-      phone: member.phone,
-      gender: member.gender,
-      address: member.address,
-      dateOfBirth: member.dob,
-      interestedIn: member.interestedIn,
-      status: member.status,
-      planId: member.planId,
-    });
-    setShowEditForm(true);
+    try {
+      console.log("Opening edit form for member:", member);
+
+      // Use the member data directly from the list
+      setEditMember({
+        id: member.id,
+        fullName: member.name,
+        email: member.email,
+        phone: member.phone,
+        gender: member.gender,
+        address: member.address,
+        dateOfBirth: member.dob,
+        interestedIn: member.interestedIn,
+        status: member.status,
+        planId: member.planId,
+        profileImage: null,
+        profileImagePreview: member.profileImage || "",
+        existingProfileImage: member.profileImage || "",
+      });
+      setShowEditForm(true);
+    } catch (error) {
+      console.error("Error in handleEditFormOpen:", error);
+      alert("An error occurred while opening the edit form. Please try again.");
+    }
   };
 
   const handleRenewPlan = async (e) => {
@@ -353,26 +456,8 @@ const ReceptionistWalkinMember = () => {
       );
 
       if (response.data && response.data.success) {
-        const updatedMemberIndex = members.findIndex(
-          (member) => member.id === parseInt(renewPlan.memberId)
-        );
-
-        if (updatedMemberIndex !== -1) {
-          const updatedMembers = [...members];
-          updatedMembers[updatedMemberIndex] = {
-            ...updatedMembers[updatedMemberIndex],
-            planId: response.data.data.planId,
-            plan: getPlanNameById(response.data.data.planId),
-            planStart: new Date(
-              response.data.data.membershipFrom
-            ).toLocaleDateString(),
-            expiry: response.data.data.membershipTo
-              ? new Date(response.data.data.membershipTo).toLocaleDateString()
-              : "N/A",
-            status: "Active",
-          };
-          setMembers(updatedMembers);
-        }
+        // Refresh members list to get updated data
+        await fetchMembersByAdminId();
 
         setRenewPlan({
           memberId: "",
@@ -419,7 +504,7 @@ const ReceptionistWalkinMember = () => {
     return plan ? plan.name : "Unknown Plan";
   };
 
-  // ✅ CORRECTED: Get filtered plans based on API response structure
+  // Get filtered plans based on API response structure
   const getFilteredPlans = (interestedIn) => {
     if (!plansLoaded || apiPlans.length === 0) {
       console.log("Plans not loaded or empty.");
@@ -510,6 +595,7 @@ const ReceptionistWalkinMember = () => {
               <table className="table table-hover mb-0">
                 <thead className="table-light">
                   <tr>
+                    <th>Photo</th>
                     <th>Name</th>
                     <th>Phone</th>
                     <th>Email</th>
@@ -523,7 +609,7 @@ const ReceptionistWalkinMember = () => {
                 <tbody>
                   {membersLoading ? (
                     <tr>
-                      <td colSpan="8" className="text-center py-4">
+                      <td colSpan="9" className="text-center py-4">
                         <div
                           className="spinner-border spinner-border-sm me-2"
                           role="status"
@@ -535,6 +621,23 @@ const ReceptionistWalkinMember = () => {
                   ) : filteredMembers.length > 0 ? (
                     filteredMembers.map((member) => (
                       <tr key={member.id}>
+                        <td>
+                          {member.profileImage ? (
+                            <img
+                              src={member.profileImage}
+                              alt="Profile"
+                              className="rounded-circle"
+                              style={{ width: "36px", height: "36px", objectFit: "cover" }}
+                            />
+                          ) : (
+                            <div
+                              className="d-flex align-items-center justify-content-center rounded-circle bg-secondary text-white"
+                              style={{ width: "36px", height: "36px" }}
+                            >
+                              {member.name.charAt(0)}
+                            </div>
+                          )}
+                        </td>
                         <td>{member.name}</td>
                         <td>{member.phone}</td>
                         <td>{member.email}</td>
@@ -600,7 +703,7 @@ const ReceptionistWalkinMember = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="8" className="text-center py-4">
+                      <td colSpan="9" className="text-center py-4">
                         No members found
                       </td>
                     </tr>
@@ -625,13 +728,30 @@ const ReceptionistWalkinMember = () => {
               filteredMembers.map((member) => (
                 <div key={member.id} className="border-bottom p-3">
                   <div className="d-flex justify-content-between align-items-start mb-2">
-                    <div>
-                      <h6 className="mb-1 fw-bold">{member.name}</h6>
-                      <span
-                        className={`badge ${getStatusClass(member.status)}`}
-                      >
-                        {member.status}
-                      </span>
+                    <div className="d-flex align-items-center">
+                      {member.profileImage ? (
+                        <img
+                          src={member.profileImage}
+                          alt="Profile"
+                          className="rounded-circle me-3"
+                          style={{ width: "50px", height: "50px", objectFit: "cover" }}
+                        />
+                      ) : (
+                        <div
+                          className="d-flex align-items-center justify-content-center rounded-circle bg-secondary text-white me-3"
+                          style={{ width: "50px", height: "50px" }}
+                        >
+                          {member.name.charAt(0)}
+                        </div>
+                      )}
+                      <div>
+                        <h6 className="mb-1 fw-bold">{member.name}</h6>
+                        <span
+                          className={`badge ${getStatusClass(member.status)}`}
+                        >
+                          {member.status}
+                        </span>
+                      </div>
                     </div>
                     <div className="dropdown">
                       <button
@@ -743,6 +863,27 @@ const ReceptionistWalkinMember = () => {
                 style={{ maxHeight: "70vh", overflowY: "auto" }}
               >
                 <form onSubmit={handleAddMember}>
+                  <div className="col-12 text-center mb-3">
+                    {newMember.profileImagePreview ? (
+                      <img
+                        src={newMember.profileImagePreview}
+                        alt="Preview"
+                        className="rounded-circle"
+                        style={{ width: "100px", height: "100px", objectFit: "cover", border: "2px solid #ddd" }}
+                      />
+                    ) : (
+                      <div className="bg-light border rounded-circle d-flex align-items-center justify-content-center" style={{ width: "100px", height: "100px" }}>
+                        <User size={40} className="text-muted" />
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      className="form-control mt-2"
+                      accept="image/*"
+                      onChange={(e) => handleProfileImageChange(e, false)}
+                    />
+                  </div>
+
                   <div className="row g-3">
                     <div className="col-12 col-md-6">
                       <label className="form-label">
@@ -941,7 +1082,9 @@ const ReceptionistWalkinMember = () => {
                             name="interestedIn"
                             id="general"
                             value="General"
-                            checked={newMember.interestedIn === "General"}
+                            checked={
+                              newMember.interestedIn === "General"
+                            }
                             onChange={(e) => {
                               setNewMember({
                                 ...newMember,
@@ -951,7 +1094,10 @@ const ReceptionistWalkinMember = () => {
                             }}
                             required
                           />
-                          <label className="form-check-label" htmlFor="general">
+                          <label
+                            className="form-check-label"
+                            htmlFor="general"
+                          >
                             General
                           </label>
                         </div>
@@ -1034,7 +1180,8 @@ const ReceptionistWalkinMember = () => {
                           {plansLoaded &&
                             getFilteredPlans(newMember.interestedIn).map((plan) => (
                               <option key={plan.id} value={plan.id}>
-                                {plan.name} - {plan.price} ({plan.validity} days)
+                                {plan.name} - {plan.price} ({plan.validity}{" "}
+                                days)
                               </option>
                             ))}
                         </select>
@@ -1143,6 +1290,33 @@ const ReceptionistWalkinMember = () => {
               >
                 <form onSubmit={handleEditMember}>
                   <div className="row g-3">
+                    <div className="col-12 text-center mb-3">
+                      {editMember.profileImagePreview ? (
+                        <img
+                          src={editMember.profileImagePreview}
+                          alt="Preview"
+                          className="rounded-circle"
+                          style={{ width: "100px", height: "100px", objectFit: "cover", border: "2px solid #ddd" }}
+                        />
+                      ) : editMember.existingProfileImage ? (
+                        <img
+                          src={editMember.existingProfileImage}
+                          alt="Profile"
+                          className="rounded-circle"
+                          style={{ width: "100px", height: "100px", objectFit: "cover", border: "2px solid #ddd" }}
+                        />
+                      ) : (
+                        <div className="bg-light border rounded-circle d-flex align-items-center justify-content-center" style={{ width: "100px", height: "100px" }}>
+                          <User size={40} className="text-muted" />
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        className="form-control mt-2"
+                        accept="image/*"
+                        onChange={(e) => handleProfileImageChange(e, true)}
+                      />
+                    </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Full Name</label>
                       <input
@@ -1205,6 +1379,86 @@ const ReceptionistWalkinMember = () => {
                         <option value="Inactive">Inactive</option>
                       </select>
                     </div>
+                    <div className="col-12">
+                      <label className="form-label">Interested In</label>
+                      <div className="d-flex gap-3">
+                        <div className="form-check">
+                          <input
+                            className="form-check-input"
+                            type="radio"
+                            name="editInterestedIn"
+                            id="editPersonalTraining"
+                            value="Personal Training"
+                            checked={
+                              editMember.interestedIn === "Personal Training"
+                            }
+                            onChange={(e) => {
+                              setEditMember({
+                                ...editMember,
+                                interestedIn: e.target.value,
+                                planId: "",
+                              });
+                            }}
+                          />
+                          <label
+                            className="form-check-label"
+                            htmlFor="editPersonalTraining"
+                          >
+                            Personal Training
+                          </label>
+                        </div>
+                        <div className="form-check">
+                          <input
+                            className="form-check-input"
+                            type="radio"
+                            name="editInterestedIn"
+                            id="editGeneral"
+                            value="General"
+                            checked={
+                              editMember.interestedIn === "General"
+                            }
+                            onChange={(e) => {
+                              setEditMember({
+                                ...editMember,
+                                interestedIn: e.target.value,
+                                planId: "",
+                              });
+                            }}
+                          />
+                          <label
+                            className="form-check-label"
+                            htmlFor="editGeneral"
+                          >
+                            General
+                          </label>
+                        </div>
+                        <div className="form-check">
+                          <input
+                            className="form-check-input"
+                            type="radio"
+                            name="editInterestedIn"
+                            id="editGroupClasses"
+                            value="Group Classes"
+                            checked={
+                              editMember.interestedIn === "Group Classes"
+                            }
+                            onChange={(e) => {
+                              setEditMember({
+                                ...editMember,
+                                interestedIn: e.target.value,
+                                planId: "",
+                              });
+                            }}
+                          />
+                          <label
+                            className="form-check-label"
+                            htmlFor="editGroupClasses"
+                          >
+                            Group Classes
+                          </label>
+                        </div>
+                      </div>
+                    </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Membership Plan</label>
                       <select
@@ -1249,84 +1503,6 @@ const ReceptionistWalkinMember = () => {
                         <option value="Female">Female</option>
                         <option value="Other">Other</option>
                       </select>
-                    </div>
-                    <div className="col-12">
-                      <label className="form-label">Interested In</label>
-                      <div className="d-flex gap-3">
-                        <div className="form-check">
-                          <input
-                            className="form-check-input"
-                            type="radio"
-                            name="editInterestedIn"
-                            id="editPersonalTraining"
-                            value="Personal Training"
-                            checked={
-                              editMember.interestedIn === "Personal Training"
-                            }
-                            onChange={(e) => {
-                              setEditMember({
-                                ...editMember,
-                                interestedIn: e.target.value,
-                                planId: "",
-                              });
-                            }}
-                          />
-                          <label
-                            className="form-check-label"
-                            htmlFor="editPersonalTraining"
-                          >
-                            Personal Training
-                          </label>
-                        </div>
-                        <div className="form-check">
-                          <input
-                            className="form-check-input"
-                            type="radio"
-                            name="editInterestedIn"
-                            id="editGeneral"
-                            value="General"
-                            checked={editMember.interestedIn === "General"}
-                            onChange={(e) => {
-                              setEditMember({
-                                ...editMember,
-                                interestedIn: e.target.value,
-                                planId: "",
-                              });
-                            }}
-                          />
-                          <label
-                            className="form-check-label"
-                            htmlFor="editGeneral"
-                          >
-                            General
-                          </label>
-                        </div>
-                        <div className="form-check">
-                          <input
-                            className="form-check-input"
-                            type="radio"
-                            name="editInterestedIn"
-                            id="editGroupClasses"
-                            value="Group Classes"
-                            checked={
-                              editMember.interestedIn === "Group Classes"
-                            }
-                            onChange={(e) => {
-                              setEditMember({
-                                ...editMember,
-                                interestedIn: e.target.value,
-                                planId: "",
-                              });
-                            }}
-                          />
-                          <label
-                            className="form-check-label"
-                            htmlFor="editGroupClasses"
-                          >
-                            Group Classes
-                          </label>
-                        </div>
-                      </div>
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Date of Birth</label>
@@ -1498,17 +1674,26 @@ const ReceptionistWalkinMember = () => {
               >
                 <div className="row">
                   <div className="col-12 col-lg-4 text-center mb-4 mb-lg-0">
-                    <div
-                      className="d-flex justify-content-center align-items-center rounded-circle bg-primary text-white mx-auto mb-3"
-                      style={{ width: "120px", height: "120px" }}
-                    >
-                      <span className="fs-1 fw-bold">
-                        {selectedMember.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </span>
-                    </div>
+                    {selectedMember.profileImage ? (
+                      <img
+                        src={selectedMember.profileImage}
+                        alt="Profile"
+                        className="rounded-circle mb-3"
+                        style={{ width: "120px", height: "120px", objectFit: "cover" }}
+                      />
+                    ) : (
+                      <div
+                        className="d-flex justify-content-center align-items-center rounded-circle bg-primary text-white mx-auto mb-3"
+                        style={{ width: "120px", height: "120px" }}
+                      >
+                        <span className="fs-1 fw-bold">
+                          {selectedMember.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </span>
+                      </div>
+                    )}
                     <h5 className="mb-2">{selectedMember.name}</h5>
                     <span
                       className={`badge ${getStatusClass(

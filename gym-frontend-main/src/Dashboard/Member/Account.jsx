@@ -54,69 +54,70 @@ const Account = () => {
     return "https://randomuser.me/api/portraits/men/32.jpg";
   };
 
+  // ✅ Extract fetch logic into reusable function
+  const fetchProfile = async () => {
+    if (!adminId) {
+      setError("Admin ID not found. Please log in again.");
+      setShowErrorAlert(true);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await axiosInstance.get(`member-self/profile/${adminId}`);
+
+      if (response.data.success && response.data.profile) {
+        const profile = response.data.profile;
+
+        const storedRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
+        setUserRole(profile.role || storedRole || "MEMBER");
+
+        let profileImageUrl = profile.profileImage?.trim() || getFallbackAvatar(profile.gender);
+
+        setPersonal({
+          member_id: `M${profile.userId}`,
+          first_name: profile.first_name || "",
+          last_name: profile.last_name || "",
+          gender: profile.gender || "",
+          dob: profile.date_of_birth ? profile.date_of_birth.split('T')[0] : "",
+          email: profile.email || "",
+          phone: profile.phone || "",
+          address_street: profile.address_street || "",
+          address_city: profile.address_city || "",
+          address_state: profile.address_state || "",
+          address_zip: profile.address_zip || "",
+          profile_picture: null,
+          profile_preview: profileImageUrl,
+        });
+
+        setMembership({
+          membership_plan: profile.membership_plan || "",
+          plan_start_date: profile.plan_start_date || "",
+          plan_end_date: profile.plan_end_date || "",
+          status: profile.membership_status || "",
+          membership_type: profile.membership_type || "Standard",
+          membership_fee: profile.membership_fee?.toString() || "",
+        });
+
+        setError(null);
+        setShowErrorAlert(false);
+      } else {
+        setError("Data not found");
+        setShowErrorAlert(true);
+      }
+    } catch (err) {
+      console.error("Error fetching profile data:", err);
+      setError("Failed to load profile");
+      setShowErrorAlert(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch on mount
   useEffect(() => {
-    const fetchProfileData = async () => {
-      if (!adminId) {
-        setError("Admin ID not found. Please log in again.");
-        setShowErrorAlert(true);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const response = await axiosInstance.get(`member-self/profile/${adminId}`);
-
-        if (response.data.success && response.data.profile) {
-          const profile = response.data.profile;
-
-          const storedRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
-          setUserRole(profile.role || storedRole || "MEMBER");
-
-          // ✅ Use 'profileImage' (as per your actual API response)
-          let profileImageUrl = profile.profileImage?.trim() || getFallbackAvatar(profile.gender);
-
-          setPersonal({
-            member_id: `M${profile.userId}`,
-            first_name: profile.first_name || "",
-            last_name: profile.last_name || "",
-            gender: profile.gender || "",
-            dob: profile.date_of_birth ? profile.date_of_birth.split('T')[0] : "",
-            email: profile.email || "",
-            phone: profile.phone || "",
-            address_street: profile.address_street || "",
-            address_city: profile.address_city || "",
-            address_state: profile.address_state || "",
-            address_zip: profile.address_zip || "",
-            profile_picture: null,
-            profile_preview: profileImageUrl,
-          });
-
-          setMembership({
-            membership_plan: profile.membership_plan || "",
-            plan_start_date: profile.plan_start_date || "",
-            plan_end_date: profile.plan_end_date || "",
-            status: profile.membership_status || "",
-            membership_type: profile.membership_type || "Standard",
-            membership_fee: profile.membership_fee?.toString() || "",
-          });
-
-          setError(null);
-          setShowErrorAlert(false);
-        } else {
-          setError("Data not found");
-          setShowErrorAlert(true);
-        }
-      } catch (err) {
-        console.error("Error fetching profile data:", err);
-        setError("Failed to load profile");
-        setShowErrorAlert(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfileData();
+    fetchProfile();
   }, [adminId]);
 
   const handlePersonalChange = (e) => {
@@ -191,7 +192,6 @@ const Account = () => {
         formData.append("address_state", personal.address_state);
         formData.append("address_zip", personal.address_zip);
 
-        // ✅ Send as 'profileImage' to match your backend field
         if (personal.profile_picture) {
           formData.append("profileImage", personal.profile_picture);
         }
@@ -201,38 +201,8 @@ const Account = () => {
         });
 
         if (response.data.success) {
-          const updatedProfile = response.data.profile;
-
-          // ✅ Use 'profileImage' from response
-          let newImageUrl = updatedProfile.profileImage?.trim() ||
-            (personal.profile_picture ? URL.createObjectURL(personal.profile_picture) : getFallbackAvatar(updatedProfile.gender));
-
-          setPersonal({
-            member_id: `M${updatedProfile.userId}`,
-            first_name: updatedProfile.first_name || "",
-            last_name: updatedProfile.last_name || "",
-            gender: updatedProfile.gender || "",
-            dob: updatedProfile.date_of_birth ? updatedProfile.date_of_birth.split('T')[0] : "",
-            email: updatedProfile.email || "",
-            phone: updatedProfile.phone || "",
-            address_street: updatedProfile.address_street || "",
-            address_city: updatedProfile.address_city || "",
-            address_state: updatedProfile.address_state || "",
-            address_zip: updatedProfile.address_zip || "",
-            profile_picture: null,
-            profile_preview: newImageUrl,
-          });
-
-          setMembership({
-            membership_plan: updatedProfile.membership_plan || "",
-            plan_start_date: updatedProfile.plan_start_date || "",
-            plan_end_date: updatedProfile.plan_end_date || "",
-            status: updatedProfile.membership_status || "",
-            membership_type: updatedProfile.membership_type || "Standard",
-            membership_fee: updatedProfile.membership_fee?.toString() || "",
-          });
-
           alert("Profile updated successfully!");
+          await fetchProfile(); // ✅ Auto-refresh profile from server
           setIsEditMode(false);
         } else {
           alert("Failed to update profile. Please try again.");
@@ -301,19 +271,19 @@ const Account = () => {
   }
 
   return (
-    <div className="container py-2">
+    <div className="">
       {showErrorAlert && (
         <div className="alert alert-warning alert-dismissible fade show mb-4" role="alert">
           <strong>Warning!</strong> {error || "Data not found"}.
-          <button 
-            type="button" 
-            className="btn-close" 
+          <button
+            type="button"
+            className="btn-close"
             onClick={() => setShowErrorAlert(false)}
             aria-label="Close"
           ></button>
         </div>
       )}
-      
+
       <div className="row g-4">
         <div className="col-12">
           <div className="card border-0 shadow-sm mb-4">
