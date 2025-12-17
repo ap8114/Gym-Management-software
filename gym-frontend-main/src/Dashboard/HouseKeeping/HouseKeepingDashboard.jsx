@@ -417,7 +417,7 @@ const HouseKeepingDashboard = () => {
         </div>
         
         {/* Weekly Duty Roster */}
-        <div className="card shadow-sm border-0 mb-4 mb-md-5">
+        {/* <div className="card shadow-sm border-0 mb-4 mb-md-5">
           <div className="card-header bg-white border-0 py-3 px-4">
             <div className="d-flex justify-content-between align-items-center">
               <h2 className="h5 fw-semibold mb-0">Upcoming Shifts</h2>
@@ -459,7 +459,7 @@ const HouseKeepingDashboard = () => {
               )}
             </div>
           </div>
-        </div>
+        </div> */}
         
         {/* Charts Section */}
         <div className="row g-3 g-md-4">

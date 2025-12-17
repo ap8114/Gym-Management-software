@@ -18,9 +18,7 @@ import {
   Filter,
 } from "lucide-react";
 
-
 const ReceptionistWalkinMember = () => {
-  
   const [members, setMembers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
@@ -29,25 +27,23 @@ const ReceptionistWalkinMember = () => {
   const [showEditForm, setShowEditForm] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [filterStatus, setFilterStatus] = useState("");
-  // const [filterBranch, setFilterBranch] = useState(""); // Commented out branch filter
-  const [loading, setLoading] = useState(false); // Add loading state
-  const [editLoading, setEditLoading] = useState(false); // Add edit loading state
-  const [deleteLoading, setDeleteLoading] = useState(false); // Add delete loading state
-  // const [branches, setBranches] = useState([]); // Commented out branches state
-  // const [branchesLoading, setBranchesLoading] = useState(false); // Commented out branches loading state
-  // const [branchesError, setBranchesError] = useState(null); // Commented out branches error state
-  const [membersLoading, setMembersLoading] = useState(false); // Add loading state for members
+  const [loading, setLoading] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [membersLoading, setMembersLoading] = useState(false);
+
   // Plans state
   const [apiPlans, setApiPlans] = useState([]);
   const [plansLoaded, setPlansLoaded] = useState(false);
   const [planError, setPlanError] = useState(null);
   const [planLoading, setPlanLoading] = useState(false);
-const getUserFromStorage = () => {
+
+  const getUserFromStorage = () => {
     try {
-      const userStr = localStorage.getItem('user');
+      const userStr = localStorage.getItem("user");
       return userStr ? JSON.parse(userStr) : null;
     } catch (err) {
-      console.error('Error parsing user from localStorage:', err);
+      console.error("Error parsing user from localStorage:", err);
       return null;
     }
   };
@@ -58,13 +54,13 @@ const getUserFromStorage = () => {
   const name = user?.fullName || null;
   const staffId = user?.staffId || null;
   const adminId = user?.adminId || null;
+
   // Form states
   const [newMember, setNewMember] = useState({
     fullName: "",
     phone: "",
     email: "",
     password: "",
-    // branchId: "", // Commented out branchId
     planId: "",
     address: "",
     gender: "",
@@ -72,23 +68,21 @@ const getUserFromStorage = () => {
     startDate: new Date().toISOString().split("T")[0],
     paymentMode: "cash",
     amountPaid: "",
-    interestedIn: "", // Added field for "Interested In" selection
-    status: "Active", // Added status field
+    interestedIn: "",
+    status: "Active",
   });
 
-  // ✅ FIX: Updated editMember state to include all necessary fields for API
   const [editMember, setEditMember] = useState({
     id: "",
-    fullName: "", // ✅ Changed from 'name' to 'fullName'
+    fullName: "",
     phone: "",
     email: "",
-    // branchId: "", // Commented out branchId
-    planId: "", // ✅ Changed from 'plan' to 'planId'
+    planId: "",
     address: "",
     gender: "",
-    dateOfBirth: "", // ✅ Changed from 'dob' to 'dateOfBirth'
-    interestedIn: "", // ✅ Added field
-    status: "Active", // ✅ Added status field
+    dateOfBirth: "",
+    interestedIn: "",
+    status: "Active",
   });
 
   const [renewPlan, setRenewPlan] = useState({
@@ -98,59 +92,51 @@ const getUserFromStorage = () => {
     amountPaid: "",
   });
 
-  // Get unique branches for filter
-  // const uniqueBranches = [...new Set(members.map((member) => member.branch))]; // Commented out unique branches
+  // Filter members based on search term and status
+  const filteredMembers = members.filter((member) => {
+    const matchesSearch =
+      member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.phone.includes(searchTerm);
+    const matchesStatus = filterStatus === "" || member.status === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
 
-// Filter members based on search term, status and branch
-const filteredMembers = members.filter((member) => {
-  const matchesSearch =
-    member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.phone.includes(searchTerm);
-  const matchesStatus = filterStatus === "" || member.status === filterStatus;
-  // const matchesBranch =
-  //   filterBranch === "" || member.branchId === parseInt(filterBranch); // Commented out branch filter
-  return matchesSearch && matchesStatus; // Removed matchesBranch from return
-});
+  // Fetch members by admin ID
+  const fetchMembersByAdminId = async () => {
+    setMembersLoading(true);
+    try {
+      const response = await axiosInstance.get(
+        `${BaseUrl}members/admin/${adminId}`
+      );
 
-// Fetch members by admin ID
-const fetchMembersByAdminId = async () => {
-  setMembersLoading(true);
-  try {
-    const response = await axiosInstance.get(
-      `${BaseUrl}members/admin/${adminId}`
-    );
+      if (response.data && response.data.success) {
+        const formattedMembers = response.data.data.map((member) => ({
+          id: member.id,
+          name: member.fullName,
+          phone: member.phone,
+          email: member.email,
+          gender: member.gender,
+          plan: getPlanNameById(member.planId),
+          planId: member.planId,
+          address: member.address,
+          dob: member.dateOfBirth,
+          planStart: member.membershipFrom,
+          expiry: member.membershipTo,
+          status: member.status,
+          interestedIn: member.interestedIn,
+        }));
 
-    if (response.data && response.data.success) {
-      // Map API response to match our component structure
-      const formattedMembers = response.data.data.map((member) => ({
-        id: member.id,
-        name: member.fullName,
-        phone: member.phone,
-        email: member.email,
-        gender: member.gender,
-        // branch: getBranchNameById(member.branchId), // Commented out branch name
-        // branchId: member.branchId, // Commented out branch ID
-        plan: getPlanNameById(member.planId), // ✅ Get plan name by ID
-        planId: member.planId, // Store plan ID
-        address: member.address,
-        dob: member.dateOfBirth,
-        planStart: member.membershipFrom,
-        expiry: member.membershipTo,
-        status: member.status,
-        interestedIn: member.interestedIn,
-      }));
-
-      setMembers(formattedMembers);
-      console.log("Members loaded successfully:", formattedMembers);
-    } else {
-      console.error("API response error:", response.data);
+        setMembers(formattedMembers);
+        console.log("Members loaded successfully:", formattedMembers);
+      } else {
+        console.error("API response error:", response.data);
+      }
+    } catch (err) {
+      console.error("Error fetching members:", err);
+    } finally {
+      setMembersLoading(false);
     }
-  } catch (err) {
-    console.error("Error fetching members:", err);
-  } finally {
-    setMembersLoading(false);
-  }
-};
+  };
 
   // Fetch plans from API
   const fetchPlansFromAPI = async () => {
@@ -158,22 +144,21 @@ const fetchMembersByAdminId = async () => {
     setPlanError(null);
 
     try {
-      // Make API call to get plans by admin ID
       const response = await axiosInstance.get(
         `${BaseUrl}MemberPlan?adminId=${adminId}`
       );
 
       if (response.data && response.data.success) {
-        // Format API response to match our component structure
+        // FIX: Keep the original case for 'type' and include 'trainerType'
         const formattedPlans = response.data.plans.map((plan) => ({
           id: plan.id,
           name: plan.name,
           sessions: plan.sessions,
           validity: plan.validityDays,
           price: `₹${plan.price.toLocaleString()}`,
-          active: true, // Assuming all plans from API are active by default
-          // branch: "Downtown", // Commented out default branch
-          type: plan.type.toLowerCase(), // Convert to lowercase for our component
+          active: true,
+          type: plan.type, // Keep original case (e.g., "PERSONAL", "GROUP", "MEMBER")
+          trainerType: plan.trainerType, // Include trainerType
         }));
 
         setApiPlans(formattedPlans);
@@ -194,35 +179,10 @@ const fetchMembersByAdminId = async () => {
     }
   };
 
-  // Fetch branches
-  // const fetchBranches = async () => { // Commented out fetchBranches function
-  //   setBranchesLoading(true);
-  //   setBranchesError(null);
-  //   try {
-  //     const adminId = localStorage.getItem("userId") || "5"; // fallback to 5 as per your note
-  //     const response = await axiosInstance.get(
-  //       `${BaseUrl}branches/by-admin/${adminId}`
-  //     );
-  //     if (response.data?.success && Array.isArray(response.data.branches)) {
-  //       setBranches(response.data.branches);
-  //     } else {
-  //       setBranchesError("No branches found.");
-  //       setBranches([]);
-  //     }
-  //   } catch (err) {
-  //     console.error("Error fetching branches:", err);
-  //     setBranchesError("Failed to load branches.");
-  //     setBranches([]);
-  //   } finally {
-  //     setBranchesLoading(false);
-  //   }
-  // };
-
   // Fetch data when component mounts
   useEffect(() => {
     fetchMembersByAdminId();
     fetchPlansFromAPI();
-    // fetchBranches(); // Commented out fetchBranches
   }, []);
 
   // Handle add member with API call
@@ -231,9 +191,8 @@ const fetchMembersByAdminId = async () => {
     setLoading(true);
 
     try {
-      // Prepare payload for API
       const payload = {
-        adminId: adminId, // ✅ Added adminId to payload
+        adminId: adminId,
         fullName: newMember.fullName,
         email: newMember.email,
         password: newMember.password,
@@ -242,33 +201,26 @@ const fetchMembersByAdminId = async () => {
         dateOfBirth: newMember.dateOfBirth,
         address: newMember.address,
         interestedIn: newMember.interestedIn,
-        // branchId: parseInt(newMember.branchId), // Commented out branchId
-        planId: parseInt(newMember.planId), // Convert to number
-        membershipFrom: newMember.startDate, // Map startDate to membershipFrom
+        planId: parseInt(newMember.planId),
+        membershipFrom: newMember.startDate,
         paymentMode:
           newMember.paymentMode.charAt(0).toUpperCase() +
-          newMember.paymentMode.slice(1), // Capitalize first letter
-        amountPaid: parseFloat(newMember.amountPaid), // Convert to number
+          newMember.paymentMode.slice(1),
+        amountPaid: parseFloat(newMember.amountPaid),
       };
 
-      // Make API call using axiosInstance and BaseUrl
       const response = await axiosInstance.post(
         `${BaseUrl}members/create`,
         payload
       );
 
-      // If API call is successful, add member to local state
       if (response.data) {
-        // Refresh members list to get updated data
         await fetchMembersByAdminId();
-
-        // Reset form
         setNewMember({
           fullName: "",
           phone: "",
           email: "",
           password: "",
-          // branchId: "", // Commented out branchId
           planId: "",
           address: "",
           gender: "",
@@ -291,15 +243,13 @@ const fetchMembersByAdminId = async () => {
     }
   };
 
-  // ✅ FIX: Handle edit member with API call
   const handleEditMember = async (e) => {
     e.preventDefault();
     setEditLoading(true);
 
     try {
-      // ✅ FIX: Prepare payload for API to match expected structure
       const payload = {
-        adminId: adminId, // ✅ Added adminId to payload
+        adminId: adminId,
         fullName: editMember.fullName,
         email: editMember.email,
         phone: editMember.phone,
@@ -307,20 +257,16 @@ const fetchMembersByAdminId = async () => {
         address: editMember.address,
         dateOfBirth: editMember.dateOfBirth,
         interestedIn: editMember.interestedIn,
-        status: editMember.status, // ✅ Added status
-        // branchId: parseInt(editMember.branchId), // Commented out branchId
-        planId: parseInt(editMember.planId), // ✅ Added planId
+        status: editMember.status,
+        planId: parseInt(editMember.planId),
       };
 
-      // ✅ FIX: Make API call using axiosInstance and BaseUrl with correct URL
       const response = await axiosInstance.put(
         `${BaseUrl}members/update/${editMember.id}`,
         payload
       );
 
-      // ✅ FIX: If API call is successful, update member in local state
       if (response.data && response.data.success) {
-        // Update member in state with response data
         setMembers(
           members.map((member) =>
             member.id === editMember.id
@@ -342,18 +288,15 @@ const fetchMembersByAdminId = async () => {
     }
   };
 
-  // Handle delete member with API call
   const handleDeleteMember = async (id) => {
     if (window.confirm("Are you sure you want to delete this member?")) {
       setDeleteLoading(true);
 
       try {
-        // Make API call using axiosInstance and BaseUrl
         const response = await axiosInstance.delete(
           `${BaseUrl}members/delete/${id}`
         );
 
-        // If API call is successful, remove member from local state
         if (response.data && response.data.success) {
           setMembers(members.filter((member) => member.id !== id));
           alert("Member deleted successfully!");
@@ -369,64 +312,53 @@ const fetchMembersByAdminId = async () => {
     }
   };
 
-  // Handle view member
   const handleViewMember = (member) => {
     setSelectedMember(member);
     setShowViewModal(true);
   };
 
-  // ✅ FIX: Handle edit form open with correct field mapping
   const handleEditFormOpen = (member) => {
     setEditMember({
       id: member.id,
-      fullName: member.name, // ✅ Map 'name' to 'fullName'
+      fullName: member.name,
       email: member.email,
       phone: member.phone,
       gender: member.gender,
       address: member.address,
-      dateOfBirth: member.dob, // ✅ Map 'dob' to 'dateOfBirth'
+      dateOfBirth: member.dob,
       interestedIn: member.interestedIn,
-      status: member.status, // ✅ Map 'status'
-      // branchId: member.branchId, // Commented out branchId
-      planId: member.planId, // ✅ Map 'planId'
+      status: member.status,
+      planId: member.planId,
     });
     setShowEditForm(true);
   };
 
-  // Handle renew plan with API call
   const handleRenewPlan = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Prepare payload for API
       const payload = {
-        adminId: adminId, // Add adminId to payload
-        planId: parseInt(renewPlan.plan), // Convert to number
+        adminId: adminId,
+        planId: parseInt(renewPlan.plan),
         paymentMode:
           renewPlan.paymentMode.charAt(0).toUpperCase() +
-          renewPlan.paymentMode.slice(1), // Capitalize first letter
-        amountPaid: parseFloat(renewPlan.amountPaid), // Convert to number
+          renewPlan.paymentMode.slice(1),
+        amountPaid: parseFloat(renewPlan.amountPaid),
       };
 
-      // Make API call to renew membership
       const response = await axiosInstance.put(
         `${BaseUrl}members/renew/${renewPlan.memberId}`,
         payload
       );
 
-      // If API call is successful, update member in local state
       if (response.data && response.data.success) {
-        // Find member to update
         const updatedMemberIndex = members.findIndex(
           (member) => member.id === parseInt(renewPlan.memberId)
         );
 
         if (updatedMemberIndex !== -1) {
-          // Create a copy of members array
           const updatedMembers = [...members];
-
-          // Update member with new plan information
           updatedMembers[updatedMemberIndex] = {
             ...updatedMembers[updatedMemberIndex],
             planId: response.data.data.planId,
@@ -436,15 +368,12 @@ const fetchMembersByAdminId = async () => {
             ).toLocaleDateString(),
             expiry: response.data.data.membershipTo
               ? new Date(response.data.data.membershipTo).toLocaleDateString()
-              : "N/A", // Handle null membershipTo
+              : "N/A",
             status: "Active",
           };
-
-          // Update state with modified members array
           setMembers(updatedMembers);
         }
 
-        // Reset form
         setRenewPlan({
           memberId: "",
           plan: "",
@@ -464,24 +393,19 @@ const fetchMembersByAdminId = async () => {
     }
   };
 
-  // Handle renew form open
   const handleRenewFormOpen = (member) => {
     setRenewPlan({
       ...renewPlan,
       memberId: member.id.toString(),
-      plan: member.plan,
+      plan: member.planId, // Use planId here as well
     });
     setShowRenewForm(true);
   };
 
-  // Get status badge class
   const getStatusClass = (status) => {
     switch (status) {
       case "Active":
         return "bg-success";
-      // case "Expired": return "bg-danger";
-      // case "Frozen": return "bg-info";
-      // case "Pending": return "bg-warning";
       case "Inactive":
         return "bg-secondary";
       default:
@@ -489,38 +413,40 @@ const fetchMembersByAdminId = async () => {
     }
   };
 
-// Get branch name by ID
-// const getBranchNameById = (branchId) => { // Commented out getBranchNameById function
-//   if (!branchId || branches.length === 0) return "Unknown Branch";
-//   const branch = branches.find((b) => b.id === parseInt(branchId));
-//   return branch ? branch.name : "Unknown Branch";
-// };
+  const getPlanNameById = (planId) => {
+    if (!planId || apiPlans.length === 0) return "Unknown Plan";
+    const plan = apiPlans.find((p) => p.id === parseInt(planId));
+    return plan ? plan.name : "Unknown Plan";
+  };
 
-// Get plan name by ID
-const getPlanNameById = (planId) => {
-  if (!planId || apiPlans.length === 0) return "Unknown Plan";
-  const plan = apiPlans.find((p) => p.id === parseInt(planId));
-  return plan ? plan.name : "Unknown Plan";
-};
+  // ✅ CORRECTED: Get filtered plans based on API response structure
+  const getFilteredPlans = (interestedIn) => {
+    if (!plansLoaded || apiPlans.length === 0) {
+      console.log("Plans not loaded or empty.");
+      return [];
+    }
 
-
-
-const getFilteredPlans = (interestedIn) => {
-  if (!plansLoaded || apiPlans.length === 0) return [];
-  
-  switch (interestedIn) {
-    case "Personal Training":
-      return apiPlans.filter(plan => plan.type === "personal");
-    case "Group Classes":
-      return apiPlans.filter(plan => plan.type === "group");
-    case "General":
-      return apiPlans.filter(plan => plan.trainerType === "general");
-    case "Both":
-      return apiPlans; // Show all plans
-    default:
-      return []; // No selection, return empty array
-  }
-};
+    let filtered = [];
+    switch (interestedIn) {
+      case "Personal Training":
+        // Filter for plans where type is "PERSONAL"
+        filtered = apiPlans.filter((plan) => plan.type === "PERSONAL");
+        break;
+      case "Group Classes":
+        // Filter for plans where type is "GROUP"
+        filtered = apiPlans.filter((plan) => plan.type === "GROUP");
+        break;
+      case "General":
+        // Filter for plans where type is "MEMBER"
+        filtered = apiPlans.filter((plan) => plan.type === "MEMBER");
+        break;
+      default:
+        filtered = [];
+        break;
+    }
+    console.log(`Filtering for "${interestedIn}":`, filtered);
+    return filtered;
+  };
 
   return (
     <div className="container-fluid py-2 py-md-4">
@@ -562,27 +488,6 @@ const getFilteredPlans = (interestedIn) => {
             />
           </div>
         </div>
-        {/* Commented out branch filter */}
-        {/* <div className="col-12 col-md-4">
-          <select
-            className="form-select"
-            value={filterBranch}
-            onChange={(e) => setFilterBranch(e.target.value)}
-          >
-            <option value="">All Branches</option>
-            {branchesLoading ? (
-              <option>Loading branches...</option>
-            ) : branchesError ? (
-              <option className="text-danger">{branchesError}</option>
-            ) : (
-              branches.map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {branch.name}
-                </option>
-              ))
-            )}
-          </select>
-        </div> */}
         <div className="col-12 col-md-4">
           <select
             className="form-select"
@@ -591,9 +496,6 @@ const getFilteredPlans = (interestedIn) => {
           >
             <option value="">All Status</option>
             <option value="Active">Active</option>
-            {/* <option value="Expired">Expired</option>
-            <option value="Frozen">Frozen</option>
-            <option value="Pending">Pending</option> */}
             <option value="Inactive">Inactive</option>
           </select>
         </div>
@@ -612,7 +514,6 @@ const getFilteredPlans = (interestedIn) => {
                     <th>Phone</th>
                     <th>Email</th>
                     <th>Gender</th>
-                    {/* <th>Branch</th> Commented out Branch column */}
                     <th>Plan</th>
                     <th>Expiry</th>
                     <th>Status</th>
@@ -638,7 +539,6 @@ const getFilteredPlans = (interestedIn) => {
                         <td>{member.phone}</td>
                         <td>{member.email}</td>
                         <td>{member.gender}</td>
-                        {/* <td>{getBranchNameById(member.branchId)}</td> Commented out Branch display */}
                         <td>{getPlanNameById(member.planId)}</td>
                         <td>{new Date(member.expiry).toLocaleDateString()}</td>
                         <td>
@@ -801,11 +701,6 @@ const getFilteredPlans = (interestedIn) => {
                     <div className="col-6">
                       <strong>Gender:</strong> {member.gender}
                     </div>
-                    {/* Commented out Branch display */}
-                    {/* <div className="col-6">
-                      <strong>Branch:</strong>{" "}
-                      {getBranchNameById(member.branchId)}
-                    </div> */}
                     <div className="col-6">
                       <strong>Plan:</strong> {getPlanNameById(member.planId)}
                     </div>
@@ -826,7 +721,7 @@ const getFilteredPlans = (interestedIn) => {
         </div>
       </div>
 
-      {/* Add Member Modal - Fixed with editable start date, Interested In section, email, password, and status */}
+      {/* Add Member Modal */}
       {showAddForm && (
         <div
           className="modal fade show d-block"
@@ -1008,8 +903,7 @@ const getFilteredPlans = (interestedIn) => {
                         </div>
                       </div>
                     </div>
-                    {/* Added Interested In section */}
-                      <div className="col-12">
+                    <div className="col-12">
                       <label className="form-label">
                         Interested In <span className="text-danger">*</span>
                       </label>
@@ -1028,7 +922,7 @@ const getFilteredPlans = (interestedIn) => {
                               setNewMember({
                                 ...newMember,
                                 interestedIn: e.target.value,
-                                planId: "", // Reset plan selection when interested in changes
+                                planId: "",
                               });
                             }}
                             required
@@ -1047,22 +941,17 @@ const getFilteredPlans = (interestedIn) => {
                             name="interestedIn"
                             id="general"
                             value="General"
-                            checked={
-                              newMember.interestedIn === "General"
-                            }
+                            checked={newMember.interestedIn === "General"}
                             onChange={(e) => {
                               setNewMember({
                                 ...newMember,
                                 interestedIn: e.target.value,
-                                planId: "", // Reset plan selection when interested in changes
+                                planId: "",
                               });
                             }}
                             required
                           />
-                          <label
-                            className="form-check-label"
-                            htmlFor="general"
-                          >
+                          <label className="form-check-label" htmlFor="general">
                             General
                           </label>
                         </div>
@@ -1078,7 +967,7 @@ const getFilteredPlans = (interestedIn) => {
                               setNewMember({
                                 ...newMember,
                                 interestedIn: e.target.value,
-                                planId: "", // Reset plan selection when interested in changes
+                                planId: "",
                               });
                             }}
                             required
@@ -1106,39 +995,7 @@ const getFilteredPlans = (interestedIn) => {
                         }
                       ></textarea>
                     </div>
-                    {/* Commented out Branch field */}
-                    {/* <div className="col-12 col-md-6">
-                      <label className="form-label">
-                        Branch <span className="text-danger">*</span>
-                      </label>
-                      <select
-                        className="form-select"
-                        value={newMember.branchId}
-                        onChange={(e) =>
-                          setNewMember({
-                            ...newMember,
-                            branchId: e.target.value,
-                          })
-                        }
-                        required
-                      >
-                        <option value="">Select Branch</option>
-                        {branchesLoading ? (
-                          <option>Loading branches...</option>
-                        ) : branchesError ? (
-                          <option className="text-danger">
-                            {branchesError}
-                          </option>
-                        ) : (
-                          branches.map((branch) => (
-                            <option key={branch.id} value={branch.id}>
-                              {branch.name}
-                            </option>
-                          ))
-                        )}
-                      </select>
-                    </div> */}
-                   <div className="col-12 col-md-6">
+                    <div className="col-12 col-md-6">
                       <label className="form-label">
                         Plan <span className="text-danger">*</span>
                       </label>
@@ -1167,7 +1024,7 @@ const getFilteredPlans = (interestedIn) => {
                             })
                           }
                           required
-                          disabled={!newMember.interestedIn} // Disable if no interest selected
+                          disabled={!newMember.interestedIn}
                         >
                           <option value="">
                             {newMember.interestedIn
@@ -1177,24 +1034,9 @@ const getFilteredPlans = (interestedIn) => {
                           {plansLoaded &&
                             getFilteredPlans(newMember.interestedIn).map((plan) => (
                               <option key={plan.id} value={plan.id}>
-                                {plan.name} - {plan.price} ({plan.validity}{" "}
-                                days)
+                                {plan.name} - {plan.price} ({plan.validity} days)
                               </option>
                             ))}
-                          {/* Fallback options if API plans aren't loaded */}
-                          {!plansLoaded && (
-                            <>
-                              <option value="11">Basic Monthly</option>
-                              <option value="12">Basic Quarterly</option>
-                              <option value="13">Basic Annual</option>
-                              <option value="14">Standard Monthly</option>
-                              <option value="15">Standard Quarterly</option>
-                              <option value="16">Standard Annual</option>
-                              <option value="17">Premium Monthly</option>
-                              <option value="18">Premium Quarterly</option>
-                              <option value="19">Premium Annual</option>
-                            </>
-                          )}
                         </select>
                       )}
                     </div>
@@ -1278,7 +1120,7 @@ const getFilteredPlans = (interestedIn) => {
         </div>
       )}
 
-      {/* ✅ FIX: Edit Member Modal - Fixed with Status field and correct API payload */}
+      {/* Edit Member Modal */}
       {showEditForm && (
         <div
           className="modal fade show d-block"
@@ -1361,33 +1203,8 @@ const getFilteredPlans = (interestedIn) => {
                       >
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
-                        {/* <option value="Expired">Expired</option>
-                        <option value="Frozen">Frozen</option>
-                        <option value="Pending">Pending</option> */}
                       </select>
                     </div>
-                    {/* Commented out Branch field */}
-                    {/* <div className="col-12 col-md-6">
-                      <label className="form-label">Branch</label>
-                      <select
-                        className="form-select"
-                        value={editMember.branchId}
-                        onChange={(e) =>
-                          setEditMember({
-                            ...editMember,
-                            branchId: e.target.value,
-                          })
-                        }
-                        required
-                      >
-                        <option value="">Select Branch</option>
-                        {branches.map((branch) => (
-                          <option key={branch.id} value={branch.id}>
-                            {branch.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div> */}
                     <div className="col-12 col-md-6">
                       <label className="form-label">Membership Plan</label>
                       <select
@@ -1400,7 +1217,7 @@ const getFilteredPlans = (interestedIn) => {
                           })
                         }
                         required
-                        disabled={!editMember.interestedIn} // Disable if no interest selected
+                        disabled={!editMember.interestedIn}
                       >
                         <option value="">
                           {editMember.interestedIn
@@ -1413,34 +1230,6 @@ const getFilteredPlans = (interestedIn) => {
                               {plan.name} - {plan.price} ({plan.validity} days)
                             </option>
                           ))}
-                        {/* Fallback options if API plans aren't loaded */}
-                        {!plansLoaded && (
-                          <>
-                            <option value="Basic Monthly">Basic Monthly</option>
-                            <option value="Basic Quarterly">
-                              Basic Quarterly
-                            </option>
-                            <option value="Basic Annual">Basic Annual</option>
-                            <option value="Standard Monthly">
-                              Standard Monthly
-                            </option>
-                            <option value="Standard Quarterly">
-                              Standard Quarterly
-                            </option>
-                            <option value="Standard Annual">
-                              Standard Annual
-                            </option>
-                            <option value="Premium Monthly">
-                              Premium Monthly
-                            </option>
-                            <option value="Premium Quarterly">
-                              Premium Quarterly
-                            </option>
-                            <option value="Premium Annual">
-                              Premium Annual
-                            </option>
-                          </>
-                        )}
                       </select>
                     </div>
                     <div className="col-12 col-md-6">
@@ -1461,7 +1250,6 @@ const getFilteredPlans = (interestedIn) => {
                         <option value="Other">Other</option>
                       </select>
                     </div>
-                    {/* Modified Interested In section to Edit form */}
                     <div className="col-12">
                       <label className="form-label">Interested In</label>
                       <div className="d-flex gap-3">
@@ -1479,7 +1267,7 @@ const getFilteredPlans = (interestedIn) => {
                               setEditMember({
                                 ...editMember,
                                 interestedIn: e.target.value,
-                                planId: "", // Reset plan selection when interested in changes
+                                planId: "",
                               });
                             }}
                           />
@@ -1497,14 +1285,12 @@ const getFilteredPlans = (interestedIn) => {
                             name="editInterestedIn"
                             id="editGeneral"
                             value="General"
-                            checked={
-                              editMember.interestedIn === "General"
-                            }
+                            checked={editMember.interestedIn === "General"}
                             onChange={(e) => {
                               setEditMember({
                                 ...editMember,
                                 interestedIn: e.target.value,
-                                planId: "", // Reset plan selection when interested in changes
+                                planId: "",
                               });
                             }}
                           />
@@ -1529,7 +1315,7 @@ const getFilteredPlans = (interestedIn) => {
                               setEditMember({
                                 ...editMember,
                                 interestedIn: e.target.value,
-                                planId: "", // Reset plan selection when interested in changes
+                                planId: "",
                               });
                             }}
                           />
@@ -1595,7 +1381,7 @@ const getFilteredPlans = (interestedIn) => {
         </div>
       )}
 
-      {/* Renew Plan Modal - Fixed */}
+      {/* Renew Plan Modal */}
       {showRenewForm && (
         <div
           className="modal fade show d-block"
@@ -1631,32 +1417,6 @@ const getFilteredPlans = (interestedIn) => {
                             {plan.name} - {plan.price} ({plan.validity} days)
                           </option>
                         ))}
-                      {/* Fallback options if API plans aren't loaded */}
-                      {!plansLoaded && (
-                        <>
-                          <option value="Basic Monthly">Basic Monthly</option>
-                          <option value="Basic Quarterly">
-                            Basic Quarterly
-                          </option>
-                          <option value="Basic Annual">Basic Annual</option>
-                          <option value="Standard Monthly">
-                            Standard Monthly
-                          </option>
-                          <option value="Standard Quarterly">
-                            Standard Quarterly
-                          </option>
-                          <option value="Standard Annual">
-                            Standard Annual
-                          </option>
-                          <option value="Premium Monthly">
-                            Premium Monthly
-                          </option>
-                          <option value="Premium Quarterly">
-                            Premium Quarterly
-                          </option>
-                          <option value="Premium Annual">Premium Annual</option>
-                        </>
-                      )}
                     </select>
                   </div>
                   <div className="mb-3">
@@ -1715,7 +1475,7 @@ const getFilteredPlans = (interestedIn) => {
         </div>
       )}
 
-      {/* View Member Modal - Fixed with Interested In field */}
+      {/* View Member Modal */}
       {showViewModal && selectedMember && (
         <div
           className="modal fade show d-block"
@@ -1772,11 +1532,6 @@ const getFilteredPlans = (interestedIn) => {
                         <strong>Gender:</strong>
                         <div>{selectedMember.gender}</div>
                       </div>
-                      {/* Commented out Branch display */}
-                      {/* <div className="col-12 col-sm-6">
-                        <strong>Branch:</strong>
-                        <div>{getBranchNameById(selectedMember.branchId)}</div>
-                      </div> */}
                       <div className="col-12 col-sm-6">
                         <strong>Plan:</strong>
                         <div>{getPlanNameById(selectedMember.planId)}</div>
@@ -1796,16 +1551,11 @@ const getFilteredPlans = (interestedIn) => {
                         </div>
                       </div>
                       <div className="col-12 col-sm-6">
-                        <strong>Gender:</strong>
-                        <div>{selectedMember.gender}</div>
-                      </div>
-                      <div className="col-12 col-sm-6">
                         <strong>Date of Birth:</strong>
                         <div>
                           {new Date(selectedMember.dob).toLocaleDateString()}
                         </div>
                       </div>
-                      {/* Added Interested In field to View modal */}
                       <div className="col-12 col-sm-6">
                         <strong>Interested In:</strong>
                         <div>{selectedMember.interestedIn}</div>
