@@ -101,7 +101,7 @@ const CreatePlan = () => {
         `${BaseUrl}class/trainers/personal-general?adminId=${adminId}`
       );
       if (response.data.success) {
-        // Filter trainers based on the selected type
+        // Filter trainers based on selected type
         const filteredTrainers = response.data.trainers.filter((trainer) => {
           if (trainerType === "personal") {
             return trainer.roleId === 5; // Assuming roleId 5 is for personal trainers
@@ -136,7 +136,8 @@ const CreatePlan = () => {
           sessions: plan.sessions,
           validity: plan.validityDays,
           price: `₹${plan.price.toLocaleString()}`,
-          active: plan.active ?? true,
+          // Use the actual status from API or default to true if not provided
+          active: plan.status !== undefined ? (plan.status === "Active" || plan.status === true) : true,
           type: plan.type.toLowerCase(),
           trainerType: plan.trainerType || "", // Add trainer type from API
           trainerId: plan.trainerId || null, // Add trainer ID from API
@@ -147,7 +148,7 @@ const CreatePlan = () => {
         // Properly filter all plan types
         setGroupPlans(formattedPlans.filter((p) => p.type === "group"));
         setPersonalPlans(formattedPlans.filter((p) => p.type === "personal"));
-        setMembershipPlans(formattedPlans.filter((p) => p.type === "member")); // यह सुनिश्चित करें
+        setMembershipPlans(formattedPlans.filter((p) => p.type === "member"));
       } else {
         setError("Failed to fetch plans.");
       }
@@ -159,39 +160,39 @@ const CreatePlan = () => {
     }
   };
 
-const fetchBookingRequests = async () => {
-  try {
-    const adminId = localStorage.getItem("userId") || "4";
-    const response = await axiosInstance.get(
-      `${BaseUrl}booking/requests?adminId=${adminId}`
-    );
-    
-    if (response.data.success && response.data.data) {
-      const formattedRequests = response.data.data.map((request) => ({
-        id: request.id,
-        memberName: request.memberName || `Member ID: ${request.memberId}`,
-        planName: request.className || "Personal Training",
-        planType: request.className ? "group" : "personal",
-        price: `₹${parseFloat(request.price).toLocaleString()}`,
-        sessions: "N/A",
-        validity: "N/A",
-        sessionsUsed: "N/A",
-        requestedAt: new Date(request.createdAt).toLocaleString(),
-        status: request.status.toLowerCase(),
-        upiId: request.upiId,
-        classId: request.classId,
-        memberId: request.memberId,
-        branchId: request.branchId,
-        requestType: "booking",
-      }));
-      setBookingRequests(formattedRequests);
+  const fetchBookingRequests = async () => {
+    try {
+      const adminId = localStorage.getItem("userId") || "4";
+      const response = await axiosInstance.get(
+        `${BaseUrl}booking/requests?adminId=${adminId}`
+      );
+
+      if (response.data.success && response.data.data) {
+        const formattedRequests = response.data.data.map((request) => ({
+          id: request.id,
+          memberName: request.memberName || `Member ID: ${request.memberId}`,
+          planName: request.className || "Personal Training",
+          planType: request.className ? "group" : "personal",
+          price: `₹${parseFloat(request.price).toLocaleString()}`,
+          sessions: "N/A",
+          validity: "N/A",
+          sessionsUsed: "N/A",
+          requestedAt: new Date(request.createdAt).toLocaleString(),
+          status: request.status.toLowerCase(),
+          upiId: request.upiId,
+          classId: request.classId,
+          memberId: request.memberId,
+          branchId: request.branchId,
+          requestType: "booking",
+        }));
+        setBookingRequests(formattedRequests);
+      }
+    } catch (err) {
+      console.error("Error fetching booking requests:", err);
+      // Don't set global error state here to avoid showing it in create plan modal
+      // Instead, we could show a toast notification or handle it differently
     }
-  } catch (err) {
-    console.error("Error fetching booking requests:", err);
-    // Don't set the global error state here to avoid showing it in the create plan modal
-    // Instead, we could show a toast notification or handle it differently
-  }
-};
+  };
 
   const fetchRenewalRequests = async () => {
     try {
@@ -251,7 +252,7 @@ const fetchBookingRequests = async () => {
       }
     } catch (err) {
       console.error("Error fetching renewal requests:", err);
-      // Don't set the global error state here to avoid showing it in the create plan modal
+      // Don't set global error state here to avoid showing it in create plan modal
     }
   };
 
@@ -270,7 +271,8 @@ const fetchBookingRequests = async () => {
           sessions: plan.sessions,
           validity: plan.validityDays,
           price: `₹${plan.price.toLocaleString()}`,
-          active: plan.active ?? true,
+          // Use the actual status from API or default to true if not provided
+          active: plan.status !== undefined ? (plan.status === "Active" || plan.status === true) : true,
           type: plan.type.toLowerCase(),
           createdAt: plan.createdAt,
           updatedAt: plan.updatedAt,
@@ -291,14 +293,14 @@ const fetchBookingRequests = async () => {
   const getPlansByType = (type) => {
     if (type === "group") return groupPlans;
     if (type === "personal") return personalPlans;
-    if (type === "member") return membershipPlans; // यह add करें
+    if (type === "member") return membershipPlans;
     return [];
   };
 
   const updatePlansByType = (type, updatedPlans) => {
     if (type === "group") setGroupPlans(updatedPlans);
     else if (type === "personal") setPersonalPlans(updatedPlans);
-    else if (type === "member") setMembershipPlans(updatedPlans); // यह add करें
+    else if (type === "member") setMembershipPlans(updatedPlans);
   };
 
   const handleCreatePlan = async () => {
@@ -308,7 +310,7 @@ const fetchBookingRequests = async () => {
       !newPlan.validity ||
       !newPlan.price
     ) {
-      setCreatePlanError("Please fill all fields"); // Use the separate error state
+      setCreatePlanError("Please fill all fields"); // Use separate error state
       return;
     }
 
@@ -324,7 +326,7 @@ const fetchBookingRequests = async () => {
     }
 
     setLoading(true);
-    setCreatePlanError(null); // Reset the create plan error
+    setCreatePlanError(null); // Reset create plan error
     try {
       const adminId = localStorage.getItem("userId") || "4";
       const payload = {
@@ -353,7 +355,7 @@ const fetchBookingRequests = async () => {
           sessions: response.data.plan.sessions,
           validity: response.data.plan.validityDays,
           price: `₹${response.data.plan.price.toLocaleString()}`,
-          active: true,
+          active: true, // New plans are active by default
           type: response.data.plan.type.toLowerCase(),
         };
         const currentPlans =
@@ -384,13 +386,13 @@ const fetchBookingRequests = async () => {
           } Plan Created: ${plan.name}`
         );
       } else {
-        setCreatePlanError("Failed to create plan."); // Use the separate error state
+        setCreatePlanError("Failed to create plan."); // Use separate error state
       }
     } catch (err) {
       console.error("Error creating plan:", err);
       setCreatePlanError(
         err.response?.data?.message || "Failed to create plan."
-      ); // Use the separate error state
+      ); // Use separate error state
     } finally {
       setLoading(false);
     }
@@ -430,10 +432,13 @@ const fetchBookingRequests = async () => {
         adminId: parseInt(adminId),
         type: newPlan.type.toUpperCase(),
       };
+
+      // Use the correct URL format for updating a plan
       const response = await axiosInstance.put(
         `${BaseUrl}MemberPlan/${adminId}/${selectedPlan.id}`,
         payload
       );
+
       if (response.data.success) {
         const updatedPlan = {
           ...selectedPlan,
@@ -443,6 +448,8 @@ const fetchBookingRequests = async () => {
           validity: response.data.plan.validityDays,
           price: `₹${response.data.plan.price.toLocaleString()}`,
           type: response.data.plan.type.toLowerCase(),
+          // Keep the current active status
+          active: selectedPlan.active,
         };
         const currentPlans = getPlansByType(selectedPlan.type);
         updatePlansByType(
@@ -521,25 +528,42 @@ const fetchBookingRequests = async () => {
         setError("Plan not found");
         return;
       }
-      const response = await axiosInstance.patch(
-        `${BaseUrl}MemberPlan/${planId}`,
+
+      // Determine new status based on current active state
+      const newStatus = !plan.active ? "Active" : "Inactive";
+
+      // Use the correct URL format and payload
+      const response = await axiosInstance.put(
+        `${BaseUrl}MemberPlan/${adminId}/${planId}`,
         {
-          active: !plan.active,
+          status: newStatus,
         }
       );
+
       if (response.data.success) {
+        // Update local state with the response from the server
+        const updatedActiveStatus = response.data.plan.status === "Active" || response.data.plan.status === true;
+
+        // Update all relevant state arrays
         updatePlansByType(
           planType,
           currentPlans.map((p) =>
-            p.id === planId ? { ...p, active: !p.active } : p
+            p.id === planId ? { ...p, active: updatedActiveStatus } : p
           )
         );
+
         setApiPlans(
           apiPlans.map((p) =>
-            p.id === planId ? { ...p, active: !p.active } : p
+            p.id === planId ? { ...p, active: updatedActiveStatus } : p
           )
         );
-        alert(`✅ Plan status updated!`);
+
+        // Also update selected plan if it's currently being viewed
+        if (selectedPlan && selectedPlan.id === planId) {
+          setSelectedPlan({ ...selectedPlan, active: updatedActiveStatus });
+        }
+
+        alert(`✅ Plan status updated to ${newStatus}!`);
       } else {
         setError("Failed to update plan status.");
       }
@@ -894,12 +918,6 @@ const fetchBookingRequests = async () => {
           {req.planType}
         </span>
       </td>
-      {/* <td className="d-none d-lg-table-cell">
-        {req.sessions} total
-      </td>
-      <td className="d-none d-lg-table-cell">
-        {req.validity} days
-      </td> */}
       <td>{req.requestedAt}</td>
       <td>
         {req.status === "pending" && (
@@ -1005,12 +1023,6 @@ const fetchBookingRequests = async () => {
           {req.requestedPlanType}
         </span>
       </td>
-      {/* <td className="d-none d-lg-table-cell">
-        {req.sessions} total
-      </td>
-      <td className="d-none d-lg-table-cell">
-        {req.validity} days
-      </td> */}
       <td>{req.requestedAt}</td>
       <td>
         {req.status === "pending" && (
@@ -1694,8 +1706,6 @@ const fetchBookingRequests = async () => {
                               : "Plan"}
                           </th>
                           <th>Type</th>
-                          {/* <th className="d-none d-lg-table-cell">Sessions</th>
-                          <th className="d-none d-lg-table-cell">Validity</th> */}
                           <th>Requested At</th>
                           <th>Status</th>
                           <th>Action</th>
@@ -1845,7 +1855,7 @@ const fetchBookingRequests = async () => {
             {createPlanError && (
               <Alert variant="danger">{createPlanError}</Alert>
             )}{" "}
-            {/* Use the separate error state */}
+            {/* Use separate error state */}
             <Form>
               <Form.Group className="mb-4">
                 <Form.Label className="fw-medium">Plan Type</Form.Label>
