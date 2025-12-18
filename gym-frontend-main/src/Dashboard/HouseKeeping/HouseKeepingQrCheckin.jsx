@@ -306,4 +306,3 @@ const HouseKeepingQrCheckin = () => {
 };
 
 export default HouseKeepingQrCheckin;
-
