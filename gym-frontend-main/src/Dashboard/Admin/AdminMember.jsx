@@ -156,6 +156,7 @@ const AdminMember = () => {
 
       if (response.data && response.data.success) {
         // Format API response to match our component structure
+        // NOTE: We preserve the original case for 'type' and 'trainerType'
         const formattedPlans = response.data.plans.map((plan) => ({
           id: plan.id,
           name: plan.name,
@@ -163,8 +164,8 @@ const AdminMember = () => {
           validity: plan.validityDays,
           price: `₹${plan.price.toLocaleString()}`,
           active: true, // Assuming all plans from API are active by default
-          type: plan.type.toLowerCase(), // Convert to lowercase for our component
-          trainerType: plan.trainerType ? plan.trainerType.toLowerCase() : null, // Convert to lowercase for our component
+          type: plan.type, // Keep original case (e.g., "PERSONAL", "GROUP")
+          trainerType: plan.trainerType, // Keep original case (e.g., "personal", "general")
         }));
 
         setApiPlans(formattedPlans);
@@ -461,11 +462,26 @@ const AdminMember = () => {
     
     switch (interestedIn) {
       case "Personal Training":
-        return apiPlans.filter(plan => plan.type === "personal");
+        // Filter for plans that are for personal training (general fitness, not with a personal trainer)
+        return apiPlans.filter(plan => 
+          plan.type === "PERSONAL" && plan.trainerType !== "personal"
+        );
+      case "Personal Trainer":
+        // Filter for plans that are specifically with a personal trainer
+        return apiPlans.filter(plan => 
+          plan.trainerType === "personal"
+        );
       case "Group Classes":
-        return apiPlans.filter(plan => plan.type === "group");
+        // Filter for plans that are for group classes
+        return apiPlans.filter(plan => plan.type === "GROUP");
       case "General":
-        return apiPlans.filter(plan => plan.trainerType === "general");
+        // Filter for plans that are for general members (not personal trainer or group specific)
+        // This should only include plans with trainerType "general" or type "MEMBER"
+        return apiPlans.filter(plan => 
+          (plan.trainerType === "general" || plan.type === "MEMBER") && 
+          plan.trainerType !== "personal" && 
+          plan.type !== "PERSONAL"
+        );
       case "Both":
         return apiPlans; // Show all plans
       default:
@@ -953,7 +969,7 @@ const AdminMember = () => {
                       <label className="form-label">
                         Interested In <span className="text-danger">*</span>
                       </label>
-                      <div className="d-flex gap-3">
+                      <div className="d-flex gap-3 flex-wrap">
                         <div className="form-check">
                           <input
                             className="form-check-input"
@@ -978,6 +994,32 @@ const AdminMember = () => {
                             htmlFor="personalTraining"
                           >
                             Personal Training
+                          </label>
+                        </div>
+                        <div className="form-check">
+                          <input
+                            className="form-check-input"
+                            type="radio"
+                            name="interestedIn"
+                            id="personalTrainer"
+                            value="Personal Trainer"
+                            checked={
+                              newMember.interestedIn === "Personal Trainer"
+                            }
+                            onChange={(e) => {
+                              setNewMember({
+                                ...newMember,
+                                interestedIn: e.target.value,
+                                planId: "", // Reset plan selection when interested in changes
+                              });
+                            }}
+                            required
+                          />
+                          <label
+                            className="form-check-label"
+                            htmlFor="personalTrainer"
+                          >
+                            Personal Trainer
                           </label>
                         </div>
                         <div className="form-check">
@@ -1346,7 +1388,7 @@ const AdminMember = () => {
                     </div>
                     <div className="col-12">
                       <label className="form-label">Interested In</label>
-                      <div className="d-flex gap-3">
+                      <div className="d-flex gap-3 flex-wrap">
                         <div className="form-check">
                           <input
                             className="form-check-input"
@@ -1370,6 +1412,31 @@ const AdminMember = () => {
                             htmlFor="editPersonalTraining"
                           >
                             Personal Training
+                          </label>
+                        </div>
+                        <div className="form-check">
+                          <input
+                            className="form-check-input"
+                            type="radio"
+                            name="editInterestedIn"
+                            id="editPersonalTrainer"
+                            value="Personal Trainer"
+                            checked={
+                              editMember.interestedIn === "Personal Trainer"
+                            }
+                            onChange={(e) => {
+                              setEditMember({
+                                ...editMember,
+                                interestedIn: e.target.value,
+                                planId: "", // Reset plan selection when interested in changes
+                              });
+                            }}
+                          />
+                          <label
+                            className="form-check-label"
+                            htmlFor="editPersonalTrainer"
+                          >
+                            Personal Trainer
                           </label>
                         </div>
                         <div className="form-check">
