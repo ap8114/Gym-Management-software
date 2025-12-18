@@ -71,7 +71,7 @@ const ReceptionistBookGroupClasses = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Form state for modals (add/edit) — now includes names
+  // Form state for modals (add/edit) — now includes names and end_date
   const [formData, setFormData] = useState({
     member_id: '',
     member_name: '',
@@ -80,6 +80,7 @@ const ReceptionistBookGroupClasses = () => {
     trainer_id: '',
     trainer_name: '',
     date: '',
+    end_date: '', // Added end_date field
     start_time: '',
     end_time: '',
     booking_status: 'Booked',
@@ -108,8 +109,6 @@ const ReceptionistBookGroupClasses = () => {
 
   console.log(adminId)
 
-
-
   const normalizeBooking = (apiBooking) => {
     const isGroup = apiBooking.bookingType === 'GROUP';
     return {
@@ -122,17 +121,18 @@ const ReceptionistBookGroupClasses = () => {
       trainer_id: !isGroup ? apiBooking.trainerId : null,
       trainer_name: !isGroup ? apiBooking.trainerName || 'PT Session' : null,
       date: apiBooking.date ? new Date(apiBooking.date).toISOString().split('T')[0] : '',
+      end_date: apiBooking.endDate ? new Date(apiBooking.endDate).toISOString().split('T')[0] : '', // Added end_date field
       start_time: apiBooking.startTime?.slice(0, 5) || '',
       end_time: apiBooking.endTime?.slice(0, 5) || '',
       booking_status: apiBooking.bookingStatus || 'Booked',
       payment_status: apiBooking.paymentStatus || 'Pending',
       notes: apiBooking.notes || '',
       branchId: apiBooking.branchId,
+      price: apiBooking.price || '', // Added price field
     };
   };
 
   const fetchData = async () => {
-
     try {
       const [membersRes, bookingsRes, trainersRes] = await Promise.all([
         axiosInstance.get(`members/admin/${adminId}`),
@@ -159,7 +159,7 @@ const ReceptionistBookGroupClasses = () => {
   useEffect(() => {
     const fetchPersonalTrainers = async () => {
       try {
-        const response = await axiosInstance.get(`class/trainers/personal-general?adminId=${adminId}`);
+        const response = await axiosInstance.get(`booking/unifiedbyPersonalGeneral/${adminId}`);
         const personalTrainers = response.data.trainers.filter(
           (trainer) => trainer.roleId === 5
         );
@@ -211,6 +211,7 @@ const ReceptionistBookGroupClasses = () => {
       trainer_id: '',
       trainer_name: '',
       date: '',
+      end_date: '', // Added end_date field
       start_time: '',
       end_time: '',
       booking_status: 'Booked',
@@ -233,6 +234,7 @@ const ReceptionistBookGroupClasses = () => {
       trainer_id: booking.trainer_id || '',
       trainer_name: booking.trainer_name || '',
       date: booking.date,
+      end_date: booking.end_date || '', // Added end_date field
       start_time: booking.start_time,
       end_time: booking.end_time,
       booking_status: booking.booking_status,
@@ -255,6 +257,7 @@ const ReceptionistBookGroupClasses = () => {
       trainer_id: booking.trainer_id || '',
       trainer_name: booking.trainer_name || '',
       date: booking.date,
+      end_date: booking.end_date || '', // Added end_date field
       start_time: booking.start_time,
       end_time: booking.end_time,
       booking_status: booking.booking_status,
@@ -376,6 +379,7 @@ const ReceptionistBookGroupClasses = () => {
       trainer_id,
       trainer_name,
       date,
+      end_date, // Added end_date field
       start_time,
       end_time,
       booking_status,
@@ -405,39 +409,67 @@ const ReceptionistBookGroupClasses = () => {
     const safeStart = (start_time && start_time.trim()) ? start_time : '00:00';
     const safeEnd = (end_time && end_time.trim()) ? end_time : '00:00';
 
-    const payload = {
-
-      memberId: parseInt(member_id, 10),
-      memberName: member_name,
-      bookingType: bookingType === 'group' ? 'GROUP' : 'PT',
-      classId: bookingType === 'group' ? parseInt(class_schedule_id, 10) : null,
-      className: bookingType === 'group' ? class_name : null,
-      trainerId: bookingType === 'pt' ? parseInt(trainer_id, 10) : null,
-      trainerName: bookingType === 'pt' ? trainer_name : null,
-      date,
-      startTime: formatTime(safeStart),
-      endTime: formatTime(safeEnd),
-      notes: notes || '',
-      bookingStatus: booking_status,
-      paymentStatus: payment_status,
-    };
-
-    if (modalType === 'add') {
-      const parsedPrice = parseFloat(price);
-      if (isNaN(parsedPrice) || parsedPrice <= 0) {
-        alert('Please enter a valid price greater than 0.');
-        return;
-      }
-      payload.price = parsedPrice;
-    }
-
     try {
       if (modalType === 'add') {
-        await axiosInstance.post('booking/unified/create', payload);
-        alert('Booking created successfully!');
+        // Only call API for PT sessions
+        if (bookingType === 'pt') {
+          const parsedPrice = parseFloat(price);
+          if (isNaN(parsedPrice) || parsedPrice <= 0) {
+            alert('Please enter a valid price greater than 0.');
+            return;
+          }
+          
+          const payload = {
+            memberId: parseInt(member_id, 10),
+            memberName: member_name,
+            bookingType: 'PT',
+            trainerId: parseInt(trainer_id, 10),
+            trainerName: trainer_name,
+            date,
+            endDate: end_date, // Added end_date field
+            startTime: formatTime(safeStart),
+            endTime: formatTime(safeEnd),
+            notes: notes || '',
+            bookingStatus: booking_status,
+            paymentStatus: payment_status,
+            price: parsedPrice
+          };
+          
+          await axiosInstance.post('booking/unified/create', payload);
+          alert('PT Session booking created successfully!');
+        } else {
+          // For group classes, you might have a different API endpoint
+          // This is just a placeholder - you'll need to implement the actual API call for group classes
+          alert('Group class booking functionality would be implemented here.');
+        }
       } else if (modalType === 'edit' && selectedBooking) {
-        await axiosInstance.put(`booking/unifiedupdate/${selectedBooking.id}`, payload);
-        alert('Booking updated successfully!');
+        // For edit, only send endTime and price for PT sessions
+        if (bookingType === 'pt') {
+          // Ensure price is a valid number
+          let parsedPrice;
+          if (price === '' || price === null || price === undefined) {
+            // If price is empty, use the existing price from the booking
+            parsedPrice = selectedBooking.price || 0;
+          } else {
+            parsedPrice = parseFloat(price);
+          }
+          
+          if (isNaN(parsedPrice) || parsedPrice <= 0) {
+            alert('Please enter a valid price greater than 0.');
+            return;
+          }
+          
+          const payload = {
+            endTime: formatTime(safeEnd),
+            price: parsedPrice
+          };
+          
+          await axiosInstance.put(`booking/unifiedupdate/${selectedBooking.id}`, payload);
+          alert('PT Session booking updated successfully!');
+        } else {
+          // For group classes, you might have a different API endpoint
+          alert('Group class update functionality would be implemented here.');
+        }
       }
 
       fetchData();
@@ -467,7 +499,6 @@ const ReceptionistBookGroupClasses = () => {
   }, []);
 
   if (loading) return <div className="text-center mt-5">Loading bookings...</div>;
-
 
   return (
     <div className="">
@@ -574,7 +605,12 @@ const ReceptionistBookGroupClasses = () => {
                   <td>
                     {booking.type === 'group' ? booking.class_name : booking.trainer_name}
                   </td>
-                  <td>{formatDate(booking.date)}</td>
+                  <td>
+                    {formatDate(booking.date)}
+                    {booking.end_date && booking.type === 'pt' && (
+                      <div className="small text-muted">to {formatDate(booking.end_date)}</div>
+                    )}
+                  </td>
                   <td>
                     <div className="d-flex align-items-center">
                       <FaClock className="text-muted me-1" size={12} />
@@ -687,7 +723,14 @@ const ReceptionistBookGroupClasses = () => {
                         className={`btn ${bookingType === 'group' ? 'btn-info' : 'btn-outline-secondary'}`}
                         onClick={() => {
                           setBookingType('group');
-                          setFormData((prev) => ({ ...prev, trainer_id: '', trainer_name: '', class_schedule_id: '', class_name: '' }));
+                          setFormData((prev) => ({ 
+                            ...prev, 
+                            trainer_id: '', 
+                            trainer_name: '', 
+                            class_schedule_id: '', 
+                            class_name: '',
+                            end_date: '' // Reset end_date when switching booking type
+                          }));
                         }}
                       >
                         Group Class
@@ -697,7 +740,14 @@ const ReceptionistBookGroupClasses = () => {
                         className={`btn ${bookingType === 'pt' ? 'btn-info' : 'btn-outline-secondary'}`}
                         onClick={() => {
                           setBookingType('pt');
-                          setFormData((prev) => ({ ...prev, trainer_id: '', trainer_name: '', class_schedule_id: '', class_name: '' }));
+                          setFormData((prev) => ({ 
+                            ...prev, 
+                            trainer_id: '', 
+                            trainer_name: '', 
+                            class_schedule_id: '', 
+                            class_name: '',
+                            end_date: '' // Reset end_date when switching booking type
+                          }));
                         }}
                       >
                         Personal Training
@@ -758,9 +808,9 @@ const ReceptionistBookGroupClasses = () => {
                     )}
 
                     <div className="row mb-3 g-3">
-                      <div className="col-12 col-md-4">
+                      <div className="col-12 col-md-6">
                         <label className="form-label d-flex align-items-center">
-                          <FaCalendarAlt className="me-2 text-muted" /> Date{' '}
+                          <FaCalendarAlt className="me-2 text-muted" /> Start Date{' '}
                           <span className="text-danger">*</span>
                         </label>
                         <input
@@ -775,7 +825,27 @@ const ReceptionistBookGroupClasses = () => {
                         />
                       </div>
 
-                      <div className="col-6 col-md-4">
+                      {/* Added End Date field - only show for PT sessions */}
+                      {bookingType === 'pt' && (
+                        <div className="col-12 col-md-6">
+                          <label className="form-label d-flex align-items-center">
+                            <FaCalendarAlt className="me-2 text-muted" /> End Date{' '}
+                            <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            className="form-control rounded-3"
+                            name="end_date"
+                            value={formData.end_date}
+                            onChange={handleInputChange}
+                            min={formData.date || new Date().toISOString().split('T')[0]}
+                            disabled={modalType === 'view'}
+                            required
+                          />
+                        </div>
+                      )}
+
+                      <div className="col-6 col-md-6">
                         <label className="form-label d-flex align-items-center">
                           <FaClock className="me-2 text-muted" /> Start Time{' '}
                           <span className="text-danger">*</span>
@@ -791,7 +861,7 @@ const ReceptionistBookGroupClasses = () => {
                         />
                       </div>
 
-                      <div className="col-6 col-md-4">
+                      <div className="col-6 col-md-6">
                         <label className="form-label d-flex align-items-center">
                           <FaClock className="me-2 text-muted" /> End Time{' '}
                           <span className="text-danger">*</span>
@@ -808,8 +878,8 @@ const ReceptionistBookGroupClasses = () => {
                       </div>
                     </div>
 
-                    {/* 💰 PRICE FIELD */}
-                    {modalType === 'add' && (
+                    {/* 💰 PRICE FIELD - Show for both add and edit for PT sessions */}
+                    {(modalType === 'add' || (modalType === 'edit' && bookingType === 'pt')) && (
                       <div className="mb-3">
                         <label className="form-label d-flex align-items-center">
                           <FaMoneyBillWave className="me-2 text-muted" /> Price <span className="text-danger">*</span>
@@ -904,7 +974,7 @@ const ReceptionistBookGroupClasses = () => {
                         </button>
                       )}
                     </div>
-                  </div> {/* 👈 This was missing! */}
+                  </div>
                 </form>
               </div>
             </div>

@@ -108,7 +108,7 @@ const GeneralTrainerShiftManagement = () => {
   return (
     <div className="container-fluid py-4">
       <h2 className="mb-4">Shift Management</h2>
-      <h3>Duty Roster</h3>
+      {/* <h3>Duty Roster</h3> */}
 
       <div className="table-responsive">
         <table className="table table-striped">
