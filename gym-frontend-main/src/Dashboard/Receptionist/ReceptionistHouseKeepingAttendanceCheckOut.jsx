@@ -63,19 +63,9 @@ const ReceptionistHouseKeepingAttendanceCheckOut = () => {
             });
 
             if (response.data?.success) {
-                setRecords(prev =>
-                    prev.map(record =>
-                        record.attendance_id === id
-                            ? {
-                                ...record,
-                                checkingOut: false,
-                                checkedOut: true,
-                                checkout_time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                            }
-                            : record
-                    )
-                );
                 alert('Check-out successful!');
+                // ✅ REFETCH the list after successful checkout
+                await fetchAttendanceRecords();
             } else {
                 alert(response.data.message || 'Check-out failed');
                 setRecords(prev =>
