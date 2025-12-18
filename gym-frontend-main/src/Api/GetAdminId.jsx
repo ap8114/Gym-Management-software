@@ -23,5 +23,5 @@ export default GetAdminId;
 //   const memberId = user?.id || null;
 //   const branchId = user?.branchId || null;
 //   const name = user?.fullName || null;
-//   const staffIds = user?.staffIds || null;
+//   const staffId = user?.staffId || null;
 

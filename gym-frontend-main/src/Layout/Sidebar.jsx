@@ -180,7 +180,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       { name: "Dashboard", icon: faEye, path: "/member/dashboard" },
       { name: "QR Check-in", icon: faQrcode, path: "/member/qrcheckin" },
       { name: "Attendance", icon: faClipboardCheck, path: "/member/memberattendance" },
-      { name: "View Plan", icon: faBookAtlas, path: "/member/viewplan" },
+      { name: "My Plan", icon: faBookAtlas, path: "/member/viewplan" },
       { name: "Class Schedule", icon: faClapperboard, path: "/member/classSchedule" },
       { name: "My Account", icon: faIdCard, path: "/member/account" }
     ],

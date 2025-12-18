@@ -699,29 +699,49 @@
 
 // export default ViewPlans;
 
-
-
-
-import React, { useState, useEffect, useMemo } from 'react';
-import { Container, Row, Col, Button, Card, Modal, Form, Table, Spinner, Alert } from 'react-bootstrap';
-import { FaCheckCircle, FaEye } from 'react-icons/fa';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Container,
+  Row,
+  Col,
+  Button,
+  Card,
+  Modal,
+  Form,
+  Table,
+  Spinner,
+  Alert,
+  Toast,
+  ToastContainer,
+} from 'react-bootstrap';
+import { FaEye, FaRedo } from 'react-icons/fa';
 import axiosInstance from '../../Api/axiosInstance';
 
 const ViewPlans = () => {
-  const [activeTab, setActiveTab] = useState('group');
-  const [selectedPlan, setSelectedPlan] = useState(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [bookingStatus, setBookingStatus] = useState(null); // 'pending', 'success', 'error'
-  const [paymentDetails, setPaymentDetails] = useState({ upi: '' });
-  const [allPlans, setAllPlans] = useState([]);
-  const [bookings, setBookings] = useState([]);
-  const [loadingPlans, setLoadingPlans] = useState(true);
-  const [loadingBookings, setLoadingBookings] = useState(true);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedBooking, setSelectedBooking] = useState(null);
-  const [bookingMessage, setBookingMessage] = useState('');
 
+  const [plans, setPlans] = useState([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
+
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showRenewModal, setShowRenewModal] = useState(false);
+
+  const [renewData, setRenewData] = useState({
+    planId: '',
+    paymentMode: 'Cash',
+    amountPaid: '',
+  });
+
+  const [renewLoading, setRenewLoading] = useState(false);
+
+  // Toast state
+  const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
+
+  const toastRef = useRef(null);
+
+  // Get user from localStorage
   const getUserFromStorage = () => {
     try {
       const userStr = localStorage.getItem('user');
@@ -735,786 +755,329 @@ const ViewPlans = () => {
   const user = getUserFromStorage();
   const memberId = user?.id || null;
   const adminId = user?.adminId || null;
-  const branchId = user?.branchId || null; // ✅ branchId uncomment किया
+  const userId = user?.memberId || null;
 
-  console.log('User Data:', user);
-  console.log('Member ID:', memberId);
-  console.log('Admin ID:', adminId);
-  console.log('Branch ID:', branchId);
+  // Fetch profile
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!memberId) {
+        setError('Member ID not found.');
+        setLoading(false);
+        return;
+      }
+      try {
+        const response = await axiosInstance.get(`member-self/profile/${memberId}`);
+        if (response.data.success) {
+          setProfile(response.data.profile);
+        } else {
+          setError('Failed to load profile');
+        }
+      } catch (err) {
+        setError('Network or server error');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, [memberId]);
 
   // Fetch plans
   useEffect(() => {
     const fetchPlans = async () => {
-      if (!adminId) {
-        setLoadingPlans(false);
-        setError('Admin ID not found. Unable to load plans.');
-        return;
-      }
-
+      if (!adminId) return;
+      setLoadingPlans(true);
       try {
-        console.log(`Fetching plans for adminId: ${adminId}`);
         const response = await axiosInstance.get(`MemberPlan?adminId=${adminId}`);
-        console.log('API Response:', response.data);
-        
-        if (response.data.success && Array.isArray(response.data.plans)) {
-          // ✅ Type को सही format में map करें
-          const formattedPlans = response.data.plans.map(plan => {
-            // Type mapping: API में "Monthly" है, हमें "GROUP" चाहिए
-            let planType = plan.type;
-            if (plan.type && typeof plan.type === 'string') {
-              const lowerType = plan.type.toLowerCase();
-              if (lowerType.includes('monthly') || lowerType.includes('weekly') || 
-                  lowerType.includes('group') || lowerType.includes('gold') || 
-                  lowerType.includes('silver')) {
-                planType = 'GROUP';
-              } else if (lowerType.includes('personal')) {
-                planType = 'PERSONAL';
-              } else if (lowerType.includes('member')) {
-                planType = 'MEMBER';
-              }
-            }
-            
-            return {
-              ...plan,
-              type: planType, // ✅ Mapped type
-              displayPrice: `₹${(plan.price || 0).toLocaleString()}`,
-              numericPrice: plan.price || 0,
-              // Trainer type mapping
-              trainerType: plan.trainerType || 'general' // Default to 'general' if null
-            };
-          });
-          
-          console.log('Formatted Plans:', formattedPlans);
-          setAllPlans(formattedPlans);
-          setError(null);
-        } else {
-          console.log('No plans found or invalid response');
-          setAllPlans([]);
-          setError('No plans available.');
+        if (response.data.success) {
+          setPlans(response.data.plans || []);
         }
       } catch (err) {
-        console.error('Error fetching plans:', err);
-        setError('Failed to load plans. Please try again.');
-        setAllPlans([]);
+        console.error('Failed to fetch plans:', err);
       } finally {
         setLoadingPlans(false);
       }
     };
-
     fetchPlans();
   }, [adminId]);
 
-  // Fetch bookings
-  useEffect(() => {
-    const fetchBookings = async () => {
-      if (!memberId) {
-        setLoadingBookings(false);
-        return;
-      }
+  const handleViewClick = () => setShowViewModal(true);
 
-      try {
-        const response = await axiosInstance.get('booking/requests');
-        if (response.data.success && Array.isArray(response.data.bookings)) {
-          const mapped = response.data.bookings.map(b => ({
-            id: b.id,
-            planName: b.plan?.name || 'Unknown Plan',
-            type: b.plan?.type === 'PERSONAL' ? 'Personal' : 'Group',
-            purchasedAt: b.createdAt ? new Date(b.createdAt).toISOString().split('T')[0] : 'N/A',
-            validity: b.plan?.validityDays || 0,
-            totalSessions: b.plan?.sessions || 0,
-            remainingSessions: b.leftSessions || 0,
-            status: b.status || 'pending',
-            planId: b.planId,
-          }));
-          setBookings(mapped);
-        } else {
-          setBookings([]);
-        }
-      } catch (err) {
-        console.error('Error fetching bookings:', err);
-        setBookings([]);
-      } finally {
-        setLoadingBookings(false);
-      }
-    };
-
-    fetchBookings();
-  }, [memberId]);
-
-  // ✅ Updated filter logic
-  const groupPlans = useMemo(() => {
-    return allPlans.filter(plan => plan.type === 'GROUP' || !plan.type || plan.type === '');
-  }, [allPlans]);
-
-  const personalPlans = useMemo(() => {
-    return allPlans.filter(plan => plan.type === 'PERSONAL');
-  }, [allPlans]);
-
-  // New filter for membership plans
-  const membershipPlans = useMemo(() => {
-    return allPlans.filter(plan => plan.type === 'MEMBER');
-  }, [allPlans]);
-
-  console.log('Filtered Group Plans:', groupPlans);
-  console.log('Filtered Personal Plans:', personalPlans);
-  console.log('Filtered Membership Plans:', membershipPlans);
-
-  const handleBookNow = (plan, planType) => {
-    setSelectedPlan({ ...plan, type: planType });
-    setPaymentDetails({ upi: '' });
-    setShowPaymentModal(true);
+  const handleRenewClick = () => {
+    setShowRenewModal(true);
+    setRenewData({ planId: '', paymentMode: 'Cash', amountPaid: '' });
   };
 
-  const handlePaymentSubmit = async (e) => {
+  const handleRenewChange = (e) => {
+    const { name, value } = e.target;
+    setRenewData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleRenewSubmit = async (e) => {
     e.preventDefault();
-    const upi = paymentDetails.upi.trim();
+    setRenewLoading(true);
 
-    if (!upi) {
-      setBookingMessage('Please enter a valid UPI ID.');
+    // Validation
+    if (!memberId) {
+      setToast({ show: true, message: 'Member ID missing!', variant: 'danger' });
+      setRenewLoading(false);
       return;
     }
 
-    if (!memberId || !adminId || !selectedPlan) {
-      setBookingMessage('Missing user or plan details. Please log in again.');
+    if (!renewData.planId) {
+      setToast({ show: true, message: 'Please select a plan.', variant: 'warning' });
+      setRenewLoading(false);
       return;
     }
 
-    setBookingStatus('pending');
-    setBookingMessage('');
+    if (!renewData.amountPaid || Number(renewData.amountPaid) <= 0) {
+      setToast({ show: true, message: 'Enter a valid amount.', variant: 'warning' });
+      setRenewLoading(false);
+      return;
+    }
 
     try {
       const payload = {
-        memberId: memberId,
-        classId: selectedPlan.id,
-        branchId: branchId,
         adminId: adminId,
-        price: selectedPlan.numericPrice,
-        upiId: upi,
+        amountPaid: Number(renewData.amountPaid),
+        paymentMode: renewData.paymentMode,
+        planId: Number(renewData.planId),
       };
 
-      console.log('Booking payload:', payload);
+      await axiosInstance.put(`members/renew/${userId}`, payload);
 
-      const response = await axiosInstance.post('booking/create', payload);
-      console.log('Booking response:', response.data);
+      // Show success toast
+      setToast({ show: true, message: 'Membership renewed successfully!', variant: 'success' });
 
-      if (response.data.success) {
-        setBookingStatus('success');
-        setBookingMessage(response.data.message || 'Booking request sent to admin.');
-        setShowPaymentModal(false);
-        setPaymentDetails({ upi: '' });
+      // Refetch profile
+      const res = await axiosInstance.get(`member-self/profile/${memberId}`);
+      if (res.data.success) setProfile(res.data.profile);
 
-        // Refresh bookings
-        const bookingsRes = await axiosInstance.get('booking/requests');
-        if (bookingsRes.data.success && Array.isArray(bookingsRes.data.bookings)) {
-          const mapped = bookingsRes.data.bookings.map(b => ({
-            id: b.id,
-            planName: b.plan?.name || 'Unknown Plan',
-            type: b.plan?.type === 'PERSONAL' ? 'Personal' : 'Group',
-            purchasedAt: b.createdAt ? new Date(b.createdAt).toISOString().split('T')[0] : 'N/A',
-            validity: b.plan?.validityDays || 0,
-            totalSessions: b.plan?.sessions || 0,
-            remainingSessions: b.leftSessions || 0,
-            status: b.status || 'pending',
-            planId: b.planId,
-          }));
-          setBookings(mapped);
-        }
-      } else {
-        const errorMsg = response.data.message || 'Booking failed. Please try again.';
-        setBookingMessage(errorMsg);
-        setBookingStatus('error');
-      }
+      // Close modal after delay
+      setTimeout(() => {
+        setShowRenewModal(false);
+        setRenewData({ planId: '', paymentMode: 'Cash', amountPaid: '' });
+      }, 1000);
     } catch (err) {
-      console.error('Booking submission error:', err);
-      setBookingStatus('error');
-      setBookingMessage('Failed to create booking. Please try again or contact support.');
+      const errorMsg = err.response?.data?.message || 'Failed to renew membership. Please try again.';
+      setToast({ show: true, message: errorMsg, variant: 'danger' });
+      console.error(err);
+    } finally {
+      setRenewLoading(false);
     }
   };
 
-  const handleViewBooking = (booking) => {
-    setSelectedBooking(booking);
-    setShowViewModal(true);
-  };
+  const hideToast = () => setToast({ ...toast, show: false });
 
-  if (loadingPlans) {
+  if (loading) {
     return (
-      <div className="d-flex justify-content-center align-items-center vh-50">
+      <div className="d-flex justify-content-center my-5">
         <Spinner animation="border" variant="primary" />
-        <span className="ms-2">Loading plans...</span>
       </div>
     );
   }
 
   return (
-    <div className="bg-light py-2">
-      <Container>
-        <h1 className="mb-4 mb-md-5 fw-bold text-dark" style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)' }}>
-          Choose Your Fitness Plan
-        </h1>
+    <div>
+      <h3 className="fw-bold mb-4">My Membership Information</h3>
+      <div className="table-responsive">
+        <Card className="border-0 shadow-sm" style={{ borderRadius: '12px', overflow: 'hidden' }}>
+          <Card.Body className="p-0">
+            <Table hover responsive className="align-middle mb-0">
+              <thead className="bg-light">
+                <tr>
+                  <th className="py-2 py-md-3">#</th>
+                  <th className="py-2 py-md-3">Membership Plan</th>
+                  <th className="py-2 py-md-3 d-none d-md-table-cell">Start Date</th>
+                  <th className="py-2 py-md-3 d-none d-md-table-cell">End Date</th>
+                  <th className="py-2 py-md-3">Membership Fee</th>
+                  <th className="py-2 py-md-3">Membership Type</th>
+                  <th className="py-2 py-md-3">Status</th>
+                  <th className="py-2 py-md-3">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="py-2 py-md-3 fw-bold">1</td>
+                  <td className="py-2 py-md-3">
+                    <strong style={{ color: '#333', fontSize: '1rem' }}>
+                      {profile.membership_plan || '—'}
+                    </strong>
+                  </td>
+                  <td className="py-2 py-md-3 d-none d-md-table-cell">
+                    {profile.plan_start_date || '—'}
+                  </td>
+                  <td className="py-2 py-md-3 d-none d-md-table-cell" style={{ fontSize: '0.95rem' }}>
+                    {profile.plan_end_date || '—'}
+                  </td>
+                  <td className="py-2 py-md-3">₹{profile.membership_fee || '0'}</td>
+                  <td className="py-2 py-md-3">
+                    {profile.plan_duration ? `${profile.plan_duration} Days` : '—'}
+                  </td>
+                  <td className="py-2 py-md-3">
+                    <span
+                      className={`badge bg-${profile.membership_status === 'Active' ? 'success' : 'secondary'
+                        }`}
+                    >
+                      {profile.membership_status || 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="py-2 py-md-3">
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      className="me-2"
+                      onClick={handleViewClick}
+                    >
+                      <FaEye className="me-1" /> View
+                    </Button>
+                    <Button variant="outline-primary" size="sm" onClick={handleRenewClick}>
+                      <FaRedo className="me-1" /> Renew
+                    </Button>
+                  </td>
+                </tr>
+              </tbody>
+            </Table>
+          </Card.Body>
+        </Card>
+      </div>
 
-        {error && (
-          <Alert variant="danger" className="mb-4">
-            {error}
-          </Alert>
-        )}
+      {/* View Modal */}
+      <Modal show={showViewModal} onHide={() => setShowViewModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Membership Details</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Row>
+            <Col md={6}>
+              <p><strong>Name:</strong> {profile.fullName || '—'}</p>
+              <p><strong>Email:</strong> {profile.email || '—'}</p>
+              <p><strong>Phone:</strong> {profile.phone || '—'}</p>
+              <p><strong>Address:</strong> {profile.address_street || '—'}</p>
+              <p><strong>Gender:</strong> {profile.gender || '—'}</p>
+            </Col>
+            <Col md={6}>
+              <p><strong>Plan:</strong> {profile.membership_plan || '—'}</p>
+              <p><strong>Start Date:</strong> {profile.plan_start_date || '—'}</p>
+              <p><strong>End Date:</strong> {profile.plan_end_date || '—'}</p>
+              <p><strong>Fee:</strong> ₹{profile.membership_fee || '0'}</p>
+              <p><strong>Status:</strong>{' '}
+                <span className={`badge bg-${profile.membership_status === 'Active' ? 'success' : 'secondary'}`}>
+                  {profile.membership_status || 'Inactive'}
+                </span>
+              </p>
+            </Col>
+          </Row>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowViewModal(false)}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
-        {/* Tabs */}
-        <div className="d-flex flex-column flex-md-row gap-2 gap-md-3 mb-4 mb-md-5">
-          <Button
-            variant={activeTab === 'group' ? 'primary' : 'outline-primary'}
-            onClick={() => setActiveTab('group')}
-            className="px-3 px-md-4 py-2 fw-bold d-flex align-items-center justify-content-center gap-2 flex-grow-2"
-            style={{
-              backgroundColor: activeTab === 'group' ? '#2f6a87' : 'transparent',
-              borderColor: '#2f6a87',
-              color: activeTab === 'group' ? 'white' : '#2f6a87',
-              borderRadius: '12px',
-              fontSize: 'clamp(0.9rem, 2vw, 1.1rem)',
-              transition: 'all 0.3s ease',
-            }}
-          >
-            <span>Group Classes</span>
-            {groupPlans.length > 0 && (
-              <span className="badge bg-light text-dark ms-1">
-                {groupPlans.length}
-              </span>
-            )}
+      {/* Renew Modal */}
+      <Modal show={showRenewModal} onHide={() => setShowRenewModal(false)} size="md">
+        <Modal.Header closeButton>
+          <Modal.Title>Renew Membership Plan</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form onSubmit={handleRenewSubmit}>
+            <Form.Group className="mb-3">
+              <Form.Label>Membership Plan</Form.Label>
+              <Form.Select
+                name="planId"
+                value={renewData.planId}
+                onChange={handleRenewChange}
+                required
+                disabled={loadingPlans}
+              >
+                <option value="">Select Plan</option>
+                {plans
+                  .filter((plan) => plan.status === 'Active')
+                  .map((plan) => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.name} - ₹{plan.price} ({plan.validityDays} days)
+                    </option>
+                  ))}
+              </Form.Select>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Payment Mode</Form.Label>
+              <Form.Select
+                name="paymentMode"
+                value={renewData.paymentMode}
+                onChange={handleRenewChange}
+                required
+              >
+                <option value="Cash">Cash</option>
+                <option value="Card">Card</option>
+                <option value="UPI">UPI</option>
+                <option value="Net Banking">Net Banking</option>
+              </Form.Select>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Amount Paid</Form.Label>
+              <Form.Control
+                type="number"
+                name="amountPaid"
+                value={renewData.amountPaid}
+                onChange={handleRenewChange}
+                placeholder="Enter amount paid"
+                required
+                min="0"
+              />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowRenewModal(false)}>
+            Cancel
           </Button>
           <Button
-            variant={activeTab === 'personal' ? 'primary' : 'outline-primary'}
-            onClick={() => setActiveTab('personal')}
-            className="px-3 px-md-4 py-2 fw-bold d-flex align-items-center justify-content-center gap-2 flex-grow-2"
-            style={{
-              backgroundColor: activeTab === 'personal' ? '#2f6a87' : 'transparent',
-              borderColor: '#2f6a87',
-              color: activeTab === 'personal' ? 'white' : '#2f6a87',
-              borderRadius: '12px',
-              fontSize: 'clamp(0.9rem, 2vw, 1.1rem)',
-              transition: 'all 0.3s ease',
-            }}
+            variant="primary"
+            onClick={handleRenewSubmit}
+            disabled={renewLoading || !renewData.planId || !renewData.amountPaid}
           >
-            <span>Personal Training</span>
-            {personalPlans.length > 0 && (
-              <span className="badge bg-light text-dark ms-1">
-                {personalPlans.length}
-              </span>
+            {renewLoading ? (
+              <>
+                <Spinner
+                  as="span"
+                  animation="border"
+                  size="sm"
+                  role="status"
+                  aria-hidden="true"
+                  className="me-2"
+                />
+                Processing...
+              </>
+            ) : (
+              'Renew Plan'
             )}
           </Button>
-          <Button
-            variant={activeTab === 'membership' ? 'primary' : 'outline-primary'}
-            onClick={() => setActiveTab('membership')}
-            className="px-3 px-md-4 py-2 fw-bold d-flex align-items-center justify-content-center gap-2 flex-grow-2"
-            style={{
-              backgroundColor: activeTab === 'membership' ? '#2f6a87' : 'transparent',
-              borderColor: '#2f6a87',
-              color: activeTab === 'membership' ? 'white' : '#2f6a87',
-              borderRadius: '12px',
-              fontSize: 'clamp(0.9rem, 2vw, 1.1rem)',
-              transition: 'all 0.3s ease',
-            }}
-          >
-            <span>Membership Plans</span>
-            {membershipPlans.length > 0 && (
-              <span className="badge bg-light text-dark ms-1">
-                {membershipPlans.length}
-              </span>
-            )}
-          </Button>
-        </div>
+        </Modal.Footer>
+      </Modal>
 
-        {/* Debug Info (Remove in production) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mb-3 p-2 bg-warning bg-opacity-10 rounded">
-            <small className="text-muted">
-              Debug: Total Plans: {allPlans.length} | 
-              Group: {groupPlans.length} | 
-              Personal: {personalPlans.length} |
-              Membership: {membershipPlans.length}
-            </small>
-          </div>
-        )}
-
-        {/* Group Plans */}
-        {activeTab === 'group' && (
-          <Row className="g-3 g-md-4">
-            {groupPlans.length === 0 ? (
-              <Col xs={12}>
-                <div className="text-center py-5">
-                  <div className="text-muted mb-2">No group plans available.</div>
-                  <small className="text-muted">Check back later or contact support.</small>
-                </div>
-              </Col>
-            ) : (
-              groupPlans.map((plan) => (
-                <Col xs={12} sm={6} lg={4} key={plan.id} className="d-flex">
-                  <Card className="h-100 shadow-sm border-0 flex-fill" style={{
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                    border: '1px solid #e9ecef'
-                  }}
-                    onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                    onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                  >
-                    <div style={{ height: '6px', backgroundColor: '#2f6a87', width: '100%' }}></div>
-                    <Card.Body className="d-flex flex-column p-3 p-md-4">
-                      <div className="text-center mb-2 mb-md-3">
-                        <div className="badge mb-2 px-3 py-1" style={{
-                          backgroundColor: '#2f6a87',
-                          color: 'white',
-                          fontSize: '0.75rem',
-                          borderRadius: '50px'
-                        }}>
-                          {plan.type === 'PERSONAL' ? 'PERSONAL TRAINING' : 'GROUP CLASS'}
-                        </div>
-                        <h4 className="fw-bold mb-1" style={{ color: '#2f6a87', fontSize: 'clamp(1rem, 2.5vw, 1.2rem)' }}>{plan.name}</h4>
-                      </div>
-                      <ul className="list-unstyled mb-2 mb-md-3 flex-grow-1">
-                        <li className="mb-2 d-flex align-items-center gap-2">
-                          <div className="bg-light rounded-circle p-1" style={{ width: '32px', height: '32px' }}>
-                            <span className="text-muted" style={{ fontSize: '0.9rem' }}>🎯</span>
-                          </div>
-                          <div>
-                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>{plan.sessions} Sessions</div>
-                          </div>
-                        </li>
-                        <li className="mb-2 d-flex align-items-center gap-2">
-                          <div className="bg-light rounded-circle p-1" style={{ width: '32px', height: '32px' }}>
-                            <span className="text-muted" style={{ fontSize: '0.9rem' }}>📅</span>
-                          </div>
-                          <div>
-                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>Validity: {plan.validityDays} Days</div>
-                          </div>
-                        </li>
-                        <li className="mb-2 d-flex align-items-center gap-2">
-                          <div className="bg-light rounded-circle p-1" style={{ width: '32px', height: '32px' }}>
-                            <span className="text-muted" style={{ fontSize: '0.9rem' }}>💰</span>
-                          </div>
-                          <div>
-                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>Price: {plan.displayPrice}</div>
-                          </div>
-                        </li>
-                      </ul>
-                      <Button
-                        style={{
-                          backgroundColor: '#2f6a87',
-                          borderColor: '#2f6a87',
-                          transition: 'background-color 0.3s ease',
-                          borderRadius: '50px',
-                          padding: '8px 16px',
-                          fontSize: 'clamp(0.9rem, 2vw, 1rem)',
-                          fontWeight: '600'
-                        }}
-                        onMouseOver={(e) => e.target.style.backgroundColor = '#25556e'}
-                        onMouseOut={(e) => e.target.style.backgroundColor = '#2f6a87'}
-                        onClick={() => handleBookNow(plan, 'group')}
-                        className="mt-auto fw-bold"
-                      >
-                        📅 Book Now
-                      </Button>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              ))
-            )}
-          </Row>
-        )}
-
-        {/* Personal Plans */}
-        {activeTab === 'personal' && (
-          <Row className="g-3 g-md-4">
-            {personalPlans.length === 0 ? (
-              <Col xs={12}>
-                <div className="text-center py-5">
-                  <div className="text-muted mb-2">No personal training plans available.</div>
-                  <small className="text-muted">Personal training plans will be added soon.</small>
-                </div>
-              </Col>
-            ) : (
-              personalPlans.map((plan) => (
-                <Col xs={12} sm={6} lg={4} key={plan.id} className="d-flex">
-                  <Card className="h-100 shadow-sm border-0 flex-fill" style={{
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                    border: '1px solid #e9ecef'
-                  }}
-                    onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                    onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                  >
-                    <div style={{ height: '6px', backgroundColor: '#2f6a87', width: '100%' }}></div>
-                    <Card.Body className="d-flex flex-column p-3 p-md-4">
-                      <div className="text-center mb-2 mb-md-3">
-                        <div className="badge bg-primary mb-2 px-3 py-1" style={{
-                          backgroundColor: '#2f6a87',
-                          color: 'white',
-                          fontSize: '0.75rem',
-                          borderRadius: '50px'
-                        }}>
-                          PERSONAL TRAINING
-                        </div>
-                        <h4 className="fw-bold mb-1" style={{ color: '#2f6a87', fontSize: 'clamp(1rem, 2.5vw, 1.2rem)' }}>{plan.name}</h4>
-                      </div>
-                      <ul className="list-unstyled mb-2 mb-md-3 flex-grow-1">
-                        <li className="mb-2 d-flex align-items-center gap-2">
-                          <div className="bg-light rounded-circle p-1" style={{ width: '32px', height: '32px' }}>
-                            <span className="text-muted" style={{ fontSize: '0.9rem' }}>🎯</span>
-                          </div>
-                          <div>
-                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>{plan.sessions} Sessions</div>
-                          </div>
-                        </li>
-                        <li className="mb-2 d-flex align-items-center gap-2">
-                          <div className="bg-light rounded-circle p-1" style={{ width: '32px', height: '32px' }}>
-                            <span className="text-muted" style={{ fontSize: '0.9rem' }}>📅</span>
-                          </div>
-                          <div>
-                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>Validity: {plan.validityDays} Days</div>
-                          </div>
-                        </li>
-                        <li className="mb-2 d-flex align-items-center gap-2">
-                          <div className="bg-light rounded-circle p-1" style={{ width: '32px', height: '32px' }}>
-                            <span className="text-muted" style={{ fontSize: '0.9rem' }}>💰</span>
-                          </div>
-                          <div>
-                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>Price: {plan.displayPrice}</div>
-                          </div>
-                        </li>
-                      </ul>
-                      <Button
-                        style={{
-                          backgroundColor: '#2f6a87',
-                          borderColor: '#2f6a87',
-                          transition: 'background-color 0.3s ease',
-                          borderRadius: '50px',
-                          padding: '8px 16px',
-                          fontSize: 'clamp(0.9rem, 2vw, 1rem)',
-                          fontWeight: '600'
-                        }}
-                        onMouseOver={(e) => e.target.style.backgroundColor = '#25556e'}
-                        onMouseOut={(e) => e.target.style.backgroundColor = '#2f6a87'}
-                        onClick={() => handleBookNow(plan, 'personal')}
-                        className="mt-auto fw-bold"
-                      >
-                        📅 Book Now
-                      </Button>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              ))
-            )}
-          </Row>
-        )}
-
-        {/* Membership Plans */}
-        {activeTab === 'membership' && (
-          <Row className="g-3 g-md-4">
-            {membershipPlans.length === 0 ? (
-              <Col xs={12}>
-                <div className="text-center py-5">
-                  <div className="text-muted mb-2">No membership plans available.</div>
-                  <small className="text-muted">Membership plans will be added soon.</small>
-                </div>
-              </Col>
-            ) : (
-              membershipPlans.map((plan) => (
-                <Col xs={12} sm={6} lg={4} key={plan.id} className="d-flex">
-                  <Card className="h-100 shadow-sm border-0 flex-fill" style={{
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                    border: '1px solid #e9ecef'
-                  }}
-                    onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                    onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                  >
-                    <div style={{ height: '6px', backgroundColor: '#2f6a87', width: '100%' }}></div>
-                    <Card.Body className="d-flex flex-column p-3 p-md-4">
-                      <div className="text-center mb-2 mb-md-3">
-                        <div className="badge mb-2 px-3 py-1" style={{
-                          backgroundColor: '#2f6a87',
-                          color: 'white',
-                          fontSize: '0.75rem',
-                          borderRadius: '50px'
-                        }}>
-                          MEMBERSHIP PLAN
-                        </div>
-                        <h4 className="fw-bold mb-1" style={{ color: '#2f6a87', fontSize: 'clamp(1rem, 2.5vw, 1.2rem)' }}>{plan.name}</h4>
-                      </div>
-                      <ul className="list-unstyled mb-2 mb-md-3 flex-grow-1">
-                        <li className="mb-2 d-flex align-items-center gap-2">
-                          <div className="bg-light rounded-circle p-1" style={{ width: '32px', height: '32px' }}>
-                            <span className="text-muted" style={{ fontSize: '0.9rem' }}>🎯</span>
-                          </div>
-                          <div>
-                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>{plan.sessions} Sessions</div>
-                          </div>
-                        </li>
-                        <li className="mb-2 d-flex align-items-center gap-2">
-                          <div className="bg-light rounded-circle p-1" style={{ width: '32px', height: '32px' }}>
-                            <span className="text-muted" style={{ fontSize: '0.9rem' }}>📅</span>
-                          </div>
-                          <div>
-                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>Validity: {plan.validityDays} Days</div>
-                          </div>
-                        </li>
-                        <li className="mb-2 d-flex align-items-center gap-2">
-                          <div className="bg-light rounded-circle p-1" style={{ width: '32px', height: '32px' }}>
-                            <span className="text-muted" style={{ fontSize: '0.9rem' }}>👨‍🏫</span>
-                          </div>
-                          <div>
-                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>
-                              Trainer Type: {plan.trainerType === 'personal' ? 'Personal' : 'General'}
-                            </div>
-                          </div>
-                        </li>
-                        <li className="mb-2 d-flex align-items-center gap-2">
-                          <div className="bg-light rounded-circle p-1" style={{ width: '32px', height: '32px' }}>
-                            <span className="text-muted" style={{ fontSize: '0.9rem' }}>💰</span>
-                          </div>
-                          <div>
-                            <div className="fw-bold" style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)' }}>Price: {plan.displayPrice}</div>
-                          </div>
-                        </li>
-                      </ul>
-                      <Button
-                        style={{
-                          backgroundColor: '#2f6a87',
-                          borderColor: '#2f6a87',
-                          transition: 'background-color 0.3s ease',
-                          borderRadius: '50px',
-                          padding: '8px 16px',
-                          fontSize: 'clamp(0.9rem, 2vw, 1rem)',
-                          fontWeight: '600'
-                        }}
-                        onMouseOver={(e) => e.target.style.backgroundColor = '#25556e'}
-                        onMouseOut={(e) => e.target.style.backgroundColor = '#2f6a87'}
-                        onClick={() => handleBookNow(plan, 'membership')}
-                        className="mt-auto fw-bold"
-                      >
-                        📅 Book Now
-                      </Button>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              ))
-            )}
-          </Row>
-        )}
-
-        {/* Payment Modal */}
-        <Modal show={showPaymentModal} onHide={() => {
-          setShowPaymentModal(false);
-          setBookingMessage('');
-          setBookingStatus(null);
-        }} centered size="md">
-          <Modal.Header closeButton style={{ backgroundColor: '#f8f9fa', borderBottom: '3px solid #2f6a87' }}>
-            <Modal.Title style={{ color: '#333', fontWeight: '600', fontSize: '1.2rem' }}>Complete Payment</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {bookingStatus === 'pending' ? (
-              <div className="text-center py-4">
-                <Spinner animation="border" variant="primary" />
-                <p className="mt-3 fw-bold" style={{ color: '#333', fontSize: '1.1rem' }}>Processing your booking...</p>
-              </div>
-            ) : (
-              <Form onSubmit={handlePaymentSubmit}>
-                <div className="text-center mb-3 p-3 rounded" style={{ backgroundColor: '#f0f7fa', border: '2px dashed #2f6a87', borderRadius: '12px' }}>
-                  <h5 className="mb-2" style={{ color: '#333', fontSize: '1.1rem' }}>Booking Details</h5>
-                  <p className="mb-1" style={{ fontSize: '0.95rem' }}>
-                    <strong>Plan:</strong> {selectedPlan?.name} ({selectedPlan?.type === 'personal' ? 'Personal' : selectedPlan?.type === 'membership' ? 'Membership' : 'Group'})
-                  </p>
-                  <p className="mb-0">
-                    <strong>Amount:</strong> <span className="fw-bold" style={{ fontSize: '1.2rem', color: '#2f6a87' }}>{selectedPlan?.displayPrice}</span>
-                  </p>
-                </div>
-
-                {bookingMessage && (
-                  <Alert variant={bookingStatus === 'error' ? 'danger' : bookingStatus === 'success' ? 'success' : 'info'} className="mb-3">
-                    {bookingMessage}
-                  </Alert>
-                )}
-
-                <Form.Group className="mb-3">
-                  <Form.Label style={{ color: '#333', fontWeight: '600', fontSize: '1rem' }}>UPI ID</Form.Label>
-                  <Form.Control
-                    type="text"
-                    placeholder="yourname@upi"
-                    value={paymentDetails.upi}
-                    onChange={(e) => setPaymentDetails({ upi: e.target.value })}
-                    required
-                    isInvalid={!!(bookingMessage && bookingStatus === 'error')}
-                    style={{
-                      padding: '10px',
-                      fontSize: '1rem',
-                      borderRadius: '8px',
-                      borderColor: '#2f6a87'
-                    }}
-                  />
-                  <Form.Text className="text-muted">
-                    Enter your UPI ID (e.g., yourname@upi, yournumber@ybl)
-                  </Form.Text>
-                </Form.Group>
-                <div className="d-flex justify-content-center">
-                  <Button
-                    type="submit"
-                    className="w-100 py-2 fw-bold rounded-pill"
-                    style={{
-                      backgroundColor: '#2f6a87',
-                      borderColor: '#2f6a87',
-                      fontSize: '1.1rem',
-                      transition: 'background-color 0.3s ease',
-                      padding: '10px 20px',
-                      maxWidth: '400px'
-                    }}
-                  >
-                    Confirm Booking
-                  </Button>
-                </div>
-              </Form>
-            )}
-          </Modal.Body>
-        </Modal>
-
-        {/* Bookings Table - Temporary Commented Out */}
-
-        {/* View Booking Modal */}
-        <Modal show={showViewModal} onHide={() => setShowViewModal(false)} centered size="md">
-          <Modal.Header closeButton style={{ backgroundColor: '#f8f9fa', borderBottom: '1px solid #2f6a87' }}>
-            <Modal.Title style={{ color: '#333', fontWeight: '600', fontSize: '1.1rem' }}>Booking Details</Modal.Title>
-          </Modal.Header>
-          <Modal.Body className="p-3">
-            {selectedBooking && (
-              <div className="p-3 bg-light rounded" style={{ borderRadius: '12px' }}>
-                <h4 className="fw-bold mb-3" style={{ color: '#333', fontSize: '1.2rem' }}>
-                  {selectedBooking.planName} ({selectedBooking.type})
-                </h4>
-                <div className="row g-3">
-                  <div className="col-6">
-                    <div className="p-2 bg-white rounded" style={{ border: '1px solid #e9ecef' }}>
-                      <div className="d-flex align-items-center mb-1">
-                        <span className="me-2" style={{ color: '#2f6a87', fontSize: '1.2rem' }}>📅</span>
-                        <h6 className="mb-0 text-muted" style={{ fontSize: '0.85rem' }}>Purchased On</h6>
-                      </div>
-                      <p className="fw-bold mb-0" style={{ fontSize: '0.95rem' }}>{selectedBooking.purchasedAt}</p>
-                    </div>
-                  </div>
-                  <div className="col-6">
-                    <div className="p-2 bg-white rounded" style={{ border: '1px solid #e9ecef' }}>
-                      <div className="d-flex align-items-center mb-1">
-                        <span className="me-2" style={{ color: '#2f6a87', fontSize: '1.2rem' }}>⏳</span>
-                        <h6 className="mb-0 text-muted" style={{ fontSize: '0.85rem' }}>Validity</h6>
-                      </div>
-                      <div className="d-flex align-items-center">
-                        <span className="badge" style={{
-                          backgroundColor: '#2f6a87',
-                          color: 'white',
-                          fontSize: '0.9rem',
-                          padding: '6px 12px',
-                          borderRadius: '20px'
-                        }}>
-                          {selectedBooking.validity} Days
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="col-6">
-                    <div className="p-2 bg-white rounded" style={{ border: '1px solid #e9ecef' }}>
-                      <div className="d-flex align-items-center mb-1">
-                        <span className="me-2" style={{ color: '#2f6a87', fontSize: '1.2rem' }}>🎯</span>
-                        <h6 className="mb-0 text-muted" style={{ fontSize: '0.85rem' }}>Total Sessions</h6>
-                      </div>
-                      <div className="d-flex align-items-center">
-                        <span className="badge" style={{
-                          backgroundColor: '#2f6a87',
-                          color: 'white',
-                          fontSize: '0.9rem',
-                          padding: '6px 12px',
-                          borderRadius: '20px'
-                        }}>
-                          {selectedBooking.totalSessions}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="col-6">
-                    <div className="p-2 bg-white rounded" style={{ border: '1px solid #e9ecef' }}>
-                      <div className="d-flex align-items-center mb-1">
-                        <span className="me-2" style={{ color: '#2f6a87', fontSize: '1.2rem' }}>✅</span>
-                        <h6 className="mb-0 text-muted" style={{ fontSize: '0.85rem' }}>Remaining Sessions</h6>
-                      </div>
-                      <div className="d-flex align-items-center">
-                        <span className="badge bg-success" style={{
-                          fontSize: '0.9rem',
-                          padding: '6px 12px',
-                          borderRadius: '20px'
-                        }}>
-                          {selectedBooking.remainingSessions}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {selectedBooking.status === 'approved' && (
-                  <div className="mt-3 p-3 bg-white rounded" style={{
-                    border: '1px solid #2f6a87',
-                    borderRadius: '12px',
-                    backgroundColor: '#f0f7fa'
-                  }}>
-                    <div className="d-flex align-items-center mb-1">
-                      <h5 className="mb-0" style={{ color: '#333', fontSize: '1rem' }}>Plan Active</h5>
-                    </div>
-                    <p className="mb-0 text-muted" style={{ fontSize: '0.85rem' }}>
-                      You can book sessions until your validity expires or sessions run out.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </Modal.Body>
-          <Modal.Footer style={{ borderTop: '1px solid #eee' }}>
-            <Button
-              variant="secondary"
-              onClick={() => setShowViewModal(false)}
-              style={{
-                backgroundColor: '#6c757d',
-                borderColor: '#6c757d',
-                color: 'white',
-                borderRadius: '50px',
-                padding: '6px 20px',
-                fontSize: '0.9rem',
-              }}
-            >
-              Close
-            </Button>
-          </Modal.Footer>
-        </Modal>
-
-        {/* Global Success Toast */}
-        {bookingStatus === 'success' && bookingMessage && (
-          <div className="position-fixed bottom-0 start-50 translate-middle-x mb-4" style={{ zIndex: 1000 }}>
-            <Alert
-              variant="success"
-              className="p-3 rounded-pill shadow-lg d-flex align-items-center gap-2 mb-0"
-              style={{
-                minWidth: '300px',
-                animation: 'fadeInUp 0.5s ease',
-              }}
-            >
-              <FaCheckCircle size={20} />
-              <span className="fw-bold">{bookingMessage}</span>
-            </Alert>
-          </div>
-        )}
-
-        <style jsx="true">{`
-          @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-        `}</style>
-      </Container>
+      {/* Toast Notifications */}
+      <ToastContainer position="top-end" className="p-3" style={{ zIndex: 1050 }}>
+        <Toast
+          ref={toastRef}
+          show={toast.show}
+          onClose={hideToast}
+          bg={toast.variant}
+          delay={4000}
+          autohide
+        >
+          <Toast.Header closeButton>
+            <strong className="me-auto">
+              {toast.variant === 'success' ? 'Success' : toast.variant === 'danger' ? 'Error' : 'Warning'}
+            </strong>
+          </Toast.Header>
+          <Toast.Body className="text-white">{toast.message}</Toast.Body>
+        </Toast>
+      </ToastContainer>
     </div>
   );
 };
