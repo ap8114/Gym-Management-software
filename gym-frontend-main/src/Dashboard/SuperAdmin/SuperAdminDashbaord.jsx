@@ -19,6 +19,7 @@ export default function DashboardHomePage() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedBranch, setSelectedBranch] = useState("all");
 
   // useEffect to fetch data on component mount
   useEffect(() => {
@@ -56,10 +57,19 @@ export default function DashboardHomePage() {
     return null;
   }
 
+  // Branch list for filter
+  const branchNames = dashboardData.branchLeaderboard.map((b) => b.branchName || b.branch);
+
+  // Compute revenue to display depending on selected branch
+  const displayedTotalRevenue =
+    selectedBranch === "all"
+      ? dashboardData.totalRevenue
+      : (dashboardData.branchLeaderboard.find((b) => (b.branchName || b.branch) === selectedBranch)?.revenue || 0);
+
   // ----------- KPIs (Mapped from API) -----------
   // NOTE: The API does not provide 'delta', so we are using placeholder values.
   const kpis = [
-    { title: "Total Revenue", value: dashboardData.totalRevenue, delta: +12 },
+    { title: "Total Revenue", value: displayedTotalRevenue, delta: +12 },
     { title: "Monthly Revenue", value: dashboardData.monthlyRevenue, delta: +9 },
     { title: "New Admins", value: dashboardData.newAdmins, delta: +8 },
     { title: "Total Admins", value: dashboardData.totalAdmins, delta: +3 },
@@ -93,6 +103,21 @@ export default function DashboardHomePage() {
       <div className="mb-4">
         <h2 className="fw-bold mb-1">Dashboard</h2>
         <div className="text-muted">Super Admin Overview</div>
+      </div>
+
+      {/* Branch Filter */}
+      <div className="mb-3 d-flex align-items-center gap-2">
+        <label className="small text-muted mb-0">View:</label>
+        <select
+          className="form-select form-select-sm w-auto"
+          value={selectedBranch}
+          onChange={(e) => setSelectedBranch(e.target.value)}
+        >
+          <option value="all">All Branches</option>
+          {branchNames.map((bn) => (
+            <option key={bn} value={bn}>{bn}</option>
+          ))}
+        </select>
       </div>
 
       {/* KPI ROW */}
@@ -129,7 +154,7 @@ export default function DashboardHomePage() {
         <div className="col-12 col-lg-8">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-header bg-white border-0 fw-semibold">
-              Revenue vs Target
+              {selectedBranch === "all" ? "Revenue vs Target" : `Revenue vs Target — ${selectedBranch}`}
             </div>
             <div className="card-body" style={{ height: 340 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -177,13 +202,17 @@ export default function DashboardHomePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {leaderboard.map((r, i) => (
-                    <tr key={i}>
-                      <td>{r.branch}</td>
-                      <td>{fmtINR(r.revenue)}</td>
-                      <td>{r.newMembers}</td>
-                    </tr>
-                  ))}
+                  {leaderboard.map((r, i) => {
+                    const bn = r.branch || r.branchName;
+                    const isSelected = selectedBranch !== "all" && bn === selectedBranch;
+                    return (
+                      <tr key={i} className={isSelected ? "table-primary" : ""}>
+                        <td>{bn}</td>
+                        <td>{fmtINR(r.revenue)}</td>
+                        <td>{r.newMembers}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

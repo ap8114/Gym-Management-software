@@ -3,7 +3,7 @@ import { Row, Col, Card, ProgressBar } from "react-bootstrap";
 import { FaUsers, FaChartBar, FaStar } from "react-icons/fa";
 import axiosInstance from '../../Api/axiosInstance';
 
-const Report = () => {
+const ReportsClasses = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [classPerformanceData, setClassPerformanceData] = useState({
@@ -234,4 +234,4 @@ const Report = () => {
     );
 };
 
-export default Report;
+export default ReportsClasses;

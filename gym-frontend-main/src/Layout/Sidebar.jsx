@@ -131,7 +131,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       { name: "Shift Management", icon: faClock, path: "/housekeeping/shift-management" },
       { name: "Task Checklist", icon: faBroom, path: "/housekeeping/duty-roster" },
       { name: "QR Check-in", icon: faQrcode, path: "/housekeeping/qrcheckin" },
-      { name: "Attendance Marking", icon: faUserCheck, path: "/housekeeping/membership-plan" }
+      // { name: "Attendance Marking", icon: faUserCheck, path: "/housekeeping/membership-plan" }
     ],
 
     GENERALTRAINER: [
@@ -155,15 +155,18 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       { name: "QR Check-in", icon: faQrcode, path: "/personaltrainer/qrcheckin" },
       { name: "Attendance", icon: faClipboardCheck, path: "/personaltrainer/personalattendance" },
       { name: "Plans & Bookings", icon: faBookAtlas, path: "/personaltrainer/PersonalPlansBookings" },
+      { name: "Reports Classes", icon: faFileInvoice, path: "/personaltrainer/report" },
     ],
 
     RECEPTIONIST: [
       { name: "Dashboard", icon: faChartBar, path: "/receptionist/dashboard" },
-      { name: "QR Check-in", icon: faQrcode, path: "/receptionist/qrcheckin" },
       { name: "Walk-in Registration", icon: faUserPlus, path: "/receptionist/walk-in-registration" },
-      { name: "QR Attendance", icon: faDoorOpen, path: "/receptionist/qr-attendance" },
       { name: "Book Classes & Sessions", icon: faCalendarCheck, path: "/receptionist/book-classes-sessions" },
-      { name: "Payment", icon: faMoneyCheckAlt, path: "/receptionist/payemnet" }
+      { name: "QR Check-in", icon: faQrcode, path: "/receptionist/qrcheckin" },
+      { name: "Attendance Marking", icon: faDoorOpen, path: "/receptionist/qr-attendance" },
+         { name: "Housekeeping Check-out", icon: faDoorOpen, path: "/receptionist/report-attendance-checkout" },
+      { name: "Reports Attendance", icon: faFileInvoice, path: "/receptionist/reportattendance" },
+      { name: "Reports Classes", icon: faFileInvoice, path: "/receptionist/report" },
     ],
 
     MANAGER: [

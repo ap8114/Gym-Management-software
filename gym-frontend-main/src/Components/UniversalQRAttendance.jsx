@@ -391,7 +391,7 @@ const UniversalQRAttendance = () => {
                   </>
                 )}
               </Button>
-              
+
               <Button 
                 variant="outline-primary" 
                 size="lg"
@@ -533,4 +533,3 @@ const UniversalQRAttendance = () => {
 };
 
 export default UniversalQRAttendance;
-

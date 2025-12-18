@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FaEye,
   FaEdit,
@@ -19,12 +19,55 @@ const ReceptionistBookGroupClasses = () => {
   const [modalType, setModalType] = useState('view');
   const [bookingType, setBookingType] = useState('group');
   const [selectedBooking, setSelectedBooking] = useState(null);
-
-
-  
   const [members, setMembers] = useState([]);
   const [trainers, setTrainers] = useState([]);
   const [bookings, setBookings] = useState([]);
+
+  const [bookingSearch, setBookingSearch] = useState('');
+
+  // ---------------- SearchableSelect Component ----------------
+  const SearchableSelect = ({ name, value, onChange, options, placeholder, disabled, required }) => {
+    const [open, setOpen] = useState(false);
+    const [filter, setFilter] = useState('');
+    const containerRef = useRef(null);
+
+    useEffect(() => {
+      const onDocClick = (e) => {
+        if (containerRef.current && !containerRef.current.contains(e.target)) {
+          setOpen(false);
+        }
+      };
+      document.addEventListener('click', onDocClick);
+      return () => document.removeEventListener('click', onDocClick);
+    }, []);
+
+    const selected = options.find(o => String(o.value) === String(value));
+    const filtered = filter ? options.filter(o => (o.label || '').toLowerCase().includes(filter.toLowerCase())) : options;
+
+    return (
+      <div ref={containerRef} className="position-relative" style={{ minWidth: 200 }}>
+        <button type="button" className={`form-control text-start ${disabled ? 'disabled' : ''}`} onClick={() => !disabled && setOpen(s => !s)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>{selected ? selected.label : placeholder || 'Select'}</span>
+          <span style={{ opacity: 0.6 }}>▾</span>
+        </button>
+        {open && (
+          <div className="card shadow-sm" style={{ position: 'absolute', zIndex: 2000, width: '100%', maxHeight: 260, overflow: 'auto' }}>
+            <div className="card-body p-2">
+              <input className="form-control form-control-sm mb-2" placeholder="Search..." value={filter} onChange={e => setFilter(e.target.value)} />
+              <div>
+                {filtered.length === 0 && <div className="text-muted small p-2">No results</div>}
+                {filtered.map((opt) => (
+                  <div key={opt.value} className="py-1 px-2" style={{ cursor: 'pointer' }} onClick={() => { onChange({ target: { name, value: opt.value } }); setOpen(false); setFilter(''); }}>
+                    {opt.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -65,7 +108,7 @@ const ReceptionistBookGroupClasses = () => {
 
   console.log(adminId)
 
-  
+
 
   const normalizeBooking = (apiBooking) => {
     const isGroup = apiBooking.bookingType === 'GROUP';
@@ -94,16 +137,16 @@ const ReceptionistBookGroupClasses = () => {
       const [membersRes, bookingsRes, trainersRes] = await Promise.all([
         axiosInstance.get(`members/admin/${adminId}`),
         axiosInstance.get(`booking/unifiedbybranch/${adminId}`),
-        axiosInstance.get(`class/trainers/personal-general?adminId=${adminId}`),
+        // axiosInstance.get(`class/trainers/personal-general?adminId=${adminId}`),
       ]);
 
       const membersData = membersRes.data?.data || [];
       const rawBookings = bookingsRes.data?.bookings || [];
       const normalizedBookings = rawBookings.map(normalizeBooking);
-      const trainersData = trainersRes.data?.trainers || [];
+      // const trainersData = trainersRes.data?.trainers || [];
 
       setMembers(membersData);
-      setTrainers(trainersData);
+      // setTrainers(trainersData);
       setBookings(normalizedBookings);
     } catch (err) {
       console.error('API Error:', err);
@@ -114,14 +157,37 @@ const ReceptionistBookGroupClasses = () => {
   };
 
   useEffect(() => {
+    const fetchPersonalTrainers = async () => {
+      try {
+        const response = await axiosInstance.get(`class/trainers/personal-general?adminId=${adminId}`);
+        const personalTrainers = response.data.trainers.filter(
+          (trainer) => trainer.roleId === 5
+        );
+        setTrainers(personalTrainers);
+      } catch (error) {
+        console.error('Failed to fetch personal trainers:', error);
+        // Optional: show toast error
+      }
+    };
+
+    fetchPersonalTrainers();
+  }, []);
+
+  useEffect(() => {
     fetchData();
   }, [branchId]);
 
   // Pagination
+  // Apply booking search filter
+  const filteredBookings = bookings.filter(b => {
+    if (!bookingSearch) return true;
+    return b.member_name?.toString().toLowerCase().includes(bookingSearch.toLowerCase());
+  });
+
   const indexOfLastEntry = currentPage * entriesPerPage;
   const indexOfFirstEntry = indexOfLastEntry - entriesPerPage;
-  const currentBookings = bookings.slice(indexOfFirstEntry, indexOfLastEntry);
-  const totalPages = Math.ceil(bookings.length / entriesPerPage);
+  const currentBookings = filteredBookings.slice(indexOfFirstEntry, indexOfLastEntry);
+  const totalPages = Math.ceil(filteredBookings.length / entriesPerPage);
 
   const handleEntriesChange = (e) => {
     setEntriesPerPage(parseInt(e.target.value, 10));
@@ -245,15 +311,15 @@ const ReceptionistBookGroupClasses = () => {
     const badgeMap =
       type === 'booking'
         ? {
-            Booked: 'bg-primary-subtle text-primary-emphasis',
-            Completed: 'bg-success-subtle text-success-emphasis',
-            Canceled: 'bg-danger-subtle text-danger-emphasis',
-          }
+          Booked: 'bg-primary-subtle text-primary-emphasis',
+          Completed: 'bg-success-subtle text-success-emphasis',
+          Canceled: 'bg-danger-subtle text-danger-emphasis',
+        }
         : {
-            Paid: 'bg-success-subtle text-success-emphasis',
-            Pending: 'bg-warning-subtle text-warning-emphasis',
-            Refunded: 'bg-info-subtle text-info-emphasis',
-          };
+          Paid: 'bg-success-subtle text-success-emphasis',
+          Pending: 'bg-warning-subtle text-warning-emphasis',
+          Refunded: 'bg-info-subtle text-info-emphasis',
+        };
     return (
       <span className={`badge rounded-pill ${badgeMap[status] || 'bg-secondary'} px-3 py-1`}>
         {status}
@@ -266,8 +332,8 @@ const ReceptionistBookGroupClasses = () => {
     return modalType === 'add'
       ? `Book New ${typeName}`
       : modalType === 'edit'
-      ? `Edit ${typeName} Booking`
-      : `View ${typeName} Booking`;
+        ? `Edit ${typeName} Booking`
+        : `View ${typeName} Booking`;
   };
 
   const formatDate = (dateString) => {
@@ -285,7 +351,7 @@ const ReceptionistBookGroupClasses = () => {
         const member = members.find(m => m.id == value);
         updated.member_name = member ? member.fullName : '';
       } else if (name === 'class_schedule_id') {
-        const cls = groupClasses.find(c => c.id == value);
+        const cls = groupPlans.find(c => c.id == value);
         updated.class_name = cls ? cls.name : '';
       } else if (name === 'trainer_id') {
         const trainer = trainers.find(t => t.id == value);
@@ -318,9 +384,9 @@ const ReceptionistBookGroupClasses = () => {
       price,
     } = formData;
 
-    // Validation
-    if (!member_id || !date || !start_time || !end_time) {
-      alert('Please fill all required fields.');
+    // Validation: require member and date. If times are missing, default to 00:00.
+    if (!member_id || !date) {
+      alert('Please select a member and date. Start/End time will default to 00:00 if left empty.');
       return;
     }
 
@@ -335,8 +401,12 @@ const ReceptionistBookGroupClasses = () => {
 
     const formatTime = (t) => (t.length === 5 ? `${t}:00` : t);
 
+    // Ensure times are present; default to '00:00' which becomes '00:00:00'
+    const safeStart = (start_time && start_time.trim()) ? start_time : '00:00';
+    const safeEnd = (end_time && end_time.trim()) ? end_time : '00:00';
+
     const payload = {
-     
+
       memberId: parseInt(member_id, 10),
       memberName: member_name,
       bookingType: bookingType === 'group' ? 'GROUP' : 'PT',
@@ -345,8 +415,8 @@ const ReceptionistBookGroupClasses = () => {
       trainerId: bookingType === 'pt' ? parseInt(trainer_id, 10) : null,
       trainerName: bookingType === 'pt' ? trainer_name : null,
       date,
-      startTime: formatTime(start_time),
-      endTime: formatTime(end_time),
+      startTime: formatTime(safeStart),
+      endTime: formatTime(safeEnd),
       notes: notes || '',
       bookingStatus: booking_status,
       paymentStatus: payment_status,
@@ -378,22 +448,23 @@ const ReceptionistBookGroupClasses = () => {
     }
   };
 
-  const getUniqueClasses = () => {
-    const classMap = {};
-    bookings.forEach((b) => {
-      if (b.type === 'group' && b.class_schedule_id && b.class_name) {
-        classMap[b.class_schedule_id] = {
-          id: b.class_schedule_id,
-          name: b.class_name,
-          start_time: b.start_time,
-          end_time: b.end_time,
-        };
-      }
-    });
-    return Object.values(classMap);
-  };
+  // Inside your component
+  const [groupPlans, setGroupPlans] = useState([]);
 
-  const groupClasses = getUniqueClasses();
+  useEffect(() => {
+    const fetchGroupPlans = async () => {
+      try {
+        const response = await axiosInstance.get(`/MemberPlan?adminId=${adminId}`);
+        const groupPlansOnly = response.data.plans.filter(plan => plan.type === 'GROUP');
+        setGroupPlans(groupPlansOnly);
+      } catch (error) {
+        console.error('Failed to fetch group plans:', error);
+        // Optionally show toast error
+      }
+    };
+
+    fetchGroupPlans();
+  }, []);
 
   if (loading) return <div className="text-center mt-5">Loading bookings...</div>;
 
@@ -435,19 +506,11 @@ const ReceptionistBookGroupClasses = () => {
               type="text"
               className="form-control border"
               placeholder="Search by member name..."
+              value={bookingSearch}
+              onChange={(e) => { setBookingSearch(e.target.value); setCurrentPage(1); }}
             />
           </div>
         </div>
-        {/* <div className="col-6 col-md-3 col-lg-2">
-          <button className="btn btn-outline-secondary w-100">
-            <i className="fas fa-filter me-1"></i> Filter
-          </button>
-        </div>
-        <div className="col-6 col-md-3 col-lg-2">
-          <button className="btn btn-outline-secondary w-100">
-            <i className="fas fa-file-export me-1"></i> Export
-          </button>
-        </div> */}
       </div>
 
       {/* Show Entries */}
@@ -500,11 +563,10 @@ const ReceptionistBookGroupClasses = () => {
                   </td>
                   <td>
                     <span
-                      className={`badge rounded-pill ${
-                        booking.type === 'group'
-                          ? 'bg-info-subtle text-info-emphasis'
-                          : 'bg-secondary-subtle text-secondary-emphasis'
-                      } px-2 py-1`}
+                      className={`badge rounded-pill ${booking.type === 'group'
+                        ? 'bg-info-subtle text-info-emphasis'
+                        : 'bg-secondary-subtle text-secondary-emphasis'
+                        } px-2 py-1`}
                     >
                       {booking.type === 'group' ? 'Group Class' : 'PT Session'}
                     </span>
@@ -645,218 +707,204 @@ const ReceptionistBookGroupClasses = () => {
                 )}
 
                 <form>
-                  <div className="mb-3">
-                    <label className="form-label d-flex align-items-center">
-                      <FaUser className="me-2 text-muted" /> Member <span className="text-danger">*</span>
-                    </label>
-                    <select
-                      className="form-select rounded-3"
-                      name="member_id"
-                      value={formData.member_id}
-                      onChange={handleInputChange}
-                      disabled={modalType === 'view'}
-                      required
-                    >
-                      <option value="">Select a member</option>
-                      {members.map((member) => (
-                        <option key={member.id} value={member.id}>
-                          {member.fullName} ({member.phone})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {bookingType === 'group' ? (
+                  <div>
                     <div className="mb-3">
                       <label className="form-label d-flex align-items-center">
-                        <FaChalkboardTeacher className="me-2 text-muted" /> Group Class{' '}
-                        <span className="text-danger">*</span>
+                        <FaUser className="me-2 text-muted" /> Member <span className="text-danger">*</span>
                       </label>
-                      <select
-                        className="form-select rounded-3"
-                        name="class_schedule_id"
-                        value={formData.class_schedule_id}
+                      <SearchableSelect
+                        name="member_id"
+                        value={formData.member_id}
                         onChange={handleInputChange}
-                        disabled={modalType === 'view'}
-                        required
-                      >
-                        <option value="">Select a class</option>
-                        {groupClasses.map((cls) => (
-                          <option key={cls.id} value={cls.id}>
-                            {cls.name} ({cls.start_time} - {cls.end_time})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    <div className="mb-3">
-                      <label className="form-label d-flex align-items-center">
-                        <FaChalkboardTeacher className="me-2 text-muted" /> Trainer{' '}
-                        <span className="text-danger">*</span>
-                      </label>
-                      <select
-                        className="form-select rounded-3"
-                        name="trainer_id"
-                        value={formData.trainer_id}
-                        onChange={handleInputChange}
-                        disabled={modalType === 'view'}
-                        required
-                      >
-                        <option value="">Select a trainer</option>
-                        {trainers.map((trainer) => (
-                          <option key={trainer.id} value={trainer.id}>
-                            {trainer.fullName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  <div className="row mb-3 g-3">
-                    <div className="col-12 col-md-4">
-                      <label className="form-label d-flex align-items-center">
-                        <FaCalendarAlt className="me-2 text-muted" /> Date{' '}
-                        <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        className="form-control rounded-3"
-                        name="date"
-                        value={formData.date}
-                        onChange={handleInputChange}
-                        min={new Date().toISOString().split('T')[0]}
+                        options={members.map(m => ({ value: m.id, label: `${m.fullName} (${m.phone || ''})` }))}
+                        placeholder="Select a member"
                         disabled={modalType === 'view'}
                         required
                       />
                     </div>
-                    <div className="col-12 col-md-4">
-                      <label className="form-label d-flex align-items-center">
-                        <FaClock className="me-2 text-muted" /> Start Time{' '}
-                        <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="time"
+
+                    {bookingType === 'group' ? (
+                      <div className="mb-3">
+                        <label className="form-label d-flex align-items-center">
+                          <FaChalkboardTeacher className="me-2 text-muted" /> Group Plan{' '}
+                          <span className="text-danger">*</span>
+                        </label>
+                        <SearchableSelect
+                          name="class_schedule_id"
+                          value={formData.class_schedule_id}
+                          onChange={handleInputChange}
+                          options={groupPlans.map(p => ({ value: p.id, label: `${p.name} - ₹${p.price} (${p.validityDays} days)` }))}
+                          placeholder="Select a group plan"
+                          disabled={modalType === 'view'}
+                          required
+                        />
+                      </div>
+                    ) : (
+                      <div className="mb-3">
+                        <label className="form-label d-flex align-items-center">
+                          <FaChalkboardTeacher className="me-2 text-muted" /> Trainer{' '}
+                          <span className="text-danger">*</span>
+                        </label>
+                        <SearchableSelect
+                          name="trainer_id"
+                          value={formData.trainer_id}
+                          onChange={handleInputChange}
+                          options={trainers.map(t => ({ value: t.id, label: t.fullName }))}
+                          placeholder="Select a personal trainer"
+                          disabled={modalType === 'view'}
+                          required
+                        />
+                      </div>
+                    )}
+
+                    <div className="row mb-3 g-3">
+                      <div className="col-12 col-md-4">
+                        <label className="form-label d-flex align-items-center">
+                          <FaCalendarAlt className="me-2 text-muted" /> Date{' '}
+                          <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          className="form-control rounded-3"
+                          name="date"
+                          value={formData.date}
+                          onChange={handleInputChange}
+                          min={new Date().toISOString().split('T')[0]}
+                          disabled={modalType === 'view'}
+                          required
+                        />
+                      </div>
+
+                      <div className="col-6 col-md-4">
+                        <label className="form-label d-flex align-items-center">
+                          <FaClock className="me-2 text-muted" /> Start Time{' '}
+                          <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="time"
+                          className="form-control rounded-3"
+                          name="start_time"
+                          value={formData.start_time}
+                          onChange={handleInputChange}
+                          disabled={modalType === 'view'}
+                          required
+                        />
+                      </div>
+
+                      <div className="col-6 col-md-4">
+                        <label className="form-label d-flex align-items-center">
+                          <FaClock className="me-2 text-muted" /> End Time{' '}
+                          <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="time"
+                          className="form-control rounded-3"
+                          name="end_time"
+                          value={formData.end_time}
+                          onChange={handleInputChange}
+                          disabled={modalType === 'view'}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* 💰 PRICE FIELD */}
+                    {modalType === 'add' && (
+                      <div className="mb-3">
+                        <label className="form-label d-flex align-items-center">
+                          <FaMoneyBillWave className="me-2 text-muted" /> Price <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          className="form-control rounded-3"
+                          name="price"
+                          value={formData.price}
+                          onChange={handleInputChange}
+                          min="0.01"
+                          step="0.01"
+                          placeholder="Enter amount"
+                          disabled={modalType === 'view'}
+                          required
+                        />
+                      </div>
+                    )}
+
+                    <div className="row mb-3 g-3">
+                      <div className="col-12 col-md-6">
+                        <label className="form-label">Booking Status <span className="text-danger">*</span></label>
+                        <select
+                          className="form-select rounded-3"
+                          name="booking_status"
+                          value={formData.booking_status}
+                          onChange={handleInputChange}
+                          disabled={modalType === 'view'}
+                          required
+                        >
+                          <option value="Booked">Booked</option>
+                          <option value="Completed">Completed</option>
+                          <option value="Canceled">Canceled</option>
+                        </select>
+                      </div>
+                      <div className="col-12 col-md-6">
+                        <label className="form-label d-flex align-items-center">
+                          <FaMoneyBillWave className="me-2 text-muted" /> Payment Status{' '}
+                          <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          className="form-select rounded-3"
+                          name="payment_status"
+                          value={formData.payment_status}
+                          onChange={handleInputChange}
+                          disabled={modalType === 'view'}
+                          required
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Paid">Paid</option>
+                          <option value="Refunded">Refunded</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="form-label">Notes</label>
+                      <textarea
                         className="form-control rounded-3"
-                        name="start_time"
-                        value={formData.start_time}
+                        name="notes"
+                        rows="3"
+                        placeholder="Any additional information..."
+                        value={formData.notes}
                         onChange={handleInputChange}
                         disabled={modalType === 'view'}
-                        required
-                      />
+                      ></textarea>
                     </div>
-                    <div className="col-12 col-md-4">
-                      <label className="form-label d-flex align-items-center">
-                        <FaClock className="me-2 text-muted" /> End Time{' '}
-                        <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="time"
-                        className="form-control rounded-3"
-                        name="end_time"
-                        value={formData.end_time}
-                        onChange={handleInputChange}
-                        disabled={modalType === 'view'}
-                        required
-                      />
-                    </div>
-                  </div>
 
-                  {/* 💰 PRICE FIELD */}
-                  {modalType === 'add' && (
-                    <div className="mb-3">
-                      <label className="form-label d-flex align-items-center">
-                        <FaMoneyBillWave className="me-2 text-muted" /> Price <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        className="form-control rounded-3"
-                        name="price"
-                        value={formData.price}
-                        onChange={handleInputChange}
-                        min="0.01"
-                        step="0.01"
-                        placeholder="Enter amount"
-                        disabled={modalType === 'view'}
-                        required
-                      />
-                    </div>
-                  )}
-
-                  <div className="row mb-3 g-3">
-                    <div className="col-12 col-md-6">
-                      <label className="form-label">Booking Status <span className="text-danger">*</span></label>
-                      <select
-                        className="form-select rounded-3"
-                        name="booking_status"
-                        value={formData.booking_status}
-                        onChange={handleInputChange}
-                        disabled={modalType === 'view'}
-                        required
-                      >
-                        <option value="Booked">Booked</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Canceled">Canceled</option>
-                      </select>
-                    </div>
-                    <div className="col-12 col-md-6">
-                      <label className="form-label d-flex align-items-center">
-                        <FaMoneyBillWave className="me-2 text-muted" /> Payment Status{' '}
-                        <span className="text-danger">*</span>
-                      </label>
-                      <select
-                        className="form-select rounded-3"
-                        name="payment_status"
-                        value={formData.payment_status}
-                        onChange={handleInputChange}
-                        disabled={modalType === 'view'}
-                        required
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="Paid">Paid</option>
-                        <option value="Refunded">Refunded</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="mb-4">
-                    <label className="form-label">Notes</label>
-                    <textarea
-                      className="form-control rounded-3"
-                      name="notes"
-                      rows="3"
-                      placeholder="Any additional information..."
-                      value={formData.notes}
-                      onChange={handleInputChange}
-                      disabled={modalType === 'view'}
-                    ></textarea>
-                  </div>
-
-                  <div className="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-4">
-                    <button
-                      type="button"
-                      className="btn btn-outline-secondary px-4 py-2"
-                      onClick={closeModal}
-                    >
-                      Cancel
-                    </button>
-                    {modalType !== 'view' && (
+                    <div className="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-4">
                       <button
                         type="button"
-                        className="btn"
-                        style={{
-                          backgroundColor: '#2598c5ff',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          padding: '10px 20px',
-                          fontWeight: '500',
-                        }}
-                        onClick={handleSubmit}
+                        className="btn btn-outline-secondary px-4 py-2"
+                        onClick={closeModal}
                       >
-                        {modalType === 'add' ? 'Book Now' : 'Save Changes'}
+                        Cancel
                       </button>
-                    )}
-                  </div>
+                      {modalType !== 'view' && (
+                        <button
+                          type="button"
+                          className="btn"
+                          style={{
+                            backgroundColor: '#2598c5ff',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            padding: '10px 20px',
+                            fontWeight: '500',
+                          }}
+                          onClick={handleSubmit}
+                        >
+                          {modalType === 'add' ? 'Book Now' : 'Save Changes'}
+                        </button>
+                      )}
+                    </div>
+                  </div> {/* 👈 This was missing! */}
                 </form>
               </div>
             </div>
