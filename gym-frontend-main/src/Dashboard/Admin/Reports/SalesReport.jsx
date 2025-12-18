@@ -33,14 +33,13 @@ export default function SalesReport() {
   const [error, setError] = useState(null);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const reportRef = useRef(null);
-
+  const [staffList, setStaffList] = useState([]);
   const roles = [
     { value: "", label: "Select Role..." },
-    { value: "member", label: "Member" },
+    { value: "member", label: "Total Sales" },
     { value: "receptionist", label: "Receptionist" },
     { value: "personal_trainer", label: "Personal Trainer" },
     { value: "general_trainer", label: "General Trainer" },
-    { value: "manager", label: "Manager" },
     { value: "housekeeping", label: "Housekeeping" },
   ];
 
@@ -50,9 +49,7 @@ export default function SalesReport() {
   const [bookingStatus, setBookingStatus] = useState("All");
   const [trainer, setTrainer] = useState("All");
 
-  // NOTE: Added "Completed" status based on the new API response
   const statuses = ["All", "Booked", "Confirmed", "Cancelled", "Completed"];
-  const trainersList = ["All", "John Smith", "Mike Williams", "Unknown"];
 
   // -------------------- MOCK DATA --------------------
   const bookings = useMemo(
@@ -127,28 +124,48 @@ export default function SalesReport() {
     []
   );
 
-  // ✅ DEFINE isInRange AT TOP LEVEL — OUTSIDE ALL HOOKS
-  const isInRange = (d) => {
-    if (!d) return false; // Handle empty dates
-    const x = new Date(d).getTime();
-    const a = new Date(dateFrom).getTime();
-    const b = new Date(dateTo).getTime();
-    return x >= a && x <= b;
+  useEffect(() => {
+    const fetchStaff = async () => {
+      try {
+        const res = await axiosInstance.get(`/staff/admin/${adminId}`);
+        if (res.data?.success) {
+          setStaffList(res.data.staff);
+        }
+      } catch (error) {
+        console.error("Error fetching staff", error);
+      }
+    };
+
+    fetchStaff();
+  }, [adminId]);
+
+  // ✅ Helper: Get staff filtered by selected role
+  const getFilteredStaff = () => {
+    if (!selectedRole || selectedRole === "member") return [];
+    // Map selectedRole (from dropdown value) to expected roleId
+    const roleToIdMap = {
+      personal_trainer: 5,
+      general_trainer: 6,
+      receptionist: 7,
+      housekeeping: 8,
+    };
+
+    const expectedRoleId = roleToIdMap[selectedRole];
+    if (expectedRoleId === undefined) return [];
+
+    return staffList.filter(staff => staff.roleId === expectedRoleId);
   };
 
-  // -------------------- DYNAMIC FILTERS BASED ON ROLE --------------------
-  const isStaff = [
-    "receptionist",
-    "personal_trainer",
-    "general_trainer",
-    "manager",
-    "housekeeping",
-  ].includes(selectedRole);
-  const isMember = selectedRole === "member";
-  const isApiRole = ["member", "personal_trainer", "general_trainer", "receptionist"].includes(selectedRole);
-
-  // Auto-set trainer for staff based on localStorage (simulated)
+  // ✅ Helper: Get current user's trainer name (for "My" filter)
   const getMyTrainer = () => {
+    // If user is staff (check localStorage for staffId)
+    const storedStaffId = localStorage.getItem("staffId");
+    if (storedStaffId) {
+      const staffUser = staffList.find(s => s.staffId == storedStaffId);
+      if (staffUser) return staffUser.fullName.trim();
+    }
+
+    // Fallback for members
     const userMap = {
       john_doe: "John Smith",
       mike_w: "Mike Williams",
@@ -157,27 +174,40 @@ export default function SalesReport() {
     const username = localStorage.getItem("username") || "guest_user";
     return userMap[username] || "Unknown";
   };
+  const isInRange = (d) => {
+    if (!d) return false;
+    const x = new Date(d).getTime();
+    const a = new Date(dateFrom).getTime();
+    const b = new Date(dateTo).getTime();
+    return x >= a && x <= b;
+  };
 
-  // -------------------- API CALL FOR ALL ROLES --------------------
+  const isStaff = [
+    "receptionist",
+    "personal_trainer",
+    "general_trainer",
+    "housekeeping",
+  ].includes(selectedRole);
+  const isMember = selectedRole === "member";
+  const isApiRole = ["member", "personal_trainer", "general_trainer", "receptionist"].includes(selectedRole);
+
+  // -------------------- API CALL --------------------
   useEffect(() => {
-    // Check if the role requires an API call
     if (isApiRole) {
       fetchReport();
     }
-  }, [isApiRole, selectedRole, dateFrom, dateTo]); // Rerun when role or dates change
+  }, [isApiRole, selectedRole, dateFrom, dateTo]);
 
   const fetchReport = async () => {
     setLoading(true);
     setError(null);
-    setApiData(null); // Reset data before fetching
+    setApiData(null);
 
     try {
       let url;
       if (selectedRole === 'receptionist') {
-        // Special URL structure for receptionist
         url = `reports/reception/${adminId}`;
       } else {
-        // Construct the URL dynamically based on the selected role
         const roleUrlMap = {
           member: `reports/members?adminId=${adminId}`,
           personal_trainer: `reports/personal-trainer?adminId=${adminId}`,
@@ -209,37 +239,38 @@ export default function SalesReport() {
   const filtered = useMemo(() => {
     if (!selectedRole) return [];
 
-    // If role uses API and data is available, use API data
     if (isApiRole && apiData) {
-      // For receptionist, data is in apiData.receptionists
       if (selectedRole === 'receptionist') {
         return apiData.receptionists || [];
       }
-      // For other roles, data is in apiData.data.transactions
       const sourceData = apiData.data?.transactions || [];
       return sourceData.filter((r) => {
-        // NOTE: API data uses 'status' key, not 'bookingStatus'
         if (bookingStatus !== "All" && r.status !== bookingStatus) return false;
-        if (trainer !== "All" && r.trainer !== trainer) return false;
+        if (trainer !== "All" && trainer !== "My" && r.trainer !== trainer) return false;
+        if (trainer === "My") {
+          const myTrainer = getMyTrainer();
+          return r.trainer === myTrainer;
+        }
         return true;
       });
     }
 
-    // Otherwise, filter the mock data
     return bookings.filter((r) => {
       if (!isInRange(r.date)) return false;
-      if (bookingStatus !== "All" && r.bookingStatus !== bookingStatus)
-        return false;
-      if (trainer !== "All" && r.trainer !== trainer) return false;
+      if (bookingStatus !== "All" && r.bookingStatus !== bookingStatus) return false;
 
       if (isMember) {
         const loggedinUser = localStorage.getItem("username") || "guest_user";
         return r.username === loggedinUser;
       }
 
-      if (isStaff && trainer === "My") {
-        const myTrainer = getMyTrainer();
-        return r.trainer === myTrainer;
+      if (isStaff) {
+        if (trainer === "My") {
+          const myTrainer = getMyTrainer();
+          return r.trainer === myTrainer;
+        } else if (trainer !== "All") {
+          return r.trainer === trainer;
+        }
       }
 
       return true;
@@ -252,13 +283,14 @@ export default function SalesReport() {
     bookingStatus,
     trainer,
     isMember,
+    isStaff,
     apiData,
     isApiRole,
+    staffList,
   ]);
 
   // -------------------- KPIs --------------------
   const kpis = useMemo(() => {
-    // If role uses API and data is available, use API stats
     if (isApiRole && apiData) {
       if (selectedRole === 'receptionist') {
         const summary = apiData.summary || {};
@@ -267,12 +299,11 @@ export default function SalesReport() {
           totalBookings: summary.present || 0,
           totalRevenue: revenue.total || 0,
           confirmed: summary.active || 0,
-          cancelled: 0, // Not provided by API
+          cancelled: 0,
           booked: summary.completed || 0,
-          avgTicket: 0, // Not provided by API
+          avgTicket: 0,
         };
       }
-      // For other API roles
       if (apiData.data?.stats) {
         return {
           totalBookings: parseInt(apiData.data.stats.totalBookings) || 0,
@@ -285,19 +316,12 @@ export default function SalesReport() {
       }
     }
 
-    // Otherwise calculate from filtered data
     const totalBookings = filtered.length;
     const totalRevenue = filtered.reduce((sum, r) => sum + (r.price || 0), 0);
-    const confirmed = filtered.filter(
-      (b) => b.bookingStatus === "Confirmed"
-    ).length;
-    const cancelled = filtered.filter(
-      (b) => b.bookingStatus === "Cancelled"
-    ).length;
+    const confirmed = filtered.filter((b) => b.bookingStatus === "Confirmed").length;
+    const cancelled = filtered.filter((b) => b.bookingStatus === "Cancelled").length;
     const booked = filtered.filter((b) => b.bookingStatus === "Booked").length;
-    const avgTicket = totalBookings
-      ? Math.round(totalRevenue / totalBookings)
-      : 0;
+    const avgTicket = totalBookings ? Math.round(totalRevenue / totalBookings) : 0;
 
     return {
       totalBookings,
@@ -310,19 +334,14 @@ export default function SalesReport() {
   }, [filtered, isApiRole, apiData, selectedRole]);
 
   // -------------------- CHART DATA --------------------
-
-  // Bookings by Day (Line Chart)
   const byDay = useMemo(() => {
-    // If role uses API and data is available, use API data
     if (isApiRole && apiData) {
       if (selectedRole === 'receptionist') {
-        // Map weeklyTrend to the expected format
         return (apiData.weeklyTrend || []).map(item => ({
-            date: item.day,
-            count: item.count
-        })).sort((a,b) => a.sortOrder - b.sortOrder);
+          date: item.day,
+          count: item.count
+        })).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
       }
-      // For other API roles
       if (apiData.data?.bookingsByDay) {
         return apiData.data.bookingsByDay.map((item) => ({
           date: new Date(item.date).toLocaleDateString(),
@@ -331,7 +350,6 @@ export default function SalesReport() {
       }
     }
 
-    // Otherwise calculate from filtered data
     const map = new Map();
     filtered.forEach((r) => {
       if (!r.date) return;
@@ -339,27 +357,21 @@ export default function SalesReport() {
       prev.count += 1;
       map.set(r.date, prev);
     });
-    return Array.from(map.values()).sort((a, b) =>
-      a.date.localeCompare(b.date)
-    );
+    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
   }, [filtered, isApiRole, apiData, selectedRole]);
 
-  // Booking Status Distribution (Pie Chart)
   const byStatus = useMemo(() => {
-    // If role uses API and data is available, use API data
     if (isApiRole && apiData) {
       if (selectedRole === 'receptionist') {
         const summary = apiData.summary || {};
         return [
-            { name: 'Present', value: summary.present || 0 },
-            { name: 'Active', value: summary.active || 0 },
-            { name: 'Completed', value: summary.completed || 0 },
+          { name: 'Present', value: summary.present || 0 },
+          { name: 'Active', value: summary.active || 0 },
+          { name: 'Completed', value: summary.completed || 0 },
         ].filter(item => item.value > 0);
       }
-      // For other API roles
       if (apiData.data?.bookingStatus) {
         return apiData.data.bookingStatus.map((item) => {
-          // The key in the API response is 'bookingStatus'
           const statusName = item.bookingStatus ? item.bookingStatus : "Unknown";
           return {
             name: statusName.charAt(0).toUpperCase() + statusName.slice(1),
@@ -369,7 +381,6 @@ export default function SalesReport() {
       }
     }
 
-    // Otherwise calculate from filtered data
     const data = [
       { name: "Booked", value: kpis.booked },
       { name: "Confirmed", value: kpis.confirmed },
@@ -378,15 +389,11 @@ export default function SalesReport() {
     return data;
   }, [kpis, isApiRole, apiData, selectedRole]);
 
-  // Table: Aggregated by Date + Trainer
   const tableRows = useMemo(() => {
-    // If role uses API and data is available, use API data
     if (isApiRole && apiData) {
-      // For receptionist, data is in apiData.receptionists
       if (selectedRole === 'receptionist') {
-        // Map receptionist data to the table format
         return (apiData.receptionists || []).map(item => ({
-          date: '-', // Not provided
+          date: '-',
           trainer: item.name,
           username: '-',
           type: '-',
@@ -395,24 +402,19 @@ export default function SalesReport() {
           status: `Check-ins: ${item.totalCheckins}`
         }));
       }
-      // For other API roles
       if (apiData.data?.transactions) {
-        // --- FIX IS HERE ---
-        // The transactions array is directly in apiData.data
-        // so we map over apiData.data.transactions
         return apiData.data.transactions.map((item) => ({
           date: new Date(item.date).toLocaleDateString(),
           trainer: item.trainer,
           username: item.username,
           type: item.type,
           time: item.time,
-          revenue: 0, // API doesn't provide revenue in transactions
+          revenue: 0,
           status: item.status,
         }));
       }
     }
 
-    // Otherwise calculate from filtered data
     const key = (r) => `${r.date}__${r.trainer}`;
     const map = new Map();
     filtered.forEach((r) => {
@@ -427,9 +429,7 @@ export default function SalesReport() {
       prev.revenue += r.price || 0;
       map.set(k, prev);
     });
-    return Array.from(map.values()).sort((a, b) =>
-      a.date.localeCompare(b.date)
-    );
+    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
   }, [filtered, isApiRole, apiData, selectedRole]);
 
   // -------------------- EXPORT CSV --------------------
@@ -461,7 +461,7 @@ export default function SalesReport() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `sales_report_personal_training_${dateFrom}_${dateTo}.csv`;
+    a.download = `sales_report_${selectedRole}_${dateFrom}_${dateTo}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -512,7 +512,7 @@ export default function SalesReport() {
         heightLeft -= pageHeight;
       }
 
-      pdf.save(`sales_report_personal_training_${dateFrom}_${dateTo}.pdf`);
+      pdf.save(`sales_report_${selectedRole}_${dateFrom}_${dateTo}.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);
       alert("Failed to generate PDF. Please try again.");
@@ -521,8 +521,8 @@ export default function SalesReport() {
     }
   };
 
-  // -------------------- RENDER STATE --------------------
   const canGenerate = selectedRole !== "";
+  const filteredStaff = getFilteredStaff();
 
   return (
     <div className="container-fluid p-4">
@@ -553,7 +553,7 @@ export default function SalesReport() {
         </div>
       </div>
 
-      {/* STEP 1: Role Selection Card */}
+      {/* Role Selection */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">
           <div className="row g-3 align-items-center">
@@ -579,8 +579,7 @@ export default function SalesReport() {
                 <div className="alert alert-warning">
                   <strong>Please select your role to proceed.</strong>
                   <br />
-                  Members see only their bookings. Staff can view all or their
-                  own.
+                  Members see only their bookings. Staff can view all or their own.
                 </div>
               </div>
             )}
@@ -588,7 +587,7 @@ export default function SalesReport() {
         </div>
       </div>
 
-      {/* STEP 2: Filters (Only show if role is selected) */}
+      {/* Filters */}
       {selectedRole && (
         <div className="card border-0 shadow-sm mb-4">
           <div className="card-body">
@@ -641,11 +640,12 @@ export default function SalesReport() {
                       value={trainer}
                       onChange={(e) => setTrainer(e.target.value)}
                     >
-                      <option value="All">All Trainers</option>
-                      <option value="My">My Bookings Only</option>
-                      <option value="John Smith">John Smith</option>
-                      <option value="Mike Williams">Mike Williams</option>
-                      <option value="Unknown">Unknown</option>
+                      <option value="All">All</option>
+                      {filteredStaff.map((staff) => (
+                        <option key={staff.staffId} value={staff.fullName.trim()}>
+                          {staff.fullName.trim()}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </>
@@ -655,16 +655,12 @@ export default function SalesReport() {
         </div>
       )}
 
-      {/* STEP 3: Generate Button (Only if Role Selected) */}
+      {/* Generate Button */}
       {selectedRole && (
         <div className="mb-4 text-end">
           <button
             className="btn btn-primary"
-            onClick={() =>
-              isApiRole
-                ? fetchReport()
-                : alert(`Report generated for ${selectedRole}`)
-            }
+            onClick={() => (isApiRole ? fetchReport() : alert(`Report generated for ${selectedRole}`))}
             disabled={loading}
           >
             {loading ? "Loading..." : "Generate Report"}
@@ -672,7 +668,7 @@ export default function SalesReport() {
         </div>
       )}
 
-      {/* Display Error State */}
+      {/* Error */}
       {error && (
         <div className="alert alert-danger" role="alert">
           <strong>Error:</strong> {error}
@@ -683,7 +679,7 @@ export default function SalesReport() {
       <div ref={reportRef}>
         {selectedRole && !loading && !error && (
           <>
-            {/* KPI Widgets */}
+            {/* KPIs */}
             <div className="row g-3 mb-4">
               <Widget title="Total Bookings" value={kpis.totalBookings} />
               <Widget
@@ -755,9 +751,7 @@ export default function SalesReport() {
                             <Cell
                               key={`cell-${index}`}
                               fill={
-                                ["#20c997", "#dc3545", "#ffc107", "#0d6efd"][
-                                  index % 4
-                                ]
+                                ["#20c997", "#dc3545", "#ffc107", "#0d6efd"][index % 4]
                               }
                             />
                           ))}
@@ -805,17 +799,16 @@ export default function SalesReport() {
                           <td>{r.time || "-"}</td>
                           <td>
                             <span
-                              className={`badge ${
-                                r.status === "Confirmed" ||
-                                r.status === "Completed" ||
-                                r.status === "approved"
+                              className={`badge ${["Confirmed", "Completed", "approved", "Present", "Active"].includes(
+                                r.status || r.bookingStatus
+                              )
                                   ? "bg-success"
-                                  : r.status === "Cancelled"
-                                  ? "bg-danger"
-                                  : "bg-primary"
-                              }`}
+                                  : r.status === "Cancelled" || r.bookingStatus === "Cancelled"
+                                    ? "bg-danger"
+                                    : "bg-primary"
+                                }`}
                             >
-                              {r.status || "N/A"}
+                              {r.status || r.bookingStatus || "N/A"}
                             </span>
                           </td>
                         </tr>
@@ -829,15 +822,13 @@ export default function SalesReport() {
         )}
       </div>
 
-      {/* Empty State Before Role Selection */}
       {!selectedRole && (
         <div className="text-center py-5">
           <div className="text-muted">
             <FaUserCog size={48} className="mb-3" />
             <h5>Select Your Role to Generate Report</h5>
             <p className="lead">
-              Choose whether you're a Member or Staff member to see relevant
-              training sales data.
+              Choose whether you're a Member or Staff member to see relevant training sales data.
             </p>
           </div>
         </div>

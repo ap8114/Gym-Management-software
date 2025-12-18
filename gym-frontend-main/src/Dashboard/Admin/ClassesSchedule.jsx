@@ -661,7 +661,7 @@ const ClassesSchedule = () => {
                 </div>
 
                 {/* Members section */}
-                {modalType !== 'view' && (
+                {/* {modalType !== 'view' && (
                   <div className="mb-3">
                     <label className="form-label fw-semibold">
                       Members
@@ -688,7 +688,6 @@ const ClassesSchedule = () => {
                         </button>
                       </div>
 
-                      {/* Added members list */}
                       {(selectedClass?.members || []).length > 0 && (
                         <div>
                           <small className="text-muted d-block mb-2">
@@ -710,7 +709,7 @@ const ClassesSchedule = () => {
                       )}
                     </div>
                   </div>
-                )}
+                )} */}
 
                 {modalType !== 'view' && (
                   <div className="d-flex justify-content-end mt-4">

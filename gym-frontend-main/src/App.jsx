@@ -290,7 +290,7 @@ function App() {
                   <Route path="/receptionist/book-classes-sessions" element={<ProtectedRoute allowedRoles={["RECEPTIONIST", "ADMIN", "SUPERADMIN"]}><ReceptionistBookGroupClasses /></ProtectedRoute>} />
                   <Route path="/receptionist/payemnet" element={<ProtectedRoute allowedRoles={["RECEPTIONIST", "ADMIN", "SUPERADMIN"]}><ReceptionistPaymentCollection /></ProtectedRoute>} />
                   <Route path="/receptionist/reportattendance" element={<ProtectedRoute allowedRoles={["RECEPTIONIST", "ADMIN", "SUPERADMIN"]}><ReportsAttendance /></ProtectedRoute>} />
-                  <Route path="/receptionist/report-attendance-checkout" element={<ProtectedRoute allowedRoles={["HOUSEKEEPING", "ADMIN", "SUPERADMIN"]}><ReceptionistHouseKeepingAttendanceCheckOut /></ProtectedRoute>} />
+                  <Route path="/receptionist/report-attendance-checkout" element={<ProtectedRoute allowedRoles={["RECEPTIONIST", "ADMIN", "SUPERADMIN"]}><ReceptionistHouseKeepingAttendanceCheckOut /></ProtectedRoute>} />
                   <Route path="/receptionist/report" element={<ProtectedRoute allowedRoles={["RECEPTIONIST", "ADMIN", "SUPERADMIN"]}><ReportsClasses /></ProtectedRoute>} />
 
                   <Route path="/personaltrainer/dashboard" element={<ProtectedRoute allowedRoles={["PERSONALTRAINER", "ADMIN", "SUPERADMIN"]}><PersonalTrainerDashboard /></ProtectedRoute>} />
