@@ -214,7 +214,7 @@ const ReceptionistHouseKeepingAttendanceCheckOut = () => {
 
         // 🔒 ONLY show Housekeeping and Member in the list (as per your earlier filter)
         // if (!(role === 'member' || role === 'housekeeping')) return false;
-        if (!( role === 'housekeeping')) return false;
+        if (!(role === 'housekeeping')) return false;
 
         const matchesSearch =
             staffName.includes(term) ||
@@ -391,8 +391,7 @@ const ReceptionistHouseKeepingAttendanceCheckOut = () => {
             {/* Header Section */}
             <div className="row mb-3 mb-md-4 align-items-center">
                 <div className="col-12 col-md-8 mb-2 mb-md-0">
-                    <h2 className="fw-bold mb-1" style={{ fontSize: 'clamp(1.25rem, 4vw, 1.75rem)' }}>Staff Attendance Records</h2>
-                    <p className="text-muted mb-0 d-none d-md-block">Track staff attendance via QR scan or manual entry.</p>
+                    <h2 className="fw-bold mb-1" style={{ fontSize: 'clamp(1.25rem, 4vw, 1.75rem)' }}>HouseKeeping Checkout</h2>
                 </div>
                 <div className="col-12 col-md-4">
                 </div>
@@ -426,7 +425,7 @@ const ReceptionistHouseKeepingAttendanceCheckOut = () => {
                                 />
                             </div>
                         </div>
-                        <div className="col-6 col-md-3">
+                        {/* <div className="col-6 col-md-3">
                             <select
                                 className="form-select form-select-sm"
                                 value={roleFilter}
@@ -437,7 +436,7 @@ const ReceptionistHouseKeepingAttendanceCheckOut = () => {
                                     <option key={role} value={role}>{role}</option>
                                 ))}
                             </select>
-                        </div>
+                        </div> */}
                         <div className="col-6 col-md-3">
                             <select
                                 className="form-select form-select-sm"
@@ -467,8 +466,7 @@ const ReceptionistHouseKeepingAttendanceCheckOut = () => {
             <div className="card shadow-sm border-0">
                 <div className="card-header bg-light py-2 py-md-3">
                     <h6 className="mb-0 fw-bold" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
-                        Attendance Records
-                        {/* ({filteredRecords.length}) */}
+                        Attendance
                     </h6>
                 </div>
                 <div className="card-body p-0">
