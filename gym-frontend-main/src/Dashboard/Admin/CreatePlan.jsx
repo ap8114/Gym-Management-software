@@ -51,9 +51,8 @@ const CreatePlan = () => {
   const [apiPlans, setApiPlans] = useState([]);
   const [plansLoaded, setPlansLoaded] = useState(false);
   const [viewLoading, setViewLoading] = useState(false);
-  const [bookingRequests, setBookingRequests] = useState([]);
   const [renewalRequests, setRenewalRequests] = useState([]);
-  const [activeRequestTab, setActiveRequestTab] = useState("booking");
+  const [activeRequestTab, setActiveRequestTab] = useState("renewal"); // Changed default to "renewal"
 
   // New state for trainers
   const [trainers, setTrainers] = useState([]);
@@ -79,10 +78,9 @@ const CreatePlan = () => {
   const branchId = user?.branchId || null;
   const name = user?.fullName || null;
 
-  // Fetch plans and booking requests
+  // Fetch plans and renewal requests
   useEffect(() => {
     fetchPlansFromAPI();
-    fetchBookingRequests();
     fetchRenewalRequests();
   }, []);
 
@@ -160,40 +158,6 @@ const CreatePlan = () => {
     }
   };
 
-  const fetchBookingRequests = async () => {
-    try {
-      const adminId = localStorage.getItem("userId") || "4";
-      const response = await axiosInstance.get(
-        `${BaseUrl}booking/requests?adminId=${adminId}`
-      );
-
-      if (response.data.success && response.data.data) {
-        const formattedRequests = response.data.data.map((request) => ({
-          id: request.id,
-          memberName: request.memberName || `Member ID: ${request.memberId}`,
-          planName: request.className || "Personal Training",
-          planType: request.className ? "group" : "personal",
-          price: `₹${parseFloat(request.price).toLocaleString()}`,
-          sessions: "N/A",
-          validity: "N/A",
-          sessionsUsed: "N/A",
-          requestedAt: new Date(request.createdAt).toLocaleString(),
-          status: request.status.toLowerCase(),
-          upiId: request.upiId,
-          classId: request.classId,
-          memberId: request.memberId,
-          branchId: request.branchId,
-          requestType: "booking",
-        }));
-        setBookingRequests(formattedRequests);
-      }
-    } catch (err) {
-      console.error("Error fetching booking requests:", err);
-      // Don't set global error state here to avoid showing it in create plan modal
-      // Instead, we could show a toast notification or handle it differently
-    }
-  };
-
   const fetchRenewalRequests = async () => {
     try {
       const adminId = localStorage.getItem("userId") || "4";
@@ -253,6 +217,7 @@ const CreatePlan = () => {
     } catch (err) {
       console.error("Error fetching renewal requests:", err);
       // Don't set global error state here to avoid showing it in create plan modal
+      // Instead, we could show a toast notification or handle it differently
     }
   };
 
@@ -605,21 +570,6 @@ const CreatePlan = () => {
             )
           );
         }
-      } else {
-        const endpoint =
-          status === "approved"
-            ? `${BaseUrl}booking/approve/${requestToProcess.id}`
-            : `${BaseUrl}booking/reject/${requestToProcess.id}`;
-
-        response = await axiosInstance.put(endpoint, payload);
-
-        if (response.data.success) {
-          setBookingRequests(
-            bookingRequests.map((req) =>
-              req.id === requestToProcess.id ? { ...req, status } : req
-            )
-          );
-        }
       }
 
       if (response.data.success) {
@@ -651,10 +601,9 @@ const CreatePlan = () => {
   };
 
   const handleToggleRequestStatus = async (requestId) => {
-    const bookingRequest = bookingRequests.find((req) => req.id === requestId);
     const renewalRequest = renewalRequests.find((req) => req.id === requestId);
 
-    const request = bookingRequest || renewalRequest;
+    const request = renewalRequest;
     if (!request) return;
 
     const isRenewal = request.requestType === "renewal";
@@ -686,21 +635,6 @@ const CreatePlan = () => {
             )
           );
         }
-      } else {
-        const endpoint =
-          newStatus === "approved"
-            ? `${BaseUrl}booking/approve/${requestId}`
-            : `${BaseUrl}booking/reject/${requestId}`;
-
-        response = await axiosInstance.put(endpoint, payload);
-
-        if (response.data.success) {
-          setBookingRequests(
-            bookingRequests.map((req) =>
-              req.id === requestId ? { ...req, status: newStatus } : req
-            )
-          );
-        }
       }
 
       if (response.data.success) {
@@ -723,14 +657,6 @@ const CreatePlan = () => {
     }
   };
 
-  const pendingRequests = bookingRequests.filter((r) => r.status === "pending");
-  const approvedRequests = bookingRequests.filter(
-    (r) => r.status === "approved"
-  );
-  const rejectedRequests = bookingRequests.filter(
-    (r) => r.status === "rejected"
-  );
-
   const pendingRenewals = renewalRequests.filter((r) => r.status === "pending");
   const approvedRenewals = renewalRequests.filter(
     (r) => r.status === "approved"
@@ -738,6 +664,27 @@ const CreatePlan = () => {
   const rejectedRenewals = renewalRequests.filter(
     (r) => r.status === "rejected"
   );
+
+  const renewalStats = [
+    {
+      label: "Pending Renewals",
+      count: pendingRenewals.length,
+      bg: "#fff3cd",
+      color: "#856404",
+    },
+    {
+      label: "Approved Renewals",
+      count: approvedRenewals.length,
+      bg: "#d1ecf1",
+      color: "#0c5460",
+    },
+    {
+      label: "Rejected Renewals",
+      count: rejectedRenewals.length,
+      bg: "#f8d7da",
+      color: "#721c24",
+    },
+  ];
 
   const renderPlanCard = (plan, planType) => (
     <Col xs={12} sm={6} lg={4} key={plan.id} className="d-flex mb-3">
@@ -899,103 +846,6 @@ const CreatePlan = () => {
     </Col>
   );
 
-  const renderBookingRequestRow = (req, index) => (
-    <tr key={req.id}>
-      <td>{index + 1}</td>
-      <td>
-        <strong>{req.memberName}</strong>
-      </td>
-      <td>{req.planName}</td>
-      <td>
-        <span
-          className="badge px-3 py-2"
-          style={{
-            backgroundColor: customColor,
-            color: "white",
-            borderRadius: "20px",
-          }}
-        >
-          {req.planType}
-        </span>
-      </td>
-      <td>{req.requestedAt}</td>
-      <td>
-        {req.status === "pending" && (
-          <span
-            className="badge bg-warning text-dark px-3 py-2"
-            style={{ borderRadius: "20px" }}
-          >
-            Pending
-          </span>
-        )}
-        {req.status === "approved" && (
-          <span
-            className="badge px-3 py-2"
-            style={{
-              backgroundColor: customColor,
-              color: "white",
-              borderRadius: "20px",
-            }}
-          >
-            Approved
-          </span>
-        )}
-        {req.status === "rejected" && (
-          <span
-            className="badge bg-danger px-3 py-2"
-            style={{ borderRadius: "20px" }}
-          >
-            Rejected
-          </span>
-        )}
-      </td>
-      <td>
-        <div className="d-flex gap-2 align-items-center">
-          {req.status === "pending" ? (
-            <Button
-              size="sm"
-              className="d-flex align-items-center gap-1 fw-medium"
-              onClick={() => handleOpenStatusModal(req)}
-              style={{
-                backgroundColor: "#ffc107",
-                borderColor: "#ffc107",
-                color: "#212529",
-              }}
-            >
-              <FaToggleOn size={14} /> Process
-            </Button>
-          ) : req.status === "approved" ? (
-            <Button
-              size="sm"
-              className="d-flex align-items-center gap-1 fw-medium"
-              onClick={() => handleToggleRequestStatus(req.id)}
-              style={{
-                backgroundColor: customColor,
-                borderColor: customColor,
-                color: "white",
-              }}
-            >
-              <FaToggleOn size={14} /> Active
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              className="d-flex align-items-center gap-1 fw-medium"
-              onClick={() => handleToggleRequestStatus(req.id)}
-              style={{
-                backgroundColor: "#6c757d",
-                borderColor: "#6c757d",
-                color: "white",
-              }}
-            >
-              <FaToggleOff size={14} /> Inactive
-            </Button>
-          )}
-        </div>
-      </td>
-    </tr>
-  );
-
   const renderRenewalRequestRow = (req, index) => (
     <tr key={req.id}>
       <td>{index + 1}</td>
@@ -1099,124 +949,6 @@ const CreatePlan = () => {
         </div>
       </td>
     </tr>
-  );
-
-  const renderBookingRequestCard = (req, index) => (
-    <Card
-      key={req.id}
-      className="mb-3 border shadow-sm"
-      style={{ borderRadius: "10px" }}
-    >
-      <Card.Body className="p-3">
-        <div className="d-flex justify-content-between align-items-start mb-2">
-          <h6 className="mb-0 fw-bold">{req.memberName}</h6>
-          <span className="badge bg-secondary rounded-pill">{index + 1}</span>
-        </div>
-        <div className="mb-2">
-          <span className="text-muted small">Plan: </span>
-          {req.planName}
-        </div>
-        <div className="mb-2">
-          <span className="text-muted small">Type: </span>
-          <span
-            className="badge px-2 py-1"
-            style={{
-              backgroundColor: customColor,
-              color: "white",
-              borderRadius: "20px",
-            }}
-          >
-            {req.planType}
-          </span>
-        </div>
-        <div className="row mb-2">
-          <div className="col-6">
-            <span className="text-muted small">Sessions: </span>
-            {req.sessions}
-          </div>
-          <div className="col-6">
-            <span className="text-muted small">Validity: </span>
-            {req.validity} days
-          </div>
-        </div>
-        <div className="mb-3">
-          <span className="text-muted small">Requested: </span>
-          {req.requestedAt}
-        </div>
-        <div className="d-flex justify-content-between align-items-center">
-          <div>
-            {req.status === "pending" && (
-              <span
-                className="badge bg-warning text-dark px-3 py-2"
-                style={{ borderRadius: "20px" }}
-              >
-                Pending
-              </span>
-            )}
-            {req.status === "approved" && (
-              <span
-                className="badge px-3 py-2"
-                style={{
-                  backgroundColor: customColor,
-                  color: "white",
-                  borderRadius: "20px",
-                }}
-              >
-                Approved
-              </span>
-            )}
-            {req.status === "rejected" && (
-              <span
-                className="badge bg-danger px-3 py-2"
-                style={{ borderRadius: "20px" }}
-              >
-                Rejected
-              </span>
-            )}
-          </div>
-          {req.status === "pending" ? (
-            <Button
-              size="sm"
-              className="d-flex align-items-center gap-1 fw-medium"
-              onClick={() => handleOpenStatusModal(req)}
-              style={{
-                backgroundColor: "#ffc107",
-                borderColor: "#ffc107",
-                color: "#212529",
-              }}
-            >
-              <FaToggleOn size={14} /> Process
-            </Button>
-          ) : req.status === "approved" ? (
-            <Button
-              size="sm"
-              className="d-flex align-items-center gap-1 fw-medium"
-              onClick={() => handleToggleRequestStatus(req.id)}
-              style={{
-                backgroundColor: customColor,
-                borderColor: customColor,
-                color: "white",
-              }}
-            >
-              <FaToggleOn size={14} /> Active
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              className="d-flex align-items-center gap-1 fw-medium"
-              onClick={() => handleToggleRequestStatus(req.id)}
-              style={{
-                backgroundColor: "#6c757d",
-                borderColor: "#6c757d",
-                color: "white",
-              }}
-            >
-              <FaToggleOff size={14} /> Inactive
-            </Button>
-          )}
-        </div>
-      </Card.Body>
-    </Card>
   );
 
   const renderRenewalRequestCard = (req, index) => (
@@ -1344,48 +1076,6 @@ const CreatePlan = () => {
       </Card.Body>
     </Card>
   );
-
-  const bookingStats = [
-    {
-      label: "Pending Requests",
-      count: pendingRequests.length,
-      bg: "#fff3cd",
-      color: "#856404",
-    },
-    {
-      label: "Approved Bookings",
-      count: approvedRequests.length,
-      bg: "#d1ecf1",
-      color: "#0c5460",
-    },
-    {
-      label: "Rejected Requests",
-      count: rejectedRequests.length,
-      bg: "#f8d7da",
-      color: "#721c24",
-    },
-  ];
-
-  const renewalStats = [
-    {
-      label: "Pending Renewals",
-      count: pendingRenewals.length,
-      bg: "#fff3cd",
-      color: "#856404",
-    },
-    {
-      label: "Approved Renewals",
-      count: approvedRenewals.length,
-      bg: "#d1ecf1",
-      color: "#0c5460",
-    },
-    {
-      label: "Rejected Renewals",
-      count: rejectedRenewals.length,
-      bg: "#f8d7da",
-      color: "#721c24",
-    },
-  ];
 
   return (
     <div className="bg-light min-vh-100">
@@ -1562,7 +1252,7 @@ const CreatePlan = () => {
           </Row>
         </Tab.Container>
 
-        {/* Booking Requests Section */}
+        {/* Renewal Requests Section */}
         <div
           className="mt-5 pt-4 border-top"
           style={{ borderColor: customColor }}
@@ -1571,91 +1261,45 @@ const CreatePlan = () => {
             className="fw-bold mb-4 text-dark"
             style={{ fontSize: "clamp(1.2rem, 3vw, 1.4rem)" }}
           >
-            Member Requests
+            Member Renewal Requests
           </h3>
-
-          {/* Request Type Tabs */}
-          <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 mb-4 p-3 bg-white rounded shadow-sm border">
-            <div className="d-flex flex-column flex-md-row gap-3 w-100 w-md-auto">
-              <Button
-                variant={
-                  activeRequestTab === "booking" ? "primary" : "outline-primary"
-                }
-                onClick={() => setActiveRequestTab("booking")}
-                className="px-3 px-md-4 py-2 fw-medium d-flex align-items-center justify-content-center"
-                style={{
-                  backgroundColor:
-                    activeRequestTab === "booking"
-                      ? customColor
-                      : "transparent",
-                  borderColor: customColor,
-                  color: activeRequestTab === "booking" ? "white" : customColor,
-                  width: "100%",
-                  maxWidth: "300px",
-                }}
-              >
-                Booking Requests
-              </Button>
-              <Button
-                variant={
-                  activeRequestTab === "renewal" ? "primary" : "outline-primary"
-                }
-                onClick={() => setActiveRequestTab("renewal")}
-                className="px-3 px-md-4 py-2 fw-medium d-flex align-items-center justify-content-center"
-                style={{
-                  backgroundColor:
-                    activeRequestTab === "renewal"
-                      ? customColor
-                      : "transparent",
-                  borderColor: customColor,
-                  color: activeRequestTab === "renewal" ? "white" : customColor,
-                  width: "100%",
-                  maxWidth: "300px",
-                }}
-              >
-                Renewal Requests
-              </Button>
-            </div>
-          </div>
 
           {/* Request Statistics */}
           <Row className="mb-4 g-3">
-            {(activeRequestTab === "booking" ? bookingStats : renewalStats).map(
-              (item, i) => (
-                <Col xs={12} sm={6} md={4} key={i}>
-                  <Card
-                    className="text-center border-0 shadow-sm h-100"
-                    style={{ backgroundColor: "#f8f9fa", borderRadius: "12px" }}
-                  >
-                    <Card.Body className="py-3 py-md-4">
-                      <div
-                        className="d-flex justify-content-center align-items-center mb-2"
-                        style={{
-                          width: "60px",
-                          height: "60px",
-                          borderRadius: "50%",
-                          backgroundColor: item.bg,
-                          margin: "0 auto",
-                        }}
+            {renewalStats.map((item, i) => (
+              <Col xs={12} sm={6} md={4} key={i}>
+                <Card
+                  className="text-center border-0 shadow-sm h-100"
+                  style={{ backgroundColor: "#f8f9fa", borderRadius: "12px" }}
+                >
+                  <Card.Body className="py-3 py-md-4">
+                    <div
+                      className="d-flex justify-content-center align-items-center mb-2"
+                      style={{
+                        width: "60px",
+                        height: "60px",
+                        borderRadius: "50%",
+                        backgroundColor: item.bg,
+                        margin: "0 auto",
+                      }}
+                    >
+                      <span
+                        className="fw-bold"
+                        style={{ color: item.color, fontSize: "1.5rem" }}
                       >
-                        <span
-                          className="fw-bold"
-                          style={{ color: item.color, fontSize: "1.5rem" }}
-                        >
-                          {item.count}
-                        </span>
-                      </div>
-                      <h5
-                        className="fw-bold mb-1"
-                        style={{ color: customColor }}
-                      >
-                        {item.label}
-                      </h5>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              )
-            )}
+                        {item.count}
+                      </span>
+                    </div>
+                    <h5
+                      className="fw-bold mb-1"
+                      style={{ color: customColor }}
+                    >
+                      {item.label}
+                    </h5>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
           </Row>
 
           {/* Requests Table */}
@@ -1665,29 +1309,17 @@ const CreatePlan = () => {
               style={{ borderBottom: `3px solid ${customColor}` }}
             >
               <h5 className="mb-0 text-dark" style={{ fontWeight: "600" }}>
-                All {activeRequestTab === "booking" ? "Booking" : "Renewal"}{" "}
-                Requests
+                All Renewal Requests
               </h5>
               <small className="text-muted">
-                Total:{" "}
-                {activeRequestTab === "booking"
-                  ? bookingRequests.length
-                  : renewalRequests.length}{" "}
-                requests
+                Total: {renewalRequests.length} requests
               </small>
             </Card.Header>
             <Card.Body className="p-0">
-              {(
-                activeRequestTab === "booking"
-                  ? bookingRequests.length === 0
-                  : renewalRequests.length === 0
-              ) ? (
+              {renewalRequests.length === 0 ? (
                 <div className="text-center text-muted py-5">
                   <div className="display-4 mb-3">📭</div>
-                  <p className="fs-5">
-                    No {activeRequestTab === "booking" ? "booking" : "renewal"}{" "}
-                    requests yet.
-                  </p>
+                  <p className="fs-5">No renewal requests yet.</p>
                 </div>
               ) : (
                 <>
@@ -1697,14 +1329,8 @@ const CreatePlan = () => {
                         <tr>
                           <th>#</th>
                           <th>Member</th>
-                          {activeRequestTab === "renewal" && (
-                            <th>Current Plan</th>
-                          )}
-                          <th>
-                            {activeRequestTab === "renewal"
-                              ? "Requested Plan"
-                              : "Plan"}
-                          </th>
+                          <th>Current Plan</th>
+                          <th>Requested Plan</th>
                           <th>Type</th>
                           <th>Requested At</th>
                           <th>Status</th>
@@ -1712,26 +1338,18 @@ const CreatePlan = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {activeRequestTab === "booking"
-                          ? bookingRequests.map((req, index) =>
-                              renderBookingRequestRow(req, index)
-                            )
-                          : renewalRequests.map((req, index) =>
-                              renderRenewalRequestRow(req, index)
-                            )}
+                        {renewalRequests.map((req, index) =>
+                          renderRenewalRequestRow(req, index)
+                        )}
                       </tbody>
                     </Table>
                   </div>
 
                   {/* Mobile View */}
                   <div className="d-md-none p-3">
-                    {activeRequestTab === "booking"
-                      ? bookingRequests.map((req, index) =>
-                          renderBookingRequestCard(req, index)
-                        )
-                      : renewalRequests.map((req, index) =>
-                          renderRenewalRequestCard(req, index)
-                        )}
+                    {renewalRequests.map((req, index) =>
+                      renderRenewalRequestCard(req, index)
+                    )}
                   </div>
                 </>
               )}
@@ -1757,11 +1375,7 @@ const CreatePlan = () => {
             <Modal.Title
               style={{ color: "#333", fontWeight: "600", fontSize: "1.1rem" }}
             >
-              Process{" "}
-              {requestToProcess?.requestType === "renewal"
-                ? "Renewal"
-                : "Booking"}{" "}
-              Request
+              Process Renewal Request
             </Modal.Title>
             <Button
               variant="link"
@@ -1776,23 +1390,15 @@ const CreatePlan = () => {
             {requestToProcess && (
               <div>
                 <p className="mb-2 fw-medium text-center">
-                  Process{" "}
-                  {requestToProcess.requestType === "renewal"
-                    ? "renewal"
-                    : "booking"}{" "}
-                  request from:
+                  Process renewal request from:
                 </p>
                 <div className="text-center mb-3">
                   <strong>{requestToProcess.memberName}</strong>
-                  {requestToProcess.requestType === "renewal" && (
-                    <div className="text-muted small">
-                      {requestToProcess.memberEmail}
-                    </div>
-                  )}
                   <div className="text-muted small">
-                    {requestToProcess.requestType === "renewal"
-                      ? `${requestToProcess.currentPlan} → ${requestToProcess.requestedPlan}`
-                      : requestToProcess.planName}
+                    {requestToProcess.memberEmail}
+                  </div>
+                  <div className="text-muted small">
+                    {requestToProcess.currentPlan} → {requestToProcess.requestedPlan}
                   </div>
                 </div>
                 <div className="d-flex gap-2 justify-content-center">
