@@ -386,7 +386,7 @@ const ClassSchedule = () => {
                           </div>
                         </div>
                       </div>
-                      <div className="col-md-6">
+                      {/* <div className="col-md-6">
                         <div className="d-flex align-items-center">
                           <div className="bg-light rounded-circle p-2 me-3">
                             <FaRupeeSign size={16} className="text-success" />
@@ -396,7 +396,7 @@ const ClassSchedule = () => {
                             <div className="text-success fw-bold">{formatPrice(selectedClass.price)}</div>
                           </div>
                         </div>
-                      </div>
+                      </div> */}
                       <div className="col-md-6">
                         <div className="d-flex align-items-center">
                           <div className="bg-light rounded-circle p-2 me-3">

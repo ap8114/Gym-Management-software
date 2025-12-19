@@ -30,7 +30,7 @@ const MemberDashboard = () => {
   };
 
   const user = getUserFromStorage();
-  const memberId = user?.id || null;
+  const memberId = user?.memberId || null;
   const adminId = user?.adminId || null;
   const branchId = user?.branchId || null;
   const name = user?.fullName || '';

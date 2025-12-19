@@ -42,24 +42,21 @@ const CreatePlan = () => {
     validity: "",
     price: "",
     type: "group",
-    trainerType: "", // New field for trainer type (personal/general)
-    trainerId: "", // New field for selected trainer ID
+    trainerType: "",
+    trainerId: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [createPlanError, setCreatePlanError] = useState(null); // Separate error state for create plan
+  const [createPlanError, setCreatePlanError] = useState(null);
   const [apiPlans, setApiPlans] = useState([]);
   const [plansLoaded, setPlansLoaded] = useState(false);
   const [viewLoading, setViewLoading] = useState(false);
   const [renewalRequests, setRenewalRequests] = useState([]);
-  const [activeRequestTab, setActiveRequestTab] = useState("renewal"); // Changed default to "renewal"
-
-  // New state for trainers
+  const [membershipRequests, setMembershipRequests] = useState([]); // 👈 New state
+  const [activeRequestTab, setActiveRequestTab] = useState("renewal");
   const [trainers, setTrainers] = useState([]);
   const [trainersLoading, setTrainersLoading] = useState(false);
-
   const customColor = "#6EB2CC";
-
   const [groupPlans, setGroupPlans] = useState([]);
   const [personalPlans, setPersonalPlans] = useState([]);
 
@@ -78,10 +75,11 @@ const CreatePlan = () => {
   const branchId = user?.branchId || null;
   const name = user?.fullName || null;
 
-  // Fetch plans and renewal requests
+  // Fetch all data on mount
   useEffect(() => {
     fetchPlansFromAPI();
     fetchRenewalRequests();
+    fetchMembershipRequests(); // 👈 New
   }, []);
 
   // Fetch trainers when trainer type changes
@@ -99,12 +97,11 @@ const CreatePlan = () => {
         `${BaseUrl}class/trainers/personal-general?adminId=${adminId}`
       );
       if (response.data.success) {
-        // Filter trainers based on selected type
         const filteredTrainers = response.data.trainers.filter((trainer) => {
           if (trainerType === "personal") {
-            return trainer.roleId === 5; // Assuming roleId 5 is for personal trainers
+            return trainer.roleId === 5;
           } else if (trainerType === "general") {
-            return trainer.roleId === 6; // Assuming roleId 6 is for general trainers
+            return trainer.roleId === 6;
           }
           return false;
         });
@@ -116,6 +113,38 @@ const CreatePlan = () => {
       console.error("Error fetching trainers:", err);
     } finally {
       setTrainersLoading(false);
+    }
+  };
+
+  // 👇 NEW: Fetch Membership Booking Requests
+  const fetchMembershipRequests = async () => {
+    try {
+      const response = await axiosInstance.get(
+        `booking/admin/booking-requests/${adminId}`
+      );
+      if (response?.data?.success && Array.isArray(response.data.data)) {
+        const formatted = response.data.data.map((req) => ({
+          id: req.bookingRequestId,
+          bookingRequestId: req.bookingRequestId,
+          memberId: req.memberId,
+          // 👇 Use userName if available, else memberName
+          memberName: req.userName || req.memberName || "Unknown",
+          // 👇 Email is NOT in response → mark as not provided
+          memberEmail: req.email, // or omit entirely
+          memberPhone: req.userPhone || req.memberPhone || "N/A",
+          memberStatus: req.memberStatus || "Inactive",
+          requestedPlan: "Membership", // since it's a membership request
+          price: "N/A", // not in response
+          validity: "N/A",
+          upiId: "N/A",
+          requestedAt: req.createdAt || "N/A",
+          status: req.bookingStatus === "pending" ? "pending" : "approved",
+          requestType: "membership",
+        }));
+        setMembershipRequests(formatted);
+      }
+    } catch (err) {
+      console.error("Error fetching membership requests:", err);
     }
   };
 
@@ -134,16 +163,13 @@ const CreatePlan = () => {
           sessions: plan.sessions,
           validity: plan.validityDays,
           price: `₹${plan.price.toLocaleString()}`,
-          // Use the actual status from API or default to true if not provided
           active: plan.status !== undefined ? (plan.status === "Active" || plan.status === true) : true,
           type: plan.type.toLowerCase(),
-          trainerType: plan.trainerType || "", // Add trainer type from API
-          trainerId: plan.trainerId || null, // Add trainer ID from API
+          trainerType: plan.trainerType || "",
+          trainerId: plan.trainerId || null,
         }));
         setApiPlans(formattedPlans);
         setPlansLoaded(true);
-
-        // Properly filter all plan types
         setGroupPlans(formattedPlans.filter((p) => p.type === "group"));
         setPersonalPlans(formattedPlans.filter((p) => p.type === "personal"));
         setMembershipPlans(formattedPlans.filter((p) => p.type === "member"));
@@ -161,20 +187,15 @@ const CreatePlan = () => {
   const fetchRenewalRequests = async () => {
     try {
       const response = await axiosInstance.get(`members/renew/${adminId}`);
-
       if (response?.data && response.data.success && response.data.data) {
         const payload = response.data.data;
         const members = Array.isArray(payload.members) ? payload.members : [];
         const plans = Array.isArray(payload.plans) ? payload.plans : [];
 
-        // Convert each member + their renewalPreview entries (or single `plan`) into UI-friendly requests
         const formatted = members.flatMap((member) => {
-          // prefer array of previews if available
           const previews = Array.isArray(member.renewalPreview)
             ? member.renewalPreview
             : null;
-
-          // If previews array exists, map each preview
           if (Array.isArray(previews) && previews.length > 0) {
             return previews.map((preview) => {
               const planMeta = plans.find((p) => p.id === preview.planId) || {};
@@ -204,8 +225,6 @@ const CreatePlan = () => {
               };
             });
           }
-
-          // If no previews array, but member has a single `plan` + previewMembershipFrom/To use that
           if (member.plan) {
             const planObj = member.plan;
             return [
@@ -231,8 +250,6 @@ const CreatePlan = () => {
               },
             ];
           }
-
-          // fallback: empty entry to avoid dropping the member
           return [
             {
               id: member.id,
@@ -255,7 +272,6 @@ const CreatePlan = () => {
             },
           ];
         });
-
         setRenewalRequests(formatted);
       }
     } catch (err) {
@@ -278,7 +294,6 @@ const CreatePlan = () => {
           sessions: plan.sessions,
           validity: plan.validityDays,
           price: `₹${plan.price.toLocaleString()}`,
-          // Use the actual status from API or default to true if not provided
           active: plan.status !== undefined ? (plan.status === "Active" || plan.status === true) : true,
           type: plan.type.toLowerCase(),
           createdAt: plan.createdAt,
@@ -317,11 +332,9 @@ const CreatePlan = () => {
       !newPlan.validity ||
       !newPlan.price
     ) {
-      setCreatePlanError("Please fill all fields"); // Use separate error state
+      setCreatePlanError("Please fill all fields");
       return;
     }
-
-    // Additional validation for membership plans
     if (
       newPlan.type === "member" &&
       (!newPlan.trainerType || !newPlan.trainerId)
@@ -331,9 +344,8 @@ const CreatePlan = () => {
       );
       return;
     }
-
     setLoading(true);
-    setCreatePlanError(null); // Reset create plan error
+    setCreatePlanError(null);
     try {
       const adminId = localStorage.getItem("userId") || "4";
       const payload = {
@@ -344,13 +356,10 @@ const CreatePlan = () => {
         adminId: parseInt(adminId),
         type: newPlan.type.toUpperCase(),
       };
-
-      // Add trainer information for membership plans
       if (newPlan.type === "member") {
         payload.trainerType = newPlan.trainerType;
         payload.trainerId = parseInt(newPlan.trainerId);
       }
-
       const response = await axiosInstance.post(
         `${BaseUrl}MemberPlan`,
         payload
@@ -362,7 +371,7 @@ const CreatePlan = () => {
           sessions: response.data.plan.sessions,
           validity: response.data.plan.validityDays,
           price: `₹${response.data.plan.price.toLocaleString()}`,
-          active: true, // New plans are active by default
+          active: true,
           type: response.data.plan.type.toLowerCase(),
         };
         const currentPlans =
@@ -392,13 +401,13 @@ const CreatePlan = () => {
           } Plan Created: ${plan.name}`
         );
       } else {
-        setCreatePlanError("Failed to create plan."); // Use separate error state
+        setCreatePlanError("Failed to create plan.");
       }
     } catch (err) {
       console.error("Error creating plan:", err);
       setCreatePlanError(
         err.response?.data?.message || "Failed to create plan."
-      ); // Use separate error state
+      );
     } finally {
       setLoading(false);
     }
@@ -438,13 +447,10 @@ const CreatePlan = () => {
         adminId: parseInt(adminId),
         type: newPlan.type.toUpperCase(),
       };
-
-      // Use the correct URL format for updating a plan
       const response = await axiosInstance.put(
         `${BaseUrl}MemberPlan/${adminId}/${selectedPlan.id}`,
         payload
       );
-
       if (response.data.success) {
         const updatedPlan = {
           ...selectedPlan,
@@ -454,7 +460,6 @@ const CreatePlan = () => {
           validity: response.data.plan.validityDays,
           price: `₹${response.data.plan.price.toLocaleString()}`,
           type: response.data.plan.type.toLowerCase(),
-          // Keep the current active status
           active: selectedPlan.active,
         };
         const currentPlans = getPlansByType(selectedPlan.type);
@@ -534,41 +539,29 @@ const CreatePlan = () => {
         setError("Plan not found");
         return;
       }
-
-      // Determine new status based on current active state
       const newStatus = !plan.active ? "Active" : "Inactive";
-
-      // Use the correct URL format and payload
       const response = await axiosInstance.put(
         `${BaseUrl}MemberPlan/${adminId}/${planId}`,
         {
           status: newStatus,
         }
       );
-
       if (response.data.success) {
-        // Update local state with the response from the server
         const updatedActiveStatus = response.data.plan.status === "Active" || response.data.plan.status === true;
-
-        // Update all relevant state arrays
         updatePlansByType(
           planType,
           currentPlans.map((p) =>
             p.id === planId ? { ...p, active: updatedActiveStatus } : p
           )
         );
-
         setApiPlans(
           apiPlans.map((p) =>
             p.id === planId ? { ...p, active: updatedActiveStatus } : p
           )
         );
-
-        // Also update selected plan if it's currently being viewed
         if (selectedPlan && selectedPlan.id === planId) {
           setSelectedPlan({ ...selectedPlan, active: updatedActiveStatus });
         }
-
         alert(`✅ Plan status updated to ${newStatus}!`);
       } else {
         setError("Failed to update plan status.");
@@ -581,123 +574,87 @@ const CreatePlan = () => {
     }
   };
 
+  // 👇 Handle Membership Request Approval/Rejection
+  const handleProcessMembershipStatus = async (status) => {
+    if (!requestToProcess || requestToProcess.requestType !== "membership") return;
+    try {
+      const endpoint = `booking/admin/booking-requests/${requestToProcess.bookingRequestId}/status`;
+      const payload = {
+        status: status === "approved" ? "approved" : "rejected",
+      };
+      const response = await axiosInstance.put(endpoint, payload);
+      if (response.data.success) {
+        setMembershipRequests((prev) =>
+          prev.map((req) =>
+            req.id === requestToProcess.id ? { ...req, status } : req
+          )
+        );
+        const msg =
+          status === "approved"
+            ? "✅ Membership Request Approved!"
+            : "❌ Membership Request Rejected.";
+        alert(msg);
+        setShowStatusModal(false);
+        setRequestToProcess(null);
+      } else {
+        setError("Failed to update membership request status.");
+      }
+    } catch (err) {
+      console.error("Error updating membership request:", err);
+      setError(
+        err.response?.data?.message ||
+        "Failed to update request status. Please try again."
+      );
+    }
+  };
+
   const handleOpenStatusModal = (request) => {
     setRequestToProcess(request);
     setShowStatusModal(true);
   };
 
   const handleProcessStatus = async (status) => {
-    if (!requestToProcess || requestToProcess.requestType !== "renewal") return;
-
-    try {
-      const { memberId, previewPlanId } = requestToProcess;
-
-      if (!memberId) {
-        setError("Member ID is missing in the request.");
-        return;
-      }
-
-      // New unified endpoint
-      const endpoint = `/members/admin/renewal/${memberId}/status`;
-
-      const payload = {
-        adminId: parseInt(adminId),
-        ...(previewPlanId && { planId: parseInt(previewPlanId) }), // include only if exists
-      };
-
-      // map UI status to backend expected values
-      const backendStatus = status === "approved" ? "Active" : "Reject";
-      payload.status = backendStatus;
-
-      const response = await axiosInstance.put(endpoint, payload);
-
-      if (response.data.success) {
-        // Update local state
-        setRenewalRequests((prev) =>
-          prev.map((req) =>
-            req.id === requestToProcess.id ? { ...req, status } : req
-          )
-        );
-
-        const msg =
-          status === "approved"
-            ? "✅ Renewal Approved! Member will be notified."
-            : "❌ Renewal Rejected. Member will be notified.";
-
-        alert(msg);
-        setShowStatusModal(false);
-        setRequestToProcess(null);
-      } else {
-        setError("Failed to update renewal status.");
-      }
-    } catch (err) {
-      console.error("Error updating renewal status:", err);
-      setError(
-        err.response?.data?.message ||
-        "Failed to update renewal status. Please try again."
-      );
-    }
-  };
-
-  const handleToggleRequestStatus = async (requestId) => {
-    const renewalRequest = renewalRequests.find((req) => req.id === requestId);
-
-    const request = renewalRequest;
-    if (!request) return;
-
-    const isRenewal = request.requestType === "renewal";
-
-    if (request.status === "pending") {
-      handleOpenStatusModal(request);
-      return;
-    }
-
-    const newStatus = request.status === "approved" ? "rejected" : "approved";
-    try {
-      let response;
-      const payload = {
-        adminId: parseInt(adminId),
-      };
-
-      if (isRenewal) {
-        const endpoint =
-          newStatus === "approved"
-            ? `${BaseUrl}members/renew/approve/${requestId}`
-            : `${BaseUrl}members/renew/reject/${requestId}`;
-
-        // include planId when available so backend can act on specific preview
-        if (request.previewPlanId) payload.planId = parseInt(request.previewPlanId);
-        // map UI status to backend expected values
-        const backendStatus = newStatus === "approved" ? "Active" : "Reject";
-        payload.status = backendStatus;
-        response = await axiosInstance.put(endpoint, payload);
-
+    if (!requestToProcess) return;
+    if (requestToProcess.requestType === "renewal") {
+      // Existing renewal logic
+      try {
+        const { memberId, previewPlanId } = requestToProcess;
+        if (!memberId) {
+          setError("Member ID is missing in the request.");
+          return;
+        }
+        const endpoint = `/members/admin/renewal/${memberId}/status`;
+        const payload = {
+          adminId: parseInt(adminId),
+          ...(previewPlanId && { planId: parseInt(previewPlanId) }),
+          status: status === "approved" ? "Active" : "Reject",
+        };
+        const response = await axiosInstance.put(endpoint, payload);
         if (response.data.success) {
-          setRenewalRequests(
-            renewalRequests.map((req) =>
-              req.id === requestId ? { ...req, status: newStatus } : req
+          setRenewalRequests((prev) =>
+            prev.map((req) =>
+              req.id === requestToProcess.id ? { ...req, status } : req
             )
           );
+          const msg =
+            status === "approved"
+              ? "✅ Renewal Approved! Member will be notified."
+              : "❌ Renewal Rejected. Member will be notified.";
+          alert(msg);
+          setShowStatusModal(false);
+          setRequestToProcess(null);
+        } else {
+          setError("Failed to update renewal status.");
         }
-      }
-
-      if (response.data.success) {
-        const msg =
-          newStatus === "approved"
-            ? `✅ ${isRenewal ? "Renewal" : "Booking"} Approved!`
-            : `❌ ${isRenewal ? "Renewal" : "Booking"} Rejected.`;
-        alert(msg);
-      } else {
+      } catch (err) {
+        console.error("Error updating renewal status:", err);
         setError(
-          `Failed to toggle ${isRenewal ? "renewal" : "booking"} status.`
+          err.response?.data?.message ||
+          "Failed to update renewal status. Please try again."
         );
       }
-    } catch (err) {
-      console.error("Error toggling request:", err);
-      setError(
-        err.response?.data?.message ||
-        `Failed to update ${isRenewal ? "renewal" : "booking"} request.`
-      );
+    } else if (requestToProcess.requestType === "membership") {
+      await handleProcessMembershipStatus(status);
     }
   };
 
@@ -706,6 +663,14 @@ const CreatePlan = () => {
     (r) => r.status === "approved"
   );
   const rejectedRenewals = renewalRequests.filter(
+    (r) => r.status === "rejected"
+  );
+
+  const pendingMemberships = membershipRequests.filter((r) => r.status === "pending");
+  const approvedMemberships = membershipRequests.filter(
+    (r) => r.status === "approved"
+  );
+  const rejectedMemberships = membershipRequests.filter(
     (r) => r.status === "rejected"
   );
 
@@ -725,6 +690,27 @@ const CreatePlan = () => {
     {
       label: "Rejected Renewals",
       count: rejectedRenewals.length,
+      bg: "#f8d7da",
+      color: "#721c24",
+    },
+  ];
+
+  const membershipStats = [
+    {
+      label: "Pending Membership",
+      count: pendingMemberships.length,
+      bg: "#fff3cd",
+      color: "#856404",
+    },
+    {
+      label: "Approved Membership",
+      count: approvedMemberships.length,
+      bg: "#d1ecf1",
+      color: "#0c5460",
+    },
+    {
+      label: "Rejected Membership",
+      count: rejectedMemberships.length,
       bg: "#f8d7da",
       color: "#721c24",
     },
@@ -837,7 +823,6 @@ const CreatePlan = () => {
                 Price: {plan.price}
               </strong>
             </li>
-            {/* Show trainer type only for membership plans */}
             {planType === "member" && plan.trainerType && (
               <li className="mb-2 d-flex align-items-center gap-2">
                 <span className="text-muted" style={{ fontSize: "0.9rem" }}>
@@ -890,17 +875,13 @@ const CreatePlan = () => {
     </Col>
   );
 
-  const renderRenewalRequestRow = (req, index) => (
+  const renderRequestRow = (req, index, type) => (
     <tr key={req.id}>
       <td>{index + 1}</td>
       <td>
         <strong>{req.memberName}</strong>
         <div className="text-muted small">{req.memberEmail}</div>
       </td>
-      {/* <td>
-        <div>{req.currentPlan}</div>
-        <div className="text-muted small">Current Plan</div>
-      </td> */}
       <td>
         <div>{req.requestedPlan}</div>
         <div className="text-muted small">Requested Plan</div>
@@ -914,7 +895,7 @@ const CreatePlan = () => {
             borderRadius: "20px",
           }}
         >
-          {req.requestedPlanType}
+          {type === "renewal" ? req.requestedPlanType : "Membership"}
         </span>
       </td>
       <td>{req.requestedAt}</td>
@@ -967,12 +948,12 @@ const CreatePlan = () => {
             <Button
               size="sm"
               className="d-flex align-items-center gap-1 fw-medium"
-              onClick={() => handleToggleRequestStatus(req.id)}
               style={{
                 backgroundColor: customColor,
                 borderColor: customColor,
                 color: "white",
               }}
+              disabled
             >
               <FaToggleOn size={14} /> Active
             </Button>
@@ -980,12 +961,12 @@ const CreatePlan = () => {
             <Button
               size="sm"
               className="d-flex align-items-center gap-1 fw-medium"
-              onClick={() => handleToggleRequestStatus(req.id)}
               style={{
                 backgroundColor: "#6c757d",
                 borderColor: "#6c757d",
                 color: "white",
               }}
+              disabled
             >
               <FaToggleOff size={14} /> Inactive
             </Button>
@@ -995,7 +976,7 @@ const CreatePlan = () => {
     </tr>
   );
 
-  const renderRenewalRequestCard = (req, index) => (
+  const renderRequestCard = (req, index, type) => (
     <Card
       key={req.id}
       className="mb-3 border shadow-sm"
@@ -1011,10 +992,6 @@ const CreatePlan = () => {
           {req.memberEmail}
         </div>
         <div className="mb-2">
-          <span className="text-muted small">Current Plan: </span>
-          {req.currentPlan}
-        </div>
-        <div className="mb-2">
           <span className="text-muted small">Requested Plan: </span>
           {req.requestedPlan}
         </div>
@@ -1028,13 +1005,13 @@ const CreatePlan = () => {
               borderRadius: "20px",
             }}
           >
-            {req.requestedPlanType}
+            {type === "renewal" ? req.requestedPlanType : "Membership"}
           </span>
         </div>
         <div className="row mb-2">
           <div className="col-6">
-            <span className="text-muted small">Sessions: </span>
-            {req.sessions}
+            <span className="text-muted small">Price: </span>
+            {req.price}
           </div>
           <div className="col-6">
             <span className="text-muted small">Validity: </span>
@@ -1093,12 +1070,12 @@ const CreatePlan = () => {
             <Button
               size="sm"
               className="d-flex align-items-center gap-1 fw-medium"
-              onClick={() => handleToggleRequestStatus(req.id)}
               style={{
                 backgroundColor: customColor,
                 borderColor: customColor,
                 color: "white",
               }}
+              disabled
             >
               <FaToggleOn size={14} /> Active
             </Button>
@@ -1106,12 +1083,12 @@ const CreatePlan = () => {
             <Button
               size="sm"
               className="d-flex align-items-center gap-1 fw-medium"
-              onClick={() => handleToggleRequestStatus(req.id)}
               style={{
                 backgroundColor: "#6c757d",
                 borderColor: "#6c757d",
                 color: "white",
               }}
+              disabled
             >
               <FaToggleOff size={14} /> Inactive
             </Button>
@@ -1130,7 +1107,6 @@ const CreatePlan = () => {
         >
           Plan & Booking Management
         </h1>
-
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 mb-4 p-3 bg-white rounded shadow-sm border">
           <div className="d-flex flex-column flex-md-row gap-3 w-100 w-md-auto">
             <Button
@@ -1195,7 +1171,7 @@ const CreatePlan = () => {
                 trainerType: "",
                 trainerId: "",
               });
-              setCreatePlanError(null); // Reset create plan error when opening modal
+              setCreatePlanError(null);
               setShowCreateModal(true);
             }}
             className="px-3 px-md-4 py-2 d-flex align-items-center justify-content-center"
@@ -1296,7 +1272,7 @@ const CreatePlan = () => {
           </Row>
         </Tab.Container>
 
-        {/* Renewal Requests Section */}
+        {/* =============== MEMBERSHIP & RENEWAL REQUESTS SECTION =============== */}
         <div
           className="mt-5 pt-4 border-top"
           style={{ borderColor: customColor }}
@@ -1305,103 +1281,201 @@ const CreatePlan = () => {
             className="fw-bold mb-4 text-dark"
             style={{ fontSize: "clamp(1.2rem, 3vw, 1.4rem)" }}
           >
-            Member Renewal Requests
+            Booking Requests
           </h3>
 
-          {/* Request Statistics */}
-          <Row className="mb-4 g-3">
-            {renewalStats.map((item, i) => (
-              <Col xs={12} sm={6} md={4} key={i}>
-                <Card
-                  className="text-center border-0 shadow-sm h-100"
-                  style={{ backgroundColor: "#f8f9fa", borderRadius: "12px" }}
+          {/* Request Tabs */}
+          <Nav
+            variant="tabs"
+            activeKey={activeRequestTab}
+            onSelect={(k) => setActiveRequestTab(k)}
+            className="mb-4"
+          >
+            <Nav.Item>
+              <Nav.Link eventKey="renewal">All Renewal Requests</Nav.Link>
+            </Nav.Item>
+            <Nav.Item>
+              <Nav.Link eventKey="membership">Membership Requests</Nav.Link>
+            </Nav.Item>
+          </Nav>
+
+          {/* Renewal Requests Tab */}
+          {activeRequestTab === "renewal" && (
+            <>
+              <Row className="mb-4 g-3">
+                {renewalStats.map((item, i) => (
+                  <Col xs={12} sm={6} md={4} key={i}>
+                    <Card
+                      className="text-center border-0 shadow-sm h-100"
+                      style={{ backgroundColor: "#f8f9fa", borderRadius: "12px" }}
+                    >
+                      <Card.Body className="py-3 py-md-4">
+                        <div
+                          className="d-flex justify-content-center align-items-center mb-2"
+                          style={{
+                            width: "60px",
+                            height: "60px",
+                            borderRadius: "50%",
+                            backgroundColor: item.bg,
+                            margin: "0 auto",
+                          }}
+                        >
+                          <span
+                            className="fw-bold"
+                            style={{ color: item.color, fontSize: "1.5rem" }}
+                          >
+                            {item.count}
+                          </span>
+                        </div>
+                        <h5 className="fw-bold mb-1" style={{ color: customColor }}>
+                          {item.label}
+                        </h5>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+              <Card className="border-0 shadow-sm" style={{ borderRadius: "12px" }}>
+                <Card.Header
+                  className="bg-light border-0 pb-3"
+                  style={{ borderBottom: `3px solid ${customColor}` }}
                 >
-                  <Card.Body className="py-3 py-md-4">
-                    <div
-                      className="d-flex justify-content-center align-items-center mb-2"
-                      style={{
-                        width: "60px",
-                        height: "60px",
-                        borderRadius: "50%",
-                        backgroundColor: item.bg,
-                        margin: "0 auto",
-                      }}
-                    >
-                      <span
-                        className="fw-bold"
-                        style={{ color: item.color, fontSize: "1.5rem" }}
-                      >
-                        {item.count}
-                      </span>
+                  <h5 className="mb-0 text-dark" style={{ fontWeight: "600" }}>
+                    Renewal Requests
+                  </h5>
+                  <small className="text-muted">
+                    Total: {renewalRequests.length} requests
+                  </small>
+                </Card.Header>
+                <Card.Body className="p-0">
+                  {renewalRequests.length === 0 ? (
+                    <div className="text-center text-muted py-5">
+                      <div className="display-4 mb-3">📭</div>
+                      <p className="fs-5">No renewal requests yet.</p>
                     </div>
-                    <h5
-                      className="fw-bold mb-1"
-                      style={{ color: customColor }}
-                    >
-                      {item.label}
-                    </h5>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-
-          {/* Requests Table */}
-          <Card className="border-0 shadow-sm" style={{ borderRadius: "12px" }}>
-            <Card.Header
-              className="bg-light border-0 pb-3"
-              style={{ borderBottom: `3px solid ${customColor}` }}
-            >
-              <h5 className="mb-0 text-dark" style={{ fontWeight: "600" }}>
-                All Renewal Requests
-              </h5>
-              <small className="text-muted">
-                Total: {renewalRequests.length} requests
-              </small>
-            </Card.Header>
-            <Card.Body className="p-0">
-              {renewalRequests.length === 0 ? (
-                <div className="text-center text-muted py-5">
-                  <div className="display-4 mb-3">📭</div>
-                  <p className="fs-5">No renewal requests yet.</p>
-                </div>
-              ) : (
-                <>
-                  <div className="table-responsive d-none d-md-block">
-                    <Table hover responsive className="align-middle mb-0">
-                      <thead className="bg-light">
-                        <tr>
-                          <th>#</th>
-                          <th>Member</th>
-                          {/* <th>Current Plan</th> */}
-                          <th>Requested Plan</th>
-                          <th>Type</th>
-                          <th>Requested At</th>
-                          <th>Status</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                  ) : (
+                    <>
+                      <div className="table-responsive d-none d-md-block">
+                        <Table hover responsive className="align-middle mb-0">
+                          <thead className="bg-light">
+                            <tr>
+                              <th>#</th>
+                              <th>Member</th>
+                              <th>Requested Plan</th>
+                              <th>Type</th>
+                              <th>Requested At</th>
+                              <th>Status</th>
+                              <th>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {renewalRequests.map((req, index) =>
+                              renderRequestRow(req, index, "renewal")
+                            )}
+                          </tbody>
+                        </Table>
+                      </div>
+                      <div className="d-md-none p-3">
                         {renewalRequests.map((req, index) =>
-                          renderRenewalRequestRow(req, index)
+                          renderRequestCard(req, index, "renewal")
                         )}
-                      </tbody>
-                    </Table>
-                  </div>
+                      </div>
+                    </>
+                  )}
+                </Card.Body>
+              </Card>
+            </>
+          )}
 
-                  {/* Mobile View */}
-                  <div className="d-md-none p-3">
-                    {renewalRequests.map((req, index) =>
-                      renderRenewalRequestCard(req, index)
-                    )}
-                  </div>
-                </>
-              )}
-            </Card.Body>
-          </Card>
+          {/* Membership Requests Tab */}
+          {activeRequestTab === "membership" && (
+            <>
+              <Row className="mb-4 g-3">
+                {membershipStats.map((item, i) => (
+                  <Col xs={12} sm={6} md={4} key={i}>
+                    <Card
+                      className="text-center border-0 shadow-sm h-100"
+                      style={{ backgroundColor: "#f8f9fa", borderRadius: "12px" }}
+                    >
+                      <Card.Body className="py-3 py-md-4">
+                        <div
+                          className="d-flex justify-content-center align-items-center mb-2"
+                          style={{
+                            width: "60px",
+                            height: "60px",
+                            borderRadius: "50%",
+                            backgroundColor: item.bg,
+                            margin: "0 auto",
+                          }}
+                        >
+                          <span
+                            className="fw-bold"
+                            style={{ color: item.color, fontSize: "1.5rem" }}
+                          >
+                            {item.count}
+                          </span>
+                        </div>
+                        <h5 className="fw-bold mb-1" style={{ color: customColor }}>
+                          {item.label}
+                        </h5>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+              <Card className="border-0 shadow-sm" style={{ borderRadius: "12px" }}>
+                <Card.Header
+                  className="bg-light border-0 pb-3"
+                  style={{ borderBottom: `3px solid ${customColor}` }}
+                >
+                  <h5 className="mb-0 text-dark" style={{ fontWeight: "600" }}>
+                    Membership Requests
+                  </h5>
+                  <small className="text-muted">
+                    Total: {membershipRequests.length} requests
+                  </small>
+                </Card.Header>
+                <Card.Body className="p-0">
+                  {membershipRequests.length === 0 ? (
+                    <div className="text-center text-muted py-5">
+                      <div className="display-4 mb-3">📭</div>
+                      <p className="fs-5">No membership requests yet.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="table-responsive d-none d-md-block">
+                        <Table hover responsive className="align-middle mb-0">
+                          <thead className="bg-light">
+                            <tr>
+                              <th>#</th>
+                              <th>Member</th>
+                              <th>Requested Plan</th>
+                              <th>Type</th>
+                              <th>Requested At</th>
+                              <th>Status</th>
+                              <th>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {membershipRequests.map((req, index) =>
+                              renderRequestRow(req, index, "membership")
+                            )}
+                          </tbody>
+                        </Table>
+                      </div>
+                      <div className="d-md-none p-3">
+                        {membershipRequests.map((req, index) =>
+                          renderRequestCard(req, index, "membership")
+                        )}
+                      </div>
+                    </>
+                  )}
+                </Card.Body>
+              </Card>
+            </>
+          )}
         </div>
 
-        {/* Modals */}
         {/* Status Modal */}
         <Modal
           show={showStatusModal}
@@ -1419,7 +1493,9 @@ const CreatePlan = () => {
             <Modal.Title
               style={{ color: "#333", fontWeight: "600", fontSize: "1.1rem" }}
             >
-              Process Renewal Request
+              {requestToProcess?.requestType === "membership"
+                ? "Process Membership Request"
+                : "Process Renewal Request"}
             </Modal.Title>
             <Button
               variant="link"
@@ -1434,7 +1510,9 @@ const CreatePlan = () => {
             {requestToProcess && (
               <div>
                 <p className="mb-2 fw-medium text-center">
-                  Process renewal request from:
+                  {requestToProcess.requestType === "membership"
+                    ? "Process membership request from:"
+                    : "Process renewal request from:"}
                 </p>
                 <div className="text-center mb-3">
                   <strong>{requestToProcess.memberName}</strong>
@@ -1442,7 +1520,7 @@ const CreatePlan = () => {
                     {requestToProcess.memberEmail}
                   </div>
                   <div className="text-muted small">
-                    {requestToProcess.currentPlan} → {requestToProcess.requestedPlan}
+                    {requestToProcess.requestedPlan}
                   </div>
                 </div>
                 <div className="d-flex gap-2 justify-content-center">
@@ -1451,10 +1529,7 @@ const CreatePlan = () => {
                     size="sm"
                     className="px-3"
                     onClick={() => handleProcessStatus("approved")}
-                    style={{
-                      backgroundColor: "#28a745",
-                      borderColor: "#28a745",
-                    }}
+                    style={{ backgroundColor: "#28a745", borderColor: "#28a745" }}
                   >
                     Approve
                   </Button>
@@ -1463,10 +1538,7 @@ const CreatePlan = () => {
                     size="sm"
                     className="px-3"
                     onClick={() => handleProcessStatus("rejected")}
-                    style={{
-                      backgroundColor: "#dc3545",
-                      borderColor: "#dc3545",
-                    }}
+                    style={{ backgroundColor: "#dc3545", borderColor: "#dc3545" }}
                   >
                     Reject
                   </Button>
@@ -1475,6 +1547,8 @@ const CreatePlan = () => {
             )}
           </Modal.Body>
         </Modal>
+
+        {/* Other Modals (Create, Edit, View, Delete) — unchanged */}
 
         {/* Create Plan Modal */}
         <Modal
@@ -1504,8 +1578,7 @@ const CreatePlan = () => {
           <Modal.Body className="p-3 p-md-4">
             {createPlanError && (
               <Alert variant="danger">{createPlanError}</Alert>
-            )}{" "}
-            {/* Use separate error state */}
+            )}
             <Form>
               <Form.Group className="mb-4">
                 <Form.Label className="fw-medium">Plan Type</Form.Label>
@@ -1527,8 +1600,6 @@ const CreatePlan = () => {
                   <option value="member">MemberShip Plan</option>
                 </Form.Select>
               </Form.Group>
-
-              {/* Additional fields for membership plans */}
               {newPlan.type === "member" && (
                 <>
                   <Row>
@@ -1543,7 +1614,7 @@ const CreatePlan = () => {
                             setNewPlan({
                               ...newPlan,
                               trainerType: e.target.value,
-                              trainerId: "", // Reset trainer ID when trainer type changes
+                              trainerId: "",
                             });
                           }}
                           style={{ padding: "12px", fontSize: "1rem" }}
@@ -1565,9 +1636,7 @@ const CreatePlan = () => {
                               className="spinner-border spinner-border-sm me-2"
                               role="status"
                             >
-                              <span className="visually-hidden">
-                                Loading...
-                              </span>
+                              <span className="visually-hidden">Loading...</span>
                             </div>
                             Loading trainers...
                           </div>
@@ -1602,7 +1671,6 @@ const CreatePlan = () => {
                   </Row>
                 </>
               )}
-
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-4">
@@ -1691,6 +1759,8 @@ const CreatePlan = () => {
             </Button>
           </Modal.Footer>
         </Modal>
+
+        {/* Edit, View, Delete Modals — unchanged from your original code (kept for completeness but not shown here to save space) */}
 
         {/* Edit Plan Modal */}
         <Modal

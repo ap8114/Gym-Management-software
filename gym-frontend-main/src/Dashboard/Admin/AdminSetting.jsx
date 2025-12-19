@@ -124,11 +124,11 @@ const AdminSetting = () => {
     } finally {
       setLoading(false);
     }
-  };
+  };  
 
   const generatedUrl =
     formData.companyWebsite && adminId
-      ? `https://gym-latest-new.netlify.app/${formData.companyWebsite}/${adminId}`
+      ? `https://gym-speed-fitness.netlify.app/${formData.companyWebsite}/${adminId}`
       : "";
 
   return (
