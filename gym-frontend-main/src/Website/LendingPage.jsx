@@ -11,6 +11,7 @@ import { Button, Container, Row, Col, Card } from 'react-bootstrap';
 import './LendingPage.css';
 import BaseUrl from '../Api/BaseUrl';
 import Logo from "../assets/Logo/Logo1.png";
+import Snowfall from "react-snowfall";
 
 const LendingPage = () => {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -356,6 +357,11 @@ const LendingPage = () => {
 
   return (
     <div className="landing-page">
+      <Snowfall
+        style={{ position: "absolute", width: "100%", height: "100%" }}
+        radius={[1, 4]}
+        speed={[1, 2]}
+      />
       {/* Animated Background Elements */}
       <div className="bg-elements">
         {[...Array(15)].map((_, i) => (

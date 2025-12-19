@@ -160,64 +160,106 @@ const CreatePlan = () => {
 
   const fetchRenewalRequests = async () => {
     try {
-      const adminId = localStorage.getItem("userId") || "4";
-      const response = await axiosInstance.get(
-        `${BaseUrl}members/renew?adminId=${adminId}`
-      );
+      const response = await axiosInstance.get(`members/renew/${adminId}`);
 
-      if (response.data) {
-        let renewals = [];
+      if (response?.data && response.data.success && response.data.data) {
+        const payload = response.data.data;
+        const members = Array.isArray(payload.members) ? payload.members : [];
+        const plans = Array.isArray(payload.plans) ? payload.plans : [];
 
-        if (response.data.success && Array.isArray(response.data.renewals)) {
-          renewals = response.data.renewals;
-        } else if (Array.isArray(response.data)) {
-          renewals = response.data;
-        } else if (response.data.data && Array.isArray(response.data.data)) {
-          renewals = response.data.data;
-        }
+        // Convert each member + their renewalPreview entries (or single `plan`) into UI-friendly requests
+        const formatted = members.flatMap((member) => {
+          // prefer array of previews if available
+          const previews = Array.isArray(member.renewalPreview)
+            ? member.renewalPreview
+            : null;
 
-        const formattedRenewals = renewals.map((renewal) => {
-          const member = renewal.member || {};
-          const currentPlan = renewal.currentPlan || {};
-          const requestedPlan = renewal.requestedPlan || {};
+          // If previews array exists, map each preview
+          if (Array.isArray(previews) && previews.length > 0) {
+            return previews.map((preview) => {
+              const planMeta = plans.find((p) => p.id === preview.planId) || {};
+              return {
+                id: member.id,
+                memberId: member.id,
+                previewPlanId: preview.planId,
+                memberName: member.fullName || "Unknown",
+                memberEmail: member.email || "N/A",
+                memberPhone: member.phone || "N/A",
+                currentPlan:
+                  plans.find((p) => p.id === member.planId)?.name ||
+                  (member.plan?.planName || member.plan?.name) ||
+                  `Plan ${member.planId}` ||
+                  "N/A",
+                requestedPlan: preview.planName || planMeta.name || "Unknown",
+                requestedPlanType: (planMeta.type || member.plan?.planType || "").toLowerCase() || "unknown",
+                price: preview.price ? `₹${preview.price.toLocaleString()}` : (member.plan?.price ? `₹${member.plan.price}` : "N/A"),
+                sessions: planMeta.sessions || member.plan?.sessions || "N/A",
+                validity: preview.validityDays || planMeta.validityDays || member.plan?.validityDays || "N/A",
+                membershipFrom: preview.previewMembershipFrom || member.previewMembershipFrom || member.membershipFrom || "N/A",
+                membershipTo: preview.previewMembershipTo || member.previewMembershipTo || member.membershipTo || "N/A",
+                requestedAt: member.previewMembershipFrom || member.membershipTo || new Date().toLocaleString(),
+                status: "pending",
+                branchId: member.branchId || null,
+                requestType: "renewal",
+              };
+            });
+          }
 
-          return {
-            id: renewal.id,
-            memberName: member.fullName || "Unknown",
-            memberEmail: member.email || "N/A",
-            memberPhone: member.phone || "N/A",
-            currentPlan: currentPlan.name || "Unknown",
-            currentPlanType: currentPlan.type
-              ? currentPlan.type.toLowerCase()
-              : "unknown",
-            requestedPlan: requestedPlan.name || "Unknown",
-            requestedPlanType: requestedPlan.type
-              ? requestedPlan.type.toLowerCase()
-              : "unknown",
-            price: requestedPlan.price
-              ? `₹${parseFloat(requestedPlan.price).toLocaleString()}`
-              : "N/A",
-            sessions: requestedPlan.sessions || "N/A",
-            validity:
-              requestedPlan.validityDays || requestedPlan.validity || "N/A",
-            membershipFrom: renewal.membershipFrom || "N/A",
-            membershipTo: renewal.membershipTo || "N/A",
-            requestedAt: renewal.createdAt
-              ? new Date(renewal.createdAt).toLocaleString()
-              : "N/A",
-            status: renewal.status ? renewal.status.toLowerCase() : "unknown",
-            memberId: renewal.memberId || member.id || null,
-            branchId: renewal.branchId || member.branchId || null,
-            requestType: "renewal",
-          };
+          // If no previews array, but member has a single `plan` + previewMembershipFrom/To use that
+          if (member.plan) {
+            const planObj = member.plan;
+            return [
+              {
+                id: member.id,
+                memberId: member.id,
+                previewPlanId: planObj.planId || planObj.id || null,
+                memberName: member.fullName || "Unknown",
+                memberEmail: member.email || "N/A",
+                memberPhone: member.phone || "N/A",
+                currentPlan: (member.plan?.planName || member.plan?.name) || `Plan ${member.plan?.planId || member.plan?.id}` || "N/A",
+                requestedPlan: member.plan?.planName || member.plan?.name || "Unknown",
+                requestedPlanType: (member.plan?.planType || "").toLowerCase() || "unknown",
+                price: member.plan?.price ? `₹${member.plan.price}` : (member.amountPaid ? `₹${member.amountPaid}` : "N/A"),
+                sessions: member.plan?.sessions || "N/A",
+                validity: member.plan?.validityDays || "N/A",
+                membershipFrom: member.previewMembershipFrom || member.membershipFrom || "N/A",
+                membershipTo: member.previewMembershipTo || member.membershipTo || "N/A",
+                requestedAt: member.previewMembershipFrom || member.membershipTo || new Date().toLocaleString(),
+                status: "pending",
+                branchId: member.branchId || null,
+                requestType: "renewal",
+              },
+            ];
+          }
+
+          // fallback: empty entry to avoid dropping the member
+          return [
+            {
+              id: member.id,
+              memberId: member.id,
+              memberName: member.fullName || "Unknown",
+              memberEmail: member.email || "N/A",
+              memberPhone: member.phone || "N/A",
+              currentPlan: "N/A",
+              requestedPlan: "-",
+              requestedPlanType: "-",
+              price: member.amountPaid ? `₹${member.amountPaid}` : "N/A",
+              sessions: "N/A",
+              validity: "N/A",
+              membershipFrom: member.membershipFrom || "N/A",
+              membershipTo: member.membershipTo || "N/A",
+              requestedAt: member.membershipTo || "N/A",
+              status: "pending",
+              branchId: member.branchId || null,
+              requestType: "renewal",
+            },
+          ];
         });
 
-        setRenewalRequests(formattedRenewals);
+        setRenewalRequests(formatted);
       }
     } catch (err) {
       console.error("Error fetching renewal requests:", err);
-      // Don't set global error state here to avoid showing it in create plan modal
-      // Instead, we could show a toast notification or handle it differently
     }
   };
 
@@ -327,8 +369,8 @@ const CreatePlan = () => {
           newPlan.type === "group"
             ? groupPlans
             : newPlan.type === "personal"
-            ? personalPlans
-            : membershipPlans;
+              ? personalPlans
+              : membershipPlans;
         updatePlansByType(newPlan.type, [...currentPlans, plan]);
         setApiPlans([...apiPlans, plan]);
         setNewPlan({
@@ -342,10 +384,9 @@ const CreatePlan = () => {
         });
         setShowCreateModal(false);
         alert(
-          `✅ ${
-            newPlan.type === "group"
-              ? "Group"
-              : newPlan.type === "personal"
+          `✅ ${newPlan.type === "group"
+            ? "Group"
+            : newPlan.type === "personal"
               ? "Personal"
               : "Membership"
           } Plan Created: ${plan.name}`
@@ -546,56 +587,54 @@ const CreatePlan = () => {
   };
 
   const handleProcessStatus = async (status) => {
-    if (!requestToProcess) return;
+    if (!requestToProcess || requestToProcess.requestType !== "renewal") return;
+
     try {
-      let response;
-      const isRenewal = requestToProcess.requestType === "renewal";
+      const { memberId, previewPlanId } = requestToProcess;
+
+      if (!memberId) {
+        setError("Member ID is missing in the request.");
+        return;
+      }
+
+      // New unified endpoint
+      const endpoint = `/members/admin/renewal/${memberId}/status`;
 
       const payload = {
         adminId: parseInt(adminId),
+        ...(previewPlanId && { planId: parseInt(previewPlanId) }), // include only if exists
       };
 
-      if (isRenewal) {
-        const endpoint =
-          status === "approved"
-            ? `${BaseUrl}members/renew/approve/${requestToProcess.id}`
-            : `${BaseUrl}members/renew/reject/${requestToProcess.id}`;
+      // map UI status to backend expected values
+      const backendStatus = status === "approved" ? "Active" : "Reject";
+      payload.status = backendStatus;
 
-        response = await axiosInstance.put(endpoint, payload);
-
-        if (response.data.success) {
-          setRenewalRequests(
-            renewalRequests.map((req) =>
-              req.id === requestToProcess.id ? { ...req, status } : req
-            )
-          );
-        }
-      }
+      const response = await axiosInstance.put(endpoint, payload);
 
       if (response.data.success) {
+        // Update local state
+        setRenewalRequests((prev) =>
+          prev.map((req) =>
+            req.id === requestToProcess.id ? { ...req, status } : req
+          )
+        );
+
         const msg =
           status === "approved"
-            ? `✅ ${
-                isRenewal ? "Renewal" : "Booking"
-              } Approved! Member will be notified.`
-            : `❌ ${
-                isRenewal ? "Renewal" : "Booking"
-              } Rejected. Member will be notified.`;
+            ? "✅ Renewal Approved! Member will be notified."
+            : "❌ Renewal Rejected. Member will be notified.";
+
         alert(msg);
         setShowStatusModal(false);
         setRequestToProcess(null);
       } else {
-        setError(
-          `Failed to update ${isRenewal ? "renewal" : "booking"} status.`
-        );
+        setError("Failed to update renewal status.");
       }
     } catch (err) {
-      console.error("Error updating status:", err);
+      console.error("Error updating renewal status:", err);
       setError(
         err.response?.data?.message ||
-          `Failed to update ${
-            requestToProcess.requestType === "renewal" ? "renewal" : "booking"
-          } status.`
+        "Failed to update renewal status. Please try again."
       );
     }
   };
@@ -626,6 +665,11 @@ const CreatePlan = () => {
             ? `${BaseUrl}members/renew/approve/${requestId}`
             : `${BaseUrl}members/renew/reject/${requestId}`;
 
+        // include planId when available so backend can act on specific preview
+        if (request.previewPlanId) payload.planId = parseInt(request.previewPlanId);
+        // map UI status to backend expected values
+        const backendStatus = newStatus === "approved" ? "Active" : "Reject";
+        payload.status = backendStatus;
         response = await axiosInstance.put(endpoint, payload);
 
         if (response.data.success) {
@@ -652,7 +696,7 @@ const CreatePlan = () => {
       console.error("Error toggling request:", err);
       setError(
         err.response?.data?.message ||
-          `Failed to update ${isRenewal ? "renewal" : "booking"} request.`
+        `Failed to update ${isRenewal ? "renewal" : "booking"} request.`
       );
     }
   };
@@ -713,8 +757,8 @@ const CreatePlan = () => {
                 {planType === "group"
                   ? "GROUP"
                   : planType === "personal"
-                  ? "PERSONAL"
-                  : "MEMBER"}
+                    ? "PERSONAL"
+                    : "MEMBER"}
               </div>
               <h5
                 className="fw-bold mb-0"
@@ -853,10 +897,10 @@ const CreatePlan = () => {
         <strong>{req.memberName}</strong>
         <div className="text-muted small">{req.memberEmail}</div>
       </td>
-      <td>
+      {/* <td>
         <div>{req.currentPlan}</div>
         <div className="text-muted small">Current Plan</div>
-      </td>
+      </td> */}
       <td>
         <div>{req.requestedPlan}</div>
         <div className="text-muted small">Requested Plan</div>
@@ -1146,8 +1190,8 @@ const CreatePlan = () => {
                   activeTab === "personal"
                     ? "personal"
                     : activeTab === "member"
-                    ? "member"
-                    : "group",
+                      ? "member"
+                      : "group",
                 trainerType: "",
                 trainerId: "",
               });
@@ -1329,7 +1373,7 @@ const CreatePlan = () => {
                         <tr>
                           <th>#</th>
                           <th>Member</th>
-                          <th>Current Plan</th>
+                          {/* <th>Current Plan</th> */}
                           <th>Requested Plan</th>
                           <th>Type</th>
                           <th>Requested At</th>
@@ -1452,8 +1496,8 @@ const CreatePlan = () => {
               {newPlan.type === "group"
                 ? "Group"
                 : newPlan.type === "personal"
-                ? "Personal"
-                : "Membership"}{" "}
+                  ? "Personal"
+                  : "Membership"}{" "}
               Plan
             </Modal.Title>
           </Modal.Header>
@@ -1668,8 +1712,8 @@ const CreatePlan = () => {
               {selectedPlan?.type === "group"
                 ? "Group"
                 : selectedPlan?.type === "personal"
-                ? "Personal"
-                : "Membership"}{" "}
+                  ? "Personal"
+                  : "Membership"}{" "}
               Plan
             </Modal.Title>
           </Modal.Header>
@@ -1798,8 +1842,8 @@ const CreatePlan = () => {
                   {selectedPlan.type === "group"
                     ? "Group"
                     : selectedPlan.type === "personal"
-                    ? "Personal"
-                    : "Membership"}
+                      ? "Personal"
+                      : "Membership"}
                   )
                 </h5>
                 <div className="row">

@@ -12,64 +12,68 @@ const ClassSchedule = () => {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState(null);
 
-  // ✅ Get memberId from localStorage
-  const getMemberIdFromStorage = () => {
+  const getUserFromStorage = () => {
     try {
       const userStr = localStorage.getItem('user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        return user?.id || null;
-      }
+      return userStr ? JSON.parse(userStr) : null;
     } catch (err) {
       console.error('Error parsing user from localStorage:', err);
+      return null;
     }
-    return null;
   };
 
-  const memberId = getMemberIdFromStorage();
+  const user = getUserFromStorage();
+  const memberId = user?.id || null;
 
-  // Fetch classes
+  // Fetch classes (includes isBooked)
   useEffect(() => {
     const fetchClasses = async () => {
+      if (!memberId) {
+        setError('User not logged in.');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
-        const response = await axiosInstance.get('class/scheduled/all');
-        
-        if (response.data.success && response.data.data) {
+        const response = await axiosInstance.get(`class/classes/member/${memberId}`);
+
+        if (response.data.success && Array.isArray(response.data.data)) {
           const transformedClasses = response.data.data.map(cls => {
             const timeParts = cls.time.split(' - ');
             const startTime = timeParts[0] || '';
             const endTime = timeParts[1] || '';
-            
-            const generatePrice = (className) => {
-              if (className.toLowerCase().includes('yoga')) return 350;
-              if (className.toLowerCase().includes('pilates')) return 450;
-              if (className.toLowerCase().includes('hiit') || className.toLowerCase().includes('hit')) return 400;
-              if (className.toLowerCase().includes('zumba')) return 250;
-              return 300;
-            };
-            
-            const capacity = Math.floor(Math.random() * 15) + 10;
-            const bookedSeats = Math.floor(Math.random() * capacity);
-            
+
+            // const generatePrice = (className) => {
+            //   if (className.toLowerCase().includes('yoga')) return 350;
+            //   if (className.toLowerCase().includes('pilates')) return 450;
+            //   if (className.toLowerCase().includes('hiit') || className.toLowerCase().includes('hit')) return 400;
+            //   if (className.toLowerCase().includes('zumba')) return 250;
+            //   return 300;
+            // };
+
+            // Use real capacity if available, else fallback
+            const capacity = cls.capacity || Math.floor(Math.random() * 15) + 10;
+            const bookedSeats = cls.membersCount || 0;
+
             return {
               id: cls.id,
               name: cls.className,
               trainer_name: cls.trainer,
-              trainer_id: 1,
               date: cls.date.split('T')[0],
               start_time: startTime,
               end_time: endTime,
               day: cls.day,
-              branch: cls.branch,
+              branch: cls.branch || 'Main Branch',
               status: cls.status,
-              capacity: capacity,
+              capacity,
               booked_seats: bookedSeats,
-              price: generatePrice(cls.className),
-              membersCount: cls.membersCount
+              // price: generatePrice(cls.className),
+              isBooked: cls.isBooked, // ✅ Direct from API
+              bookingId: cls.bookingId
             };
           });
-          
+
           setGroupClasses(transformedClasses);
           setError(null);
         } else {
@@ -84,14 +88,7 @@ const ClassSchedule = () => {
     };
 
     fetchClasses();
-  }, []);
-
-  const trainers = [
-    { id: 1, name: 'John Smith', specialty: 'Strength Training' },
-    { id: 2, name: 'Sarah Johnson', specialty: 'Yoga & Pilates' },
-    { id: 3, name: 'Mike Williams', specialty: 'Cardio & HIIT' },
-    { id: 4, name: 'Emily Davis', specialty: 'Weight Loss' },
-  ];
+  }, [memberId]);
 
   const formatTime = (timeString) => {
     if (!timeString) return '';
@@ -102,18 +99,14 @@ const ClassSchedule = () => {
     return `${formattedHour}:${minutes} ${ampm}`;
   };
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
-
-  const getTrainer = (trainerId) => {
-    return trainers.find(t => t.id === trainerId) || { name: 'Unknown', specialty: '' };
-  };
+  // const formatPrice = (price) => {
+  //   return new Intl.NumberFormat('en-IN', {
+  //     style: 'currency',
+  //     currency: 'INR',
+  //     minimumFractionDigits: 0,
+  //     maximumFractionDigits: 0,
+  //   }).format(price);
+  // };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -143,7 +136,6 @@ const ClassSchedule = () => {
     };
   }, [isModalOpen]);
 
-  // ✅ REAL BOOKING FUNCTION
   const handleConfirmBooking = async () => {
     if (!memberId || !selectedClass) {
       alert('User not logged in or class not selected.');
@@ -156,18 +148,22 @@ const ClassSchedule = () => {
     try {
       const payload = {
         memberId: memberId,
-        scheduleId: selectedClass.id // Use class.id as scheduleId
+        scheduleId: selectedClass.id
       };
 
       const response = await axiosInstance.post('class/book', payload);
 
       if (response.data.success) {
-        // Show success message
         alert(`✅ Successfully booked ${selectedClass.name}!`);
+
+        // ✅ Update UI: mark as booked without refetching
+        setGroupClasses(prev =>
+          prev.map(cls =>
+            cls.id === selectedClass.id ? { ...cls, isBooked: true } : cls
+          )
+        );
+
         closeBookingModal();
-        
-        // Optional: Refresh class list to update availability
-        // (You can enhance this later)
       } else {
         throw new Error(response.data.message || 'Booking failed');
       }
@@ -183,7 +179,7 @@ const ClassSchedule = () => {
 
   if (loading) {
     return (
-      <div className="mt-3" style={{ backgroundColor: '#f8f9fa' }}>
+      <div className="p-2">
         <div className="row mb-3">
           <div className="col-12 text-center text-md-start">
             <h1 className="fw-bold">Weekly Class Schedule</h1>
@@ -202,7 +198,7 @@ const ClassSchedule = () => {
 
   if (error) {
     return (
-      <div className="mt-3" style={{ backgroundColor: '#f8f9fa' }}>
+      <div className="p-2">
         <div className="row mb-3">
           <div className="col-12 text-center text-md-start">
             <h1 className="fw-bold">Weekly Class Schedule</h1>
@@ -213,8 +209,8 @@ const ClassSchedule = () => {
           {error}
         </div>
         <div className="text-center">
-          <button 
-            className="btn btn-primary" 
+          <button
+            className="btn btn-primary"
             onClick={() => window.location.reload()}
           >
             Try Again
@@ -225,7 +221,7 @@ const ClassSchedule = () => {
   }
 
   return (
-    <div className="mt-3" style={{ backgroundColor: '#f8f9fa' }}>
+    <div className="p-2">
       <div className="row mb-3">
         <div className="col-12 text-center text-md-start">
           <h1 className="fw-bold">Weekly Class Schedule</h1>
@@ -235,15 +231,34 @@ const ClassSchedule = () => {
 
       <div className="row g-4">
         {groupClasses.map(cls => {
-          const trainer = getTrainer(cls.trainer_id);
           const isFull = cls.booked_seats >= cls.capacity;
+          const isActive = cls.status === 'Active';
+          const isBooked = cls.isBooked; // ✅ Use directly from API
+
+          let buttonText = 'Book Now';
+          let buttonDisabled = false;
+          let buttonStyle = '#2f6a87';
+
+          if (isBooked) {
+            buttonText = 'Booked';
+            buttonDisabled = true;
+            buttonStyle = '#2f6e34ff';
+          } else if (isFull) {
+            buttonText = 'Class Full';
+            buttonDisabled = true;
+            buttonStyle = '#6b3730ff';
+          } else if (!isActive) {
+            buttonText = 'Inactive';
+            buttonDisabled = true;
+            buttonStyle = '#6c757d';
+          }
 
           return (
             <div key={cls.id} className="col-12 col-md-6 col-lg-4">
               <div className="card shadow-sm border-0" style={{ borderRadius: '12px', overflow: 'hidden' }}>
-                <div 
-                  className="p-4" 
-                  style={{ 
+                <div
+                  className="p-4"
+                  style={{
                     color: '#2f6a87',
                     minHeight: '60px'
                   }}
@@ -260,10 +275,10 @@ const ClassSchedule = () => {
                     <FaUser size={16} className="me-2 text-primary" />
                     <small>{cls.trainer_name}</small>
                   </div>
-                  <div className="d-flex align-items-center mb-3">
+                  {/* <div className="d-flex align-items-center mb-3">
                     <FaRupeeSign size={16} className="me-2 text-success" />
                     <strong className="text-success">{formatPrice(cls.price)}</strong>
-                  </div>
+                  </div> */}
                   <div className="d-flex align-items-center mb-3">
                     <span className={`badge ${cls.status === 'Active' ? 'bg-success' : 'bg-secondary'}`}>
                       {cls.status}
@@ -274,17 +289,17 @@ const ClassSchedule = () => {
                     <button
                       className="btn w-100 py-2 fw-medium"
                       style={{
-                        backgroundColor: isFull || cls.status !== 'Active' ? '#6c757d' : '#2f6a87',
+                        backgroundColor: buttonStyle,
                         color: 'white',
                         border: 'none',
                         borderRadius: '8px',
                         fontSize: '0.9rem',
                         transition: 'all 0.2s ease'
                       }}
-                      disabled={isFull || cls.status !== 'Active'}
-                      onClick={() => (!isFull && cls.status === 'Active') && openBookingModal(cls)}
+                      disabled={buttonDisabled}
+                      onClick={() => !buttonDisabled && openBookingModal(cls)}
                     >
-                      {isFull ? 'Class Full' : cls.status !== 'Active' ? 'Inactive' : 'Book Now'}
+                      {buttonText}
                     </button>
                   </div>
                 </div>
@@ -317,9 +332,9 @@ const ClassSchedule = () => {
               </div>
               <div className="modal-body p-4">
                 <div className="card border-0 shadow-sm mb-4">
-                  <div 
-                    className="card-header p-4 text-white" 
-                    style={{ 
+                  <div
+                    className="card-header p-4 text-white"
+                    style={{
                       background: '#2f6a87',
                       borderRadius: '12px 12px 0 0'
                     }}
@@ -364,8 +379,8 @@ const ClassSchedule = () => {
                           <div>
                             <div className="fw-medium">Duration</div>
                             <div>
-                              {selectedClass.start_time && selectedClass.end_time ? 
-                                Math.round((new Date(`2024-01-01T${selectedClass.end_time}:00`) - new Date(`2024-01-01T${selectedClass.start_time}:00`)) / 60000) + ' minutes' 
+                              {selectedClass.start_time && selectedClass.end_time ?
+                                Math.round((new Date(`2024-01-01T${selectedClass.end_time}:00`) - new Date(`2024-01-01T${selectedClass.start_time}:00`)) / 60000) + ' minutes'
                                 : 'N/A'}
                             </div>
                           </div>
