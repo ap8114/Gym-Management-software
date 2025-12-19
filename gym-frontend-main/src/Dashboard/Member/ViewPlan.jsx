@@ -931,7 +931,12 @@ const ViewPlans = () => {
                     >
                       <FaEye className="me-1" /> View
                     </Button>
-                    <Button variant="outline-primary" size="sm" onClick={handleRenewClick}>
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      onClick={handleRenewClick}
+                      disabled={profile?.membership_status === 'Active'}
+                    >
                       <FaRedo className="me-1" /> Renew
                     </Button>
                   </td>
