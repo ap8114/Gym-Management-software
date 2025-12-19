@@ -14,7 +14,7 @@ const PersonalPlansBookings = () => {
   const [error, setError] = useState(null);
 
   // ✅ Extract adminId once from localStorage
- const getUserFromStorage = () => {
+  const getUserFromStorage = () => {
     try {
       const userStr = localStorage.getItem('user');
       return userStr ? JSON.parse(userStr) : null;
@@ -31,17 +31,13 @@ const PersonalPlansBookings = () => {
   const staffId = user?.staffId || null;
   const adminId = user?.adminId || null;
 
-
   console.log('Member ID:', memberId);
   console.log('Admin ID:', adminId);
   console.log('Branch ID:', branchId);
 
-
-  // Optional: Log once after definition
-  console.log('Fetching plans for adminId:', adminId);
-
   // Fetch plans on mount
   useEffect(() => {
+    if (!adminId) return;
 
     const fetchPlans = async () => {
       try {
@@ -53,7 +49,6 @@ const PersonalPlansBookings = () => {
         }
       } catch (err) {
         console.error('Error fetching plans:', err);
-       
         setAllPlans([]);
       } finally {
         setLoadingPlans(false);
@@ -63,9 +58,9 @@ const PersonalPlansBookings = () => {
     fetchPlans();
   }, [adminId]);
 
-  // ✅ Filter ONLY PERSONAL plans
+  // ✅ Filter ONLY PERSONAL trainer plans
   const personalPlans = useMemo(() => {
-    return allPlans.filter(plan => plan.type === 'PERSONAL');
+    return allPlans.filter(plan => plan.trainerType === 'personal');
   }, [allPlans]);
 
   // Fetch customers when a plan is selected
@@ -78,21 +73,28 @@ const PersonalPlansBookings = () => {
         const response = await axiosInstance.get(
           `personal-trainer-dashboard/admin/${adminId}/plan/${selectedPlanTab}/customers`
         );
-        if (response.data.success && Array.isArray(response.data.customers)) {
-          const mappedCustomers = response.data.customers.map((cust) => ({
-            id: cust.memberId,
-            name: cust.customerName,
-            purchaseDate: cust.purchaseDate
-              ? new Date(cust.purchaseDate).toISOString().split('T')[0]
+        
+        if (response.data.success && response.data.data && Array.isArray(response.data.data.members)) {
+          // ✅ Fixed mapping to match API response structure
+          const mappedCustomers = response.data.data.members.map((cust) => ({
+            id: cust.id,
+            name: cust.fullName,
+            purchaseDate: cust.membershipFrom
+              ? new Date(cust.membershipFrom).toISOString().split('T')[0]
               : 'N/A',
-            expiryDate: cust.expiryDate
-              ? new Date(cust.expiryDate).toISOString().split('T')[0]
+            expiryDate: cust.membershipTo
+              ? new Date(cust.membershipTo).toISOString().split('T')[0]
               : 'N/A',
-            sessionsBooked: cust.bookedSessions || 0,
-            sessionsRemaining: cust.leftSessions || 0,
+            sessionsBooked: cust.sessions - (cust.sessionsRemaining || 0), // Calculate booked sessions
+            sessionsRemaining: cust.sessionsRemaining || 0,
             contact: cust.phone || 'N/A',
             email: cust.email || 'N/A',
             status: cust.status || 'Unknown',
+            gender: cust.gender || 'N/A',
+            address: cust.address || 'N/A',
+            joinDate: cust.joinDate ? new Date(cust.joinDate).toISOString().split('T')[0] : 'N/A',
+            paymentMode: cust.paymentMode || 'N/A',
+            amountPaid: cust.amountPaid || 0,
           }));
 
           setPlanCustomers((prev) => ({
@@ -149,7 +151,7 @@ const PersonalPlansBookings = () => {
     <div className="bg-light py-2">
       <Container fluid className="px-2 px-md-3">
         <h1
-          className="fw-bold text-dark"
+          className="fw-bold text-dark mb-5"
           style={{
             color: "#2f6a87",
             fontSize: "clamp(1.2rem, 4vw, 1.8rem)",
@@ -469,6 +471,28 @@ const PersonalPlansBookings = () => {
                           </div>
                         </div>
                       </div>
+                      <div className="d-flex align-items-center gap-2 gap-md-3">
+                        <div className="bg-light p-2 p-md-3 rounded" style={{ width: '40px', height: '40px' }}>
+                          <FaUser size={16} className="text-muted" />
+                        </div>
+                        <div>
+                          <div className="text-muted small">Gender</div>
+                          <div className="fw-medium" style={{ fontSize: '0.9rem' }}>
+                            {selectedCustomer.gender}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="d-flex align-items-center gap-2 gap-md-3">
+                        <div className="bg-light p-2 p-md-3 rounded" style={{ width: '40px', height: '40px' }}>
+                          <FaCalendar size={16} className="text-muted" />
+                        </div>
+                        <div>
+                          <div className="text-muted small">Join Date</div>
+                          <div className="fw-medium" style={{ fontSize: '0.9rem' }}>
+                            {selectedCustomer.joinDate}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div className="col-md-4 text-center">
@@ -509,6 +533,31 @@ const PersonalPlansBookings = () => {
                         </h6>
                       </div>
                       <div className="fw-bold" style={{ fontSize: '1rem' }}>{selectedCustomer.expiryDate}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row g-2 g-md-4 mb-3 mb-md-4">
+                  <div className="col-md-6">
+                    <div className="p-2 p-md-3 bg-light rounded">
+                      <div className="d-flex align-items-center mb-2">
+                        <FaRupeeSign className="me-2" style={{ color: '#2f6a87' }} />
+                        <h6 className="mb-0 text-muted" style={{ fontSize: '0.9rem' }}>
+                          Payment Mode
+                        </h6>
+                      </div>
+                      <div className="fw-bold" style={{ fontSize: '1rem' }}>{selectedCustomer.paymentMode}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="p-2 p-md-3 bg-light rounded">
+                      <div className="d-flex align-items-center mb-2">
+                        <FaRupeeSign className="me-2" style={{ color: '#dc3545' }} />
+                        <h6 className="mb-0 text-muted" style={{ fontSize: '0.9rem' }}>
+                          Amount Paid
+                        </h6>
+                      </div>
+                      <div className="fw-bold" style={{ fontSize: '1rem' }}>₹{selectedCustomer.amountPaid.toLocaleString()}</div>
                     </div>
                   </div>
                 </div>

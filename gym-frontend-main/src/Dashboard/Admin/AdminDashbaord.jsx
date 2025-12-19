@@ -457,13 +457,13 @@ const AdminDashboard = () => {
                   <h3 className="h5 fw-semibold mb-2 mb-md-0">
                     Recent Activities
                   </h3>
-                  <button
+                  {/* <button
                     className="btn btn-sm btn-link text-primary p-0"
                     data-testid="view-all-activities-btn"
                     onClick={handleViewAllActivities}
                   >
                     {showAllActivities ? "Show Less" : "View All"}
-                  </button>
+                  </button> */}
                 </div>
               </div>
               <div className="card-body">

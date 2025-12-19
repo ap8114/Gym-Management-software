@@ -1045,7 +1045,7 @@ const AdminMember = () => {
                             className="form-check-label"
                             htmlFor="general"
                           >
-                            General
+                            General Trainer
                           </label>
                         </div>
                         <div className="form-check">
