@@ -1,9 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { FaCheck, FaTimes, FaEdit, FaTrash, FaSearch, FaFilter, FaUser, FaPlus, FaEye } from 'react-icons/fa';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import axiosInstance from '../../../Api/axiosInstance';
-import BaseUrl from '../../../Api/BaseUrl';
-import GetAdminId from '../../../Api/GetAdminId';
+import React, { useState, useEffect } from "react";
+import {
+  FaCheck,
+  FaTimes,
+  FaEdit,
+  FaTrash,
+  FaSearch,
+  FaFilter,
+  FaUser,
+  FaPlus,
+  FaEye,
+} from "react-icons/fa";
+import "bootstrap/dist/css/bootstrap.min.css";
+import axiosInstance from "../../../Api/axiosInstance";
+import BaseUrl from "../../../Api/BaseUrl";
+import GetAdminId from "../../../Api/GetAdminId";
 
 const SessionBookingPage = () => {
   const adminId = GetAdminId();
@@ -12,9 +22,9 @@ const SessionBookingPage = () => {
   // Changed from static trainers to state that will be populated from API
   const [trainers, setTrainers] = useState([]);
 
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [branchFilter, setBranchFilter] = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [branchFilter, setBranchFilter] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showAddSessionModal, setShowAddSessionModal] = useState(false);
   const [showViewSessionModal, setShowViewSessionModal] = useState(false);
   const [selectedSession, setSelectedSession] = useState(null);
@@ -24,30 +34,33 @@ const SessionBookingPage = () => {
 
   // Use trainerId, not trainerName
   const [newSession, setNewSession] = useState({
-    sessionName: '',
-    trainerId: '', // ← ID
+    sessionName: "",
+    trainerId: "", // ← ID
     // branchId: '', // Commented out branch field
-    date: '',
-    time: '',
+    date: "",
+    time: "",
     duration: 60,
-    description: '',
-    status: 'Upcoming'
+    description: "",
+    status: "Upcoming",
   });
 
-  const customColor = '#6EB2CC';
+  const customColor = "#6EB2CC";
 
   // Function to get role name from roleId
   const getRoleName = (roleId) => {
-    switch(roleId) {
-      case 5: return 'Personal Trainer';
-      case 6: return 'General Trainer';
-      default: return 'Trainer';
+    switch (roleId) {
+      case 5:
+        return "Personal Trainer";
+      case 6:
+        return "General Trainer";
+      default:
+        return "Trainer";
     }
   };
 
   useEffect(() => {
     if (!adminId) {
-      setError('Admin ID not found. Please log in.');
+      setError("Admin ID not found. Please log in.");
       return;
     }
     fetchBranches();
@@ -60,15 +73,16 @@ const SessionBookingPage = () => {
     setLoading(true);
     try {
       const res = await axiosInstance.get(`${BaseUrl}sessions/${adminId}`);
-      if (res.data.success && res.data.data) { // FIX: Changed from res.data.sessions to res.data.data
+      if (res.data.success && res.data.data) {
+        // FIX: Changed from res.data.sessions to res.data.data
         // The API already includes trainerName in the response, so no need to enrich
         setSessions(res.data.data);
       } else {
-        setError('Failed to load sessions');
+        setError("Failed to load sessions");
       }
     } catch (err) {
-      console.error('Error fetching sessions:', err);
-      setError('Unable to load sessions');
+      console.error("Error fetching sessions:", err);
+      setError("Unable to load sessions");
     } finally {
       setLoading(false);
     }
@@ -77,7 +91,9 @@ const SessionBookingPage = () => {
   // FIX: Fetch Branches with correct URL
   const fetchBranches = async () => {
     try {
-      const res = await axiosInstance.get(`${BaseUrl}branches/by-admin/${adminId}`);
+      const res = await axiosInstance.get(
+        `${BaseUrl}branches/by-admin/${adminId}`
+      );
       let branchList = [];
       if (res.data.success) {
         if (res.data.branches && Array.isArray(res.data.branches)) {
@@ -86,7 +102,7 @@ const SessionBookingPage = () => {
       }
       setBranches(branchList);
     } catch (err) {
-      console.error('Error fetching branches:', err);
+      console.error("Error fetching branches:", err);
       setBranches([]);
     }
   };
@@ -94,14 +110,17 @@ const SessionBookingPage = () => {
   // Added fetchTrainers function to get trainers from API
   const fetchTrainers = async () => {
     try {
-      const res = await axiosInstance.get(`${BaseUrl}class/trainers/personal-general?adminId=${adminId}`);
+      const res = await axiosInstance.get(
+        `${BaseUrl}booking/unifiedbyPersonalGeneral/${adminId}`
+      );
       let trainerList = [];
-      if (res.data.success && res.data.trainers) {
-        trainerList = res.data.trainers;
+      if (res.data.success && Array.isArray(res.data.trainers)) {
+        // Filter only personal trainers (roleId === 5)
+        trainerList = res.data.trainers.filter((t) => Number(t.roleId) === 5);
       }
       setTrainers(trainerList);
     } catch (err) {
-      console.error('Error fetching trainers:', err);
+      console.error("Error fetching trainers:", err);
       setTrainers([]);
     }
   };
@@ -109,29 +128,33 @@ const SessionBookingPage = () => {
   // Removed the useEffect that re-fetches sessions when trainers load
   // since the API already includes trainerName in the response
 
-  const filteredSessions = sessions.filter(session => {
-    const matchesStatus = statusFilter === 'All' || session.status === statusFilter;
-    const matchesBranch = branchFilter === 'All' || session.branchName === branchFilter;
+  const filteredSessions = sessions.filter((session) => {
+    const matchesStatus =
+      statusFilter === "All" || session.status === statusFilter;
+    const matchesBranch =
+      branchFilter === "All" || session.branchName === branchFilter;
     const matchesSearch =
       !searchQuery ||
       session.sessionName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (session.trainerName || '').toLowerCase().includes(searchQuery.toLowerCase());
+      (session.trainerName || "")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
     return matchesStatus && matchesBranch && matchesSearch;
   });
 
   const formatDate = (isoStr) => {
-    if (!isoStr) return '';
+    if (!isoStr) return "";
     // Handle both date strings and Date objects
-    const date = typeof isoStr === 'string' ? new Date(isoStr) : isoStr;
-    return date.toISOString().split('T')[0];
+    const date = typeof isoStr === "string" ? new Date(isoStr) : isoStr;
+    return date.toISOString().split("T")[0];
   };
-  
+
   const formatTimeDisplay = (time24) => {
-    if (!time24) return '';
-    const [hours, minutes] = time24.split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
+    if (!time24) return "";
+    const [hours, minutes] = time24.split(":").map(Number);
+    const period = hours >= 12 ? "PM" : "AM";
     const displayHour = hours % 12 || 12;
-    return `${displayHour}:${minutes.toString().padStart(2, '0')} ${period}`;
+    return `${displayHour}:${minutes.toString().padStart(2, "0")} ${period}`;
   };
 
   const handleViewSession = (session) => {
@@ -140,10 +163,12 @@ const SessionBookingPage = () => {
   };
 
   const handleAddSession = async () => {
-    const { sessionName, trainerId, date, time, duration, description } = newSession; // Removed branchId
+    const { sessionName, trainerId, date, time, duration, description } =
+      newSession; // Removed branchId
 
-    if (!sessionName || !trainerId || !date || !time || !description) { // Removed branchId from validation
-      setError('Please fill all required fields');
+    if (!sessionName || !trainerId || !date || !time || !description) {
+      // Removed branchId from validation
+      setError("Please fill all required fields");
       return;
     }
 
@@ -152,8 +177,9 @@ const SessionBookingPage = () => {
     // const numBranchId = Number(branchId); // Commented out branch field
     const numDuration = Number(duration);
 
-    if (isNaN(numTrainerId) || isNaN(numDuration) || numDuration <= 0) { // Removed branchId validation
-      setError('Please fill valid values for trainer and duration.'); // Removed branch from error message
+    if (isNaN(numTrainerId) || isNaN(numDuration) || numDuration <= 0) {
+      // Removed branchId validation
+      setError("Please fill valid values for trainer and duration."); // Removed branch from error message
       return;
     }
 
@@ -162,37 +188,40 @@ const SessionBookingPage = () => {
     try {
       const payload = {
         sessionName: sessionName.trim(),
-        trainerId: numTrainerId,   // Send ID as number
+        trainerId: numTrainerId, // Send ID as number
         // branchId: numBranchId,     // Commented out branch field
-        date,                      // "YYYY-MM-DD"
-        time,                      // "HH:mm"
+        date, // "YYYY-MM-DD"
+        time, // "HH:mm"
         duration: numDuration,
         description: description.trim(),
-        status: 'Upcoming',
-        adminId: adminId           // Added adminId to payload
+        status: "Upcoming",
+        adminId: adminId, // Added adminId to payload
       };
 
-      const res = await axiosInstance.post(`${BaseUrl}sessions/create`, payload);
+      const res = await axiosInstance.post(
+        `${BaseUrl}sessions/create`,
+        payload
+      );
       if (res.data.success) {
         await fetchSessions();
         setNewSession({
-          sessionName: '',
-          trainerId: '',
+          sessionName: "",
+          trainerId: "",
           // branchId: '', // Commented out branch field
-          date: '',
-          time: '',
+          date: "",
+          time: "",
           duration: 60,
-          description: '',
-          status: 'Upcoming'
+          description: "",
+          status: "Upcoming",
         });
         setShowAddSessionModal(false);
-        alert('✅ Session created successfully!');
+        alert("✅ Session created successfully!");
       } else {
-        setError(res.data.message || 'Failed to create session');
+        setError(res.data.message || "Failed to create session");
       }
     } catch (err) {
-      console.error('Create error:', err);
-      setError(err.response?.data?.message || 'Failed to create session');
+      console.error("Create error:", err);
+      setError(err.response?.data?.message || "Failed to create session");
     } finally {
       setLoading(false);
     }
@@ -200,18 +229,22 @@ const SessionBookingPage = () => {
 
   const handleStatusChange = async (id, newStatus) => {
     try {
-      const res = await axiosInstance.put(`${BaseUrl}sessions/status/${id}`, { status: newStatus });
+      const res = await axiosInstance.put(`${BaseUrl}sessions/status/${id}`, {
+        status: newStatus,
+      });
       if (res.data.success) {
-        setSessions(sessions.map(s => (s.id === id ? { ...s, status: newStatus } : s)));
+        setSessions(
+          sessions.map((s) => (s.id === id ? { ...s, status: newStatus } : s))
+        );
         if (selectedSession && selectedSession.id === id) {
           setSelectedSession({ ...selectedSession, status: newStatus });
         }
       } else {
-        alert('Failed to update status');
+        alert("Failed to update status");
       }
     } catch (err) {
-      console.error('Status update error:', err);
-      alert('Error updating session status');
+      console.error("Status update error:", err);
+      alert("Error updating session status");
     }
   };
 
@@ -219,19 +252,21 @@ const SessionBookingPage = () => {
     if (!selectedSession) return;
     setLoading(true);
     try {
-      const res = await axiosInstance.delete(`${BaseUrl}sessions/delete/${selectedSession.id}`);
+      const res = await axiosInstance.delete(
+        `${BaseUrl}sessions/delete/${selectedSession.id}`
+      );
       if (res.data.success) {
-        setSessions(sessions.filter(s => s.id !== selectedSession.id));
+        setSessions(sessions.filter((s) => s.id !== selectedSession.id));
         setShowDeleteModal(false);
         setShowViewSessionModal(false);
         setSelectedSession(null);
-        alert('✅ Session deleted!');
+        alert("✅ Session deleted!");
       } else {
-        setError('Failed to delete session');
+        setError("Failed to delete session");
       }
     } catch (err) {
-      console.error('Delete error:', err);
-      setError(err.response?.data?.message || 'Failed to delete session');
+      console.error("Delete error:", err);
+      setError(err.response?.data?.message || "Failed to delete session");
     } finally {
       setLoading(false);
     }
@@ -242,13 +277,15 @@ const SessionBookingPage = () => {
     setShowDeleteModal(true);
   };
 
-  const uniqueBranchNames = [...new Set(sessions.map(s => s.branchName).filter(Boolean))];
+  const uniqueBranchNames = [
+    ...new Set(sessions.map((s) => s.branchName).filter(Boolean)),
+  ];
 
   const timeOptions = [];
   for (let hour = 0; hour < 24; hour++) {
     for (let minute = 0; minute < 60; minute += 30) {
-      const h = hour.toString().padStart(2, '0');
-      const m = minute.toString().padStart(2, '0');
+      const h = hour.toString().padStart(2, "0");
+      const m = minute.toString().padStart(2, "0");
       timeOptions.push(`${h}:${m}`);
     }
   }
@@ -258,21 +295,40 @@ const SessionBookingPage = () => {
       <div className="card-body">
         <div className="d-flex justify-content-between align-items-start mb-2">
           <h5 className="card-title mb-0">{session.sessionName}</h5>
-          <span className={`badge ${
-            session.status === 'Completed' ? 'bg-success' :
-            session.status === 'Cancelled' ? 'bg-danger' : ''
-          }`} style={session.status === 'Upcoming' ? { backgroundColor: customColor } : {}}>
+          <span
+            className={`badge ${
+              session.status === "Completed"
+                ? "bg-success"
+                : session.status === "Cancelled"
+                ? "bg-danger"
+                : ""
+            }`}
+            style={
+              session.status === "Upcoming"
+                ? { backgroundColor: customColor }
+                : {}
+            }
+          >
             {session.status}
           </span>
         </div>
         <div className="row mb-2">
           <div className="col-6">
-            <p className="mb-1"><FaUser className="me-1" style={{ color: customColor }} /> {session.trainerName || '—'}</p>
-            <p className="mb-1"><strong>Date:</strong> {formatDate(session.date)}</p>
+            <p className="mb-1">
+              <FaUser className="me-1" style={{ color: customColor }} />{" "}
+              {session.trainerName || "—"}
+            </p>
+            <p className="mb-1">
+              <strong>Date:</strong> {formatDate(session.date)}
+            </p>
           </div>
           <div className="col-6">
-            <p className="mb-1"><strong>Time:</strong> {formatTimeDisplay(session.time)}</p>
-            <p className="mb-1"><strong>Duration:</strong> {session.duration} min</p>
+            <p className="mb-1">
+              <strong>Time:</strong> {formatTimeDisplay(session.time)}
+            </p>
+            <p className="mb-1">
+              <strong>Duration:</strong> {session.duration} min
+            </p>
           </div>
         </div>
         <div className="d-flex justify-content-between align-items-center mb-2">
@@ -287,19 +343,19 @@ const SessionBookingPage = () => {
             >
               <FaEye />
             </button>
-            {session.status === 'Upcoming' && (
+            {session.status === "Upcoming" && (
               <>
                 <button
                   className="btn btn-outline-success"
                   title="Complete"
-                  onClick={() => handleStatusChange(session.id, 'Completed')}
+                  onClick={() => handleStatusChange(session.id, "Completed")}
                 >
                   <FaCheck />
                 </button>
                 <button
                   className="btn btn-outline-danger"
                   title="Cancel"
-                  onClick={() => handleStatusChange(session.id, 'Cancelled')}
+                  onClick={() => handleStatusChange(session.id, "Cancelled")}
                 >
                   <FaTimes />
                 </button>
@@ -329,7 +385,9 @@ const SessionBookingPage = () => {
           <div className="row g-2 align-items-center">
             <div className="col-12 col-md-4 col-lg-3">
               <div className="input-group">
-                <span className="input-group-text"><FaSearch /></span>
+                <span className="input-group-text">
+                  <FaSearch />
+                </span>
                 <input
                   type="text"
                   className="form-control"
@@ -341,7 +399,9 @@ const SessionBookingPage = () => {
             </div>
             <div className="col-6 col-md-3 col-lg-2">
               <div className="input-group">
-                <span className="input-group-text"><FaFilter /></span>
+                <span className="input-group-text">
+                  <FaFilter />
+                </span>
                 <select
                   className="form-select"
                   value={statusFilter}
@@ -354,30 +414,14 @@ const SessionBookingPage = () => {
                 </select>
               </div>
             </div>
-            {/* Commented out branch filter */}
-            {/* <div className="col-6 col-md-3 col-lg-2">
-              <div className="input-group">
-                <span className="input-group-text"><FaFilter /></span>
-                <select
-                  className="form-select"
-                  value={branchFilter}
-                  onChange={(e) => setBranchFilter(e.target.value)}
-                >
-                  <option value="All">All Branches</option>
-                  {uniqueBranchNames.map(branch => (
-                    <option key={branch} value={branch}>{branch}</option>
-                  ))}
-                </select>
-              </div>
-            </div> */}
             <div className="col-12 col-md-2 col-lg-5 d-flex justify-content-end mt-2 mt-md-0">
-                <button
-                  className="btn text-white w-100 w-md-auto"
-                  style={{ backgroundColor: customColor }}
-                  onClick={() => setShowAddSessionModal(true)}
-                >
-                  <FaPlus className="me-1" /> Add Session
-                </button>
+              <button
+                className="btn text-white w-100 w-md-auto"
+                style={{ backgroundColor: customColor }}
+                onClick={() => setShowAddSessionModal(true)}
+              >
+                <FaPlus className="me-1" /> Add Session
+              </button>
             </div>
           </div>
         </div>
@@ -385,7 +429,11 @@ const SessionBookingPage = () => {
         <div className="card-body p-0">
           {loading && sessions.length === 0 ? (
             <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status" style={{ color: customColor }}>
+              <div
+                className="spinner-border text-primary"
+                role="status"
+                style={{ color: customColor }}
+              >
                 <span className="visually-hidden">Loading...</span>
               </div>
               <p className="mt-3">Loading sessions...</p>
@@ -407,28 +455,43 @@ const SessionBookingPage = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredSessions.map(s => (
+                      {filteredSessions.map((s) => (
                         <tr key={s.id}>
                           <td>{s.sessionName}</td>
                           <td>
                             <div className="d-flex align-items-center">
-                              <FaUser className="me-2" style={{ color: customColor }} />
-                              <span>{s.trainerName || '—'}</span>
+                              <FaUser
+                                className="me-2"
+                                style={{ color: customColor }}
+                              />
+                              <span>{s.trainerName || "—"}</span>
                             </div>
                           </td>
                           <td>
                             <div>{formatDate(s.date)}</div>
-                            <div className="text-muted small">{formatTimeDisplay(s.time)}</div>
+                            <div className="text-muted small">
+                              {formatTimeDisplay(s.time)}
+                            </div>
                           </td>
                           {/* Commented out branch column */}
                           {/* <td>
                             <span className="badge bg-light text-dark">{s.branchName || '—'}</span>
                           </td> */}
                           <td>
-                            <span className={`badge ${
-                              s.status === 'Completed' ? 'bg-success' :
-                              s.status === 'Cancelled' ? 'bg-danger' : ''
-                            }`} style={s.status === 'Upcoming' ? { backgroundColor: customColor } : {}}>
+                            <span
+                              className={`badge ${
+                                s.status === "Completed"
+                                  ? "bg-success"
+                                  : s.status === "Cancelled"
+                                  ? "bg-danger"
+                                  : ""
+                              }`}
+                              style={
+                                s.status === "Upcoming"
+                                  ? { backgroundColor: customColor }
+                                  : {}
+                              }
+                            >
                               {s.status}
                             </span>
                           </td>
@@ -436,25 +499,32 @@ const SessionBookingPage = () => {
                             <div className="btn-group" role="group">
                               <button
                                 className="btn btn-sm"
-                                style={{ borderColor: customColor, color: customColor }}
+                                style={{
+                                  borderColor: customColor,
+                                  color: customColor,
+                                }}
                                 title="View"
                                 onClick={() => handleViewSession(s)}
                               >
                                 <FaEye />
                               </button>
-                              {s.status === 'Upcoming' && (
+                              {s.status === "Upcoming" && (
                                 <>
                                   <button
                                     className="btn btn-sm btn-outline-success"
                                     title="Complete"
-                                    onClick={() => handleStatusChange(s.id, 'Completed')}
+                                    onClick={() =>
+                                      handleStatusChange(s.id, "Completed")
+                                    }
                                   >
                                     <FaCheck />
                                   </button>
                                   <button
                                     className="btn btn-sm btn-outline-danger"
                                     title="Cancel"
-                                    onClick={() => handleStatusChange(s.id, 'Cancelled')}
+                                    onClick={() =>
+                                      handleStatusChange(s.id, "Cancelled")
+                                    }
                                   >
                                     <FaTimes />
                                   </button>
@@ -477,7 +547,7 @@ const SessionBookingPage = () => {
               </div>
 
               <div className="d-md-none p-3">
-                {filteredSessions.map(s => (
+                {filteredSessions.map((s) => (
                   <SessionCard key={s.id} session={s} />
                 ))}
               </div>
@@ -493,10 +563,16 @@ const SessionBookingPage = () => {
       {/* Add Session Modal */}
       {showAddSessionModal && (
         <>
-          <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div
+            className="modal fade show d-block"
+            style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+          >
             <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
               <div className="modal-content">
-                <div className="modal-header" style={{ backgroundColor: customColor, color: 'white' }}>
+                <div
+                  className="modal-header"
+                  style={{ backgroundColor: customColor, color: "white" }}
+                >
                   <h5 className="modal-title">Add New Session</h5>
                   <button
                     type="button"
@@ -508,7 +584,8 @@ const SessionBookingPage = () => {
                   {error && <div className="alert alert-danger">{error}</div>}
                   {trainers.length === 0 && (
                     <div className="alert alert-warning">
-                      No trainers found. Please add trainers first before creating sessions.
+                      No trainers found. Please add trainers first before
+                      creating sessions.
                     </div>
                   )}
                   <div className="row g-3">
@@ -518,7 +595,12 @@ const SessionBookingPage = () => {
                         type="text"
                         className="form-control"
                         value={newSession.sessionName}
-                        onChange={(e) => setNewSession({ ...newSession, sessionName: e.target.value.trim() })}
+                        onChange={(e) =>
+                          setNewSession({
+                            ...newSession,
+                            sessionName: e.target.value.trim(),
+                          })
+                        }
                         required
                       />
                     </div>
@@ -527,13 +609,20 @@ const SessionBookingPage = () => {
                       <select
                         className="form-select"
                         value={newSession.trainerId}
-                        onChange={(e) => setNewSession({ ...newSession, trainerId: e.target.value })}
+                        onChange={(e) =>
+                          setNewSession({
+                            ...newSession,
+                            trainerId: e.target.value,
+                          })
+                        }
                         required
                         disabled={trainers.length === 0}
                       >
                         <option value="">Select trainer</option>
-                        {trainers.map(t => (
-                          <option key={t.id} value={t.id}>{t.fullName || t.name} ({getRoleName(t.roleId)})</option>
+                        {trainers.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.fullName || t.name} ({getRoleName(t.roleId)})
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -558,7 +647,9 @@ const SessionBookingPage = () => {
                         type="date"
                         className="form-control"
                         value={newSession.date}
-                        onChange={(e) => setNewSession({ ...newSession, date: e.target.value })}
+                        onChange={(e) =>
+                          setNewSession({ ...newSession, date: e.target.value })
+                        }
                         required
                       />
                     </div>
@@ -567,12 +658,16 @@ const SessionBookingPage = () => {
                       <select
                         className="form-select"
                         value={newSession.time}
-                        onChange={(e) => setNewSession({ ...newSession, time: e.target.value })}
+                        onChange={(e) =>
+                          setNewSession({ ...newSession, time: e.target.value })
+                        }
                         required
                       >
                         <option value="">Select time</option>
-                        {timeOptions.map(time => (
-                          <option key={time} value={time}>{formatTimeDisplay(time)}</option>
+                        {timeOptions.map((time) => (
+                          <option key={time} value={time}>
+                            {formatTimeDisplay(time)}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -585,7 +680,10 @@ const SessionBookingPage = () => {
                         value={newSession.duration}
                         onChange={(e) => {
                           const val = e.target.value;
-                          setNewSession({ ...newSession, duration: val === '' ? '' : Number(val) });
+                          setNewSession({
+                            ...newSession,
+                            duration: val === "" ? "" : Number(val),
+                          });
                         }}
                       />
                     </div>
@@ -595,14 +693,22 @@ const SessionBookingPage = () => {
                         className="form-control"
                         rows="3"
                         value={newSession.description}
-                        onChange={(e) => setNewSession({ ...newSession, description: e.target.value.trim() })}
+                        onChange={(e) =>
+                          setNewSession({
+                            ...newSession,
+                            description: e.target.value.trim(),
+                          })
+                        }
                         required
                       ></textarea>
                     </div>
                   </div>
                 </div>
                 <div className="modal-footer">
-                  <button className="btn btn-secondary" onClick={() => setShowAddSessionModal(false)}>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setShowAddSessionModal(false)}
+                  >
                     Cancel
                   </button>
                   <button
@@ -611,7 +717,7 @@ const SessionBookingPage = () => {
                     onClick={handleAddSession}
                     disabled={loading || trainers.length === 0}
                   >
-                    {loading ? 'Creating...' : 'Add Session'}
+                    {loading ? "Creating..." : "Add Session"}
                   </button>
                 </div>
               </div>
@@ -624,10 +730,16 @@ const SessionBookingPage = () => {
       {/* View Session Modal */}
       {showViewSessionModal && selectedSession && (
         <>
-          <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div
+            className="modal fade show d-block"
+            style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+          >
             <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
               <div className="modal-content">
-                <div className="modal-header" style={{ backgroundColor: customColor, color: 'white' }}>
+                <div
+                  className="modal-header"
+                  style={{ backgroundColor: customColor, color: "white" }}
+                >
                   <h5 className="modal-title">{selectedSession.sessionName}</h5>
                   <button
                     type="button"
@@ -640,16 +752,28 @@ const SessionBookingPage = () => {
                     <h6 className="text-muted">Session Information</h6>
                     <div className="row g-2">
                       <div className="col-12 col-md-6">
-                        <p><strong>Trainer:</strong> {selectedSession.trainerName || '—'}</p>
+                        <p>
+                          <strong>Trainer:</strong>{" "}
+                          {selectedSession.trainerName || "—"}
+                        </p>
                       </div>
                       <div className="col-12 col-md-6">
-                        <p><strong>Date:</strong> {formatDate(selectedSession.date)}</p>
+                        <p>
+                          <strong>Date:</strong>{" "}
+                          {formatDate(selectedSession.date)}
+                        </p>
                       </div>
                       <div className="col-12 col-md-6">
-                        <p><strong>Time:</strong> {formatTimeDisplay(selectedSession.time)}</p>
+                        <p>
+                          <strong>Time:</strong>{" "}
+                          {formatTimeDisplay(selectedSession.time)}
+                        </p>
                       </div>
                       <div className="col-12 col-md-6">
-                        <p><strong>Duration:</strong> {selectedSession.duration} minutes</p>
+                        <p>
+                          <strong>Duration:</strong> {selectedSession.duration}{" "}
+                          minutes
+                        </p>
                       </div>
                       {/* Commented out branch field */}
                       {/* <div className="col-12 col-md-6">
@@ -658,10 +782,20 @@ const SessionBookingPage = () => {
                       <div className="col-12 col-md-6">
                         <p>
                           <strong>Status:</strong>{" "}
-                          <span className={`badge ${
-                            selectedSession.status === 'Completed' ? 'bg-success' :
-                            selectedSession.status === 'Cancelled' ? 'bg-danger' : ''
-                          }`} style={selectedSession.status === 'Upcoming' ? { backgroundColor: customColor } : {}}>
+                          <span
+                            className={`badge ${
+                              selectedSession.status === "Completed"
+                                ? "bg-success"
+                                : selectedSession.status === "Cancelled"
+                                ? "bg-danger"
+                                : ""
+                            }`}
+                            style={
+                              selectedSession.status === "Upcoming"
+                                ? { backgroundColor: customColor }
+                                : {}
+                            }
+                          >
                             {selectedSession.status}
                           </span>
                         </p>
@@ -670,22 +804,26 @@ const SessionBookingPage = () => {
                   </div>
                   <div className="mb-3">
                     <h6 className="text-muted">Description</h6>
-                    <p>{selectedSession.description || '—'}</p>
+                    <p>{selectedSession.description || "—"}</p>
                   </div>
                 </div>
                 <div className="modal-footer">
                   <div className="d-flex flex-wrap gap-2 w-100">
-                    {selectedSession.status === 'Upcoming' && (
+                    {selectedSession.status === "Upcoming" && (
                       <>
                         <button
                           className="btn btn-success flex-fill flex-md-grow-0"
-                          onClick={() => handleStatusChange(selectedSession.id, 'Completed')}
+                          onClick={() =>
+                            handleStatusChange(selectedSession.id, "Completed")
+                          }
                         >
                           <FaCheck className="me-1" /> Complete
                         </button>
                         <button
                           className="btn btn-danger flex-fill flex-md-grow-0"
-                          onClick={() => handleStatusChange(selectedSession.id, 'Cancelled')}
+                          onClick={() =>
+                            handleStatusChange(selectedSession.id, "Cancelled")
+                          }
                         >
                           <FaTimes className="me-1" /> Cancel
                         </button>
@@ -715,10 +853,16 @@ const SessionBookingPage = () => {
       {/* Delete Confirmation */}
       {showDeleteModal && selectedSession && (
         <>
-          <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div
+            className="modal fade show d-block"
+            style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+          >
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content">
-                <div className="modal-header" style={{ backgroundColor: customColor, color: 'white' }}>
+                <div
+                  className="modal-header"
+                  style={{ backgroundColor: customColor, color: "white" }}
+                >
                   <h5 className="modal-title">Delete Session</h5>
                   <button
                     type="button"
@@ -730,20 +874,35 @@ const SessionBookingPage = () => {
                   <p>Are you sure you want to delete this session?</p>
                   <div className="alert alert-light">
                     <div className="row g-2">
-                      <div className="col-12"><strong>Session:</strong> {selectedSession.sessionName}</div>
-                      <div className="col-12"><strong>Trainer:</strong> {selectedSession.trainerName}</div>
+                      <div className="col-12">
+                        <strong>Session:</strong> {selectedSession.sessionName}
+                      </div>
+                      <div className="col-12">
+                        <strong>Trainer:</strong> {selectedSession.trainerName}
+                      </div>
                       {/* Commented out branch field */}
                       {/* <div className="col-12"><strong>Branch:</strong> {selectedSession.branchName}</div> */}
-                      <div className="col-12"><strong>Date & Time:</strong> {formatDate(selectedSession.date)} at {formatTimeDisplay(selectedSession.time)}</div>
+                      <div className="col-12">
+                        <strong>Date & Time:</strong>{" "}
+                        {formatDate(selectedSession.date)} at{" "}
+                        {formatTimeDisplay(selectedSession.time)}
+                      </div>
                     </div>
                   </div>
                 </div>
                 <div className="modal-footer">
-                  <button className="btn btn-secondary" onClick={() => setShowDeleteModal(false)}>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setShowDeleteModal(false)}
+                  >
                     Cancel
                   </button>
-                  <button className="btn btn-danger" onClick={handleDeleteSession} disabled={loading}>
-                    {loading ? 'Deleting...' : 'Delete'}
+                  <button
+                    className="btn btn-danger"
+                    onClick={handleDeleteSession}
+                    disabled={loading}
+                  >
+                    {loading ? "Deleting..." : "Delete"}
                   </button>
                 </div>
               </div>
