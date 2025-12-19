@@ -173,7 +173,9 @@ const ReceptionistWalkinMember = () => {
   const fetchMemberById = async (id) => {
     try {
       // Add BaseUrl prefix and fix the endpoint
-      const response = await axiosInstance.get(`${BaseUrl}members/detail/${id}`);
+      const response = await axiosInstance.get(
+        `${BaseUrl}members/detail/${id}`
+      );
       console.log("API response for member detail:", response.data);
 
       if (response.data?.success) {
@@ -237,7 +239,7 @@ const ReceptionistWalkinMember = () => {
       console.error("Error fetching plans:", err);
       setPlanError(
         err.response?.data?.message ||
-        "Failed to fetch plans. Please try again."
+          "Failed to fetch plans. Please try again."
       );
     } finally {
       setPlanLoading(false);
@@ -271,7 +273,11 @@ const ReceptionistWalkinMember = () => {
       formData.append("interestedIn", newMember.interestedIn);
       formData.append("planId", newMember.planId);
       formData.append("membershipFrom", newMember.startDate);
-      formData.append("paymentMode", newMember.paymentMode.charAt(0).toUpperCase() + newMember.paymentMode.slice(1));
+      formData.append(
+        "paymentMode",
+        newMember.paymentMode.charAt(0).toUpperCase() +
+          newMember.paymentMode.slice(1)
+      );
       formData.append("amountPaid", newMember.amountPaid);
       formData.append("status", newMember.status);
 
@@ -286,7 +292,7 @@ const ReceptionistWalkinMember = () => {
         formData,
         {
           headers: {
-            'Content-Type': 'multipart/form-data',
+            "Content-Type": "multipart/form-data",
           },
         }
       );
@@ -356,7 +362,7 @@ const ReceptionistWalkinMember = () => {
         formData,
         {
           headers: {
-            'Content-Type': 'multipart/form-data',
+            "Content-Type": "multipart/form-data",
           },
         }
       );
@@ -517,13 +523,17 @@ const ReceptionistWalkinMember = () => {
         // Filter for plans where type is "PERSONAL"
         filtered = apiPlans.filter((plan) => plan.type === "PERSONAL");
         break;
+      case "Personal Trainer":
+        // Filter for plans where trainerType is "personal"
+        filtered = apiPlans.filter((plan) => plan.trainerType === "personal");
+        break;
+      case "General Trainer":
+        // Filter for plans where trainerType is "general"
+        filtered = apiPlans.filter((plan) => plan.trainerType === "general");
+        break;
       case "Group Classes":
         // Filter for plans where type is "GROUP"
         filtered = apiPlans.filter((plan) => plan.type === "GROUP");
-        break;
-      case "General":
-        // Filter for plans where type is "MEMBER"
-        filtered = apiPlans.filter((plan) => plan.type === "MEMBER");
         break;
       default:
         filtered = [];
@@ -627,7 +637,11 @@ const ReceptionistWalkinMember = () => {
                               src={member.profileImage}
                               alt="Profile"
                               className="rounded-circle"
-                              style={{ width: "36px", height: "36px", objectFit: "cover" }}
+                              style={{
+                                width: "36px",
+                                height: "36px",
+                                objectFit: "cover",
+                              }}
                             />
                           ) : (
                             <div
@@ -734,7 +748,11 @@ const ReceptionistWalkinMember = () => {
                           src={member.profileImage}
                           alt="Profile"
                           className="rounded-circle me-3"
-                          style={{ width: "50px", height: "50px", objectFit: "cover" }}
+                          style={{
+                            width: "50px",
+                            height: "50px",
+                            objectFit: "cover",
+                          }}
                         />
                       ) : (
                         <div
@@ -869,10 +887,18 @@ const ReceptionistWalkinMember = () => {
                         src={newMember.profileImagePreview}
                         alt="Preview"
                         className="rounded-circle"
-                        style={{ width: "100px", height: "100px", objectFit: "cover", border: "2px solid #ddd" }}
+                        style={{
+                          width: "100px",
+                          height: "100px",
+                          objectFit: "cover",
+                          border: "2px solid #ddd",
+                        }}
                       />
                     ) : (
-                      <div className="bg-light border rounded-circle d-flex align-items-center justify-content-center" style={{ width: "100px", height: "100px" }}>
+                      <div
+                        className="bg-light border rounded-circle d-flex align-items-center justify-content-center"
+                        style={{ width: "100px", height: "100px" }}
+                      >
                         <User size={40} className="text-muted" />
                       </div>
                     )}
@@ -1048,7 +1074,7 @@ const ReceptionistWalkinMember = () => {
                       <label className="form-label">
                         Interested In <span className="text-danger">*</span>
                       </label>
-                      <div className="d-flex gap-3">
+                      <div className="d-flex flex-wrap gap-3">
                         <div className="form-check">
                           <input
                             className="form-check-input"
@@ -1080,10 +1106,10 @@ const ReceptionistWalkinMember = () => {
                             className="form-check-input"
                             type="radio"
                             name="interestedIn"
-                            id="general"
-                            value="General"
+                            id="personalTrainer"
+                            value="Personal Trainer"
                             checked={
-                              newMember.interestedIn === "General"
+                              newMember.interestedIn === "Personal Trainer"
                             }
                             onChange={(e) => {
                               setNewMember({
@@ -1096,9 +1122,35 @@ const ReceptionistWalkinMember = () => {
                           />
                           <label
                             className="form-check-label"
-                            htmlFor="general"
+                            htmlFor="personalTrainer"
                           >
-                            General
+                            Personal Trainer
+                          </label>
+                        </div>
+                        <div className="form-check">
+                          <input
+                            className="form-check-input"
+                            type="radio"
+                            name="interestedIn"
+                            id="generalTrainer"
+                            value="General Trainer"
+                            checked={
+                              newMember.interestedIn === "General Trainer"
+                            }
+                            onChange={(e) => {
+                              setNewMember({
+                                ...newMember,
+                                interestedIn: e.target.value,
+                                planId: "",
+                              });
+                            }}
+                            required
+                          />
+                          <label
+                            className="form-check-label"
+                            htmlFor="generalTrainer"
+                          >
+                            General Trainer
                           </label>
                         </div>
                         <div className="form-check">
@@ -1178,12 +1230,14 @@ const ReceptionistWalkinMember = () => {
                               : "Please select 'Interested In' first"}
                           </option>
                           {plansLoaded &&
-                            getFilteredPlans(newMember.interestedIn).map((plan) => (
-                              <option key={plan.id} value={plan.id}>
-                                {plan.name} - {plan.price} ({plan.validity}{" "}
-                                days)
-                              </option>
-                            ))}
+                            getFilteredPlans(newMember.interestedIn).map(
+                              (plan) => (
+                                <option key={plan.id} value={plan.id}>
+                                  {plan.name} - {plan.price} ({plan.validity}{" "}
+                                  days)
+                                </option>
+                              )
+                            )}
                         </select>
                       )}
                     </div>
@@ -1296,17 +1350,30 @@ const ReceptionistWalkinMember = () => {
                           src={editMember.profileImagePreview}
                           alt="Preview"
                           className="rounded-circle"
-                          style={{ width: "100px", height: "100px", objectFit: "cover", border: "2px solid #ddd" }}
+                          style={{
+                            width: "100px",
+                            height: "100px",
+                            objectFit: "cover",
+                            border: "2px solid #ddd",
+                          }}
                         />
                       ) : editMember.existingProfileImage ? (
                         <img
                           src={editMember.existingProfileImage}
                           alt="Profile"
                           className="rounded-circle"
-                          style={{ width: "100px", height: "100px", objectFit: "cover", border: "2px solid #ddd" }}
+                          style={{
+                            width: "100px",
+                            height: "100px",
+                            objectFit: "cover",
+                            border: "2px solid #ddd",
+                          }}
                         />
                       ) : (
-                        <div className="bg-light border rounded-circle d-flex align-items-center justify-content-center" style={{ width: "100px", height: "100px" }}>
+                        <div
+                          className="bg-light border rounded-circle d-flex align-items-center justify-content-center"
+                          style={{ width: "100px", height: "100px" }}
+                        >
                           <User size={40} className="text-muted" />
                         </div>
                       )}
@@ -1380,29 +1447,32 @@ const ReceptionistWalkinMember = () => {
                       </select>
                     </div>
                     <div className="col-12">
-                      <label className="form-label">Interested In</label>
-                      <div className="d-flex gap-3">
+                      <label className="form-label">
+                        Interested In <span className="text-danger">*</span>
+                      </label>
+                      <div className="d-flex gap-3 flex-wrap">
                         <div className="form-check">
                           <input
                             className="form-check-input"
                             type="radio"
-                            name="editInterestedIn"
-                            id="editPersonalTraining"
+                            name="interestedIn"
+                            id="personalTraining"
                             value="Personal Training"
                             checked={
-                              editMember.interestedIn === "Personal Training"
+                              newMember.interestedIn === "Personal Training"
                             }
                             onChange={(e) => {
-                              setEditMember({
-                                ...editMember,
+                              setNewMember({
+                                ...newMember,
                                 interestedIn: e.target.value,
-                                planId: "",
+                                planId: "", // Reset plan selection when interested in changes
                               });
                             }}
+                            required
                           />
                           <label
                             className="form-check-label"
-                            htmlFor="editPersonalTraining"
+                            htmlFor="personalTraining"
                           >
                             Personal Training
                           </label>
@@ -1411,48 +1481,69 @@ const ReceptionistWalkinMember = () => {
                           <input
                             className="form-check-input"
                             type="radio"
-                            name="editInterestedIn"
-                            id="editGeneral"
-                            value="General"
+                            name="interestedIn"
+                            id="personalTrainer"
+                            value="Personal Trainer"
                             checked={
-                              editMember.interestedIn === "General"
+                              newMember.interestedIn === "Personal Trainer"
                             }
                             onChange={(e) => {
-                              setEditMember({
-                                ...editMember,
+                              setNewMember({
+                                ...newMember,
                                 interestedIn: e.target.value,
-                                planId: "",
+                                planId: "", // Reset plan selection when interested in changes
                               });
                             }}
+                            required
                           />
                           <label
                             className="form-check-label"
-                            htmlFor="editGeneral"
+                            htmlFor="personalTrainer"
                           >
-                            General
+                            Personal Trainer
                           </label>
                         </div>
                         <div className="form-check">
                           <input
                             className="form-check-input"
                             type="radio"
-                            name="editInterestedIn"
-                            id="editGroupClasses"
-                            value="Group Classes"
-                            checked={
-                              editMember.interestedIn === "Group Classes"
-                            }
+                            name="interestedIn"
+                            id="general"
+                            value="General"
+                            checked={newMember.interestedIn === "General"}
                             onChange={(e) => {
-                              setEditMember({
-                                ...editMember,
+                              setNewMember({
+                                ...newMember,
                                 interestedIn: e.target.value,
-                                planId: "",
+                                planId: "", // Reset plan selection when interested in changes
                               });
                             }}
+                            required
+                          />
+                          <label className="form-check-label" htmlFor="general">
+                            General Trainer
+                          </label>
+                        </div>
+                        <div className="form-check">
+                          <input
+                            className="form-check-input"
+                            type="radio"
+                            name="interestedIn"
+                            id="groupClasses"
+                            value="Group Classes"
+                            checked={newMember.interestedIn === "Group Classes"}
+                            onChange={(e) => {
+                              setNewMember({
+                                ...newMember,
+                                interestedIn: e.target.value,
+                                planId: "", // Reset plan selection when interested in changes
+                              });
+                            }}
+                            required
                           />
                           <label
                             className="form-check-label"
-                            htmlFor="editGroupClasses"
+                            htmlFor="groupClasses"
                           >
                             Group Classes
                           </label>
@@ -1479,11 +1570,14 @@ const ReceptionistWalkinMember = () => {
                             : "Please select 'Interested In' first"}
                         </option>
                         {plansLoaded &&
-                          getFilteredPlans(editMember.interestedIn).map((plan) => (
-                            <option key={plan.id} value={plan.id}>
-                              {plan.name} - {plan.price} ({plan.validity} days)
-                            </option>
-                          ))}
+                          getFilteredPlans(editMember.interestedIn).map(
+                            (plan) => (
+                              <option key={plan.id} value={plan.id}>
+                                {plan.name} - {plan.price} ({plan.validity}{" "}
+                                days)
+                              </option>
+                            )
+                          )}
                       </select>
                     </div>
                     <div className="col-12 col-md-6">
@@ -1679,7 +1773,11 @@ const ReceptionistWalkinMember = () => {
                         src={selectedMember.profileImage}
                         alt="Profile"
                         className="rounded-circle mb-3"
-                        style={{ width: "120px", height: "120px", objectFit: "cover" }}
+                        style={{
+                          width: "120px",
+                          height: "120px",
+                          objectFit: "cover",
+                        }}
                       />
                     ) : (
                       <div
