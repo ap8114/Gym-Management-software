@@ -578,11 +578,11 @@ const CreatePlan = () => {
   const handleProcessMembershipStatus = async (status) => {
     if (!requestToProcess || requestToProcess.requestType !== "membership") return;
     try {
-      const endpoint = `booking/admin/booking-requests/${requestToProcess.bookingRequestId}/status`;
+      const endpoint = `booking/approve/${requestToProcess.bookingRequestId}`;
       const payload = {
         status: status === "approved" ? "approved" : "rejected",
       };
-      const response = await axiosInstance.put(endpoint, payload);
+      const response = await axiosInstance.post(endpoint, payload);
       if (response.data.success) {
         setMembershipRequests((prev) =>
           prev.map((req) =>
