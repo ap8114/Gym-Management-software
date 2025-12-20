@@ -35,8 +35,8 @@ export default function SalesReport() {
   const reportRef = useRef(null);
   const [staffList, setStaffList] = useState([]);
 
+  // All roles including Housekeeping (now restored)
   const roles = [
-    // { value: "", label: "Select Role..." },
     { value: "member", label: "Total Sales" },
     { value: "receptionist", label: "Receptionist" },
     { value: "personal_trainer", label: "Personal Trainer" },
@@ -81,21 +81,17 @@ export default function SalesReport() {
 
   const filteredStaff = getFilteredStaff();
 
-  const isStaffRole = ["receptionist", "personal_trainer", "general_trainer", "housekeeping"].includes(selectedRole);
-  const isTrainer = ["personal_trainer", "general_trainer"].includes(selectedRole);
-  const isHousekeeping = selectedRole === "housekeeping";
-  const isReceptionist = selectedRole === "receptionist";
   const isMember = selectedRole === "member";
+  const isReceptionist = selectedRole === "receptionist";
+  const isPersonalTrainer = selectedRole === "personal_trainer";
+  const isGeneralTrainer = selectedRole === "general_trainer";
+  const isHousekeeping = selectedRole === "housekeeping";
+  const isTrainer = isPersonalTrainer || isGeneralTrainer;
+  const isStaffRole = isReceptionist || isTrainer || isHousekeeping;
 
-  // Decide if we can fetch
-  const canFetch = () => {
-    if (!selectedRole) return false;
-    if (isTrainer && !selectedStaffId) return false; // Trainers require staffId
-    return true;
-  };
-
+  // Fetch logic: staffId is optional for all roles now
   const fetchReport = async () => {
-    if (!canFetch()) {
+    if (!selectedRole || !adminId) {
       setApiData(null);
       return;
     }
@@ -108,9 +104,18 @@ export default function SalesReport() {
 
       if (isMember) {
         url = `reports/members?adminId=${adminId}`;
-      } else if (isTrainer && selectedStaffId) {
-        const rolePath = selectedRole === "personal_trainer" ? "personal-trainer" : "general-trainer";
-        url = `reports/${rolePath}/staff/${adminId}/${selectedStaffId}?fromDate=${dateFrom}&toDate=${dateTo}`;
+      } else if (isPersonalTrainer) {
+        if (selectedStaffId) {
+          url = `reports/personal-trainer/staff/${adminId}/${selectedStaffId}?fromDate=${dateFrom}&toDate=${dateTo}`;
+        } else {
+          url = `reports/personal-trainer?adminId=${adminId}`;
+        }
+      } else if (isGeneralTrainer) {
+        if (selectedStaffId) {
+          url = `reports/general-trainer/staff/${adminId}/${selectedStaffId}?fromDate=${dateFrom}&toDate=${dateTo}`;
+        } else {
+          url = `reports/general-trainer?adminId=${adminId}`;
+        }
       } else if (isHousekeeping) {
         if (selectedStaffId) {
           url = `reports/housekeeping/admin/${adminId}/staff/${selectedStaffId}?startDate=${dateFrom}&endDate=${dateTo}`;
@@ -118,9 +123,11 @@ export default function SalesReport() {
           url = `reports/housekeeping/admin/${adminId}?startDate=${dateFrom}&endDate=${dateTo}`;
         }
       } else if (isReceptionist) {
+        // Receptionist has no per-staff API, only summary
         url = `reports/reception/${adminId}`;
+        setSelectedStaffId(null); // reset
       } else {
-        throw new Error("Unsupported report configuration");
+        throw new Error("Unsupported role");
       }
 
       const response = await axiosInstance.get(url);
@@ -162,13 +169,12 @@ export default function SalesReport() {
             avgTicket: 0,
           };
         } else {
-          // Admin-level housekeeping
           return {
             totalBookings: data.summary?.totalTasks || 0,
-            totalRevenue: 0,
             confirmed: data.summary?.completedTasks || 0,
             cancelled: data.summary?.pendingTasks || 0,
             booked: data.summary?.inProgressTasks || 0,
+            totalRevenue: 0,
             avgTicket: 0,
           };
         }
@@ -186,21 +192,19 @@ export default function SalesReport() {
         };
       }
 
-      if (isTrainer || isMember) {
-        const stats = apiData.data?.stats || {};
-        return {
-          totalBookings: parseInt(stats.totalBookings) || 0,
-          totalRevenue: parseFloat(stats.totalRevenue) || 0,
-          confirmed: parseInt(stats.confirmed) || 0,
-          cancelled: parseInt(stats.cancelled) || 0,
-          booked: parseInt(stats.booked) || 0,
-          avgTicket: parseFloat(stats.avgTicket) || 0,
-        };
-      }
+      // Member, Personal, General Trainers
+      const stats = apiData.data?.stats || {};
+      return {
+        totalBookings: parseInt(stats.totalBookings) || 0,
+        totalRevenue: parseFloat(stats.totalRevenue) || 0,
+        confirmed: parseInt(stats.confirmed) || 0,
+        cancelled: parseInt(stats.cancelled) || 0,
+        booked: parseInt(stats.booked) || 0,
+        avgTicket: parseFloat(stats.avgTicket) || 0,
+      };
     } catch (e) {
       console.error("KPI error:", e);
     }
-
     return fallback;
   }, [apiData, selectedRole, selectedStaffId]);
 
@@ -221,18 +225,13 @@ export default function SalesReport() {
       }
 
       if (isReceptionist) {
-        return (apiData.weeklyTrend || []).map(item => ({
-          date: item.day,
-          count: item.count,
-        }));
+        return (apiData.weeklyTrend || []).map(item => ({ date: item.day, count: item.count }));
       }
 
-      if (isTrainer || isMember) {
-        return (apiData.data?.bookingsByDay || []).map(item => ({
-          date: new Date(item.date).toLocaleDateString(),
-          count: item.count,
-        }));
-      }
+      return (apiData.data?.bookingsByDay || []).map(item => ({
+        date: new Date(item.date).toLocaleDateString(),
+        count: item.count,
+      }));
     } catch (e) {
       console.error("byDay error:", e);
     }
@@ -244,21 +243,13 @@ export default function SalesReport() {
 
     try {
       if (isHousekeeping) {
-        let metrics;
-        if (selectedStaffId) {
-          metrics = apiData.data?.taskMetrics || {};
-        } else {
-          const summary = apiData.data?.summary || {};
-          metrics = {
-            completed: summary.completedTasks,
-            pending: summary.pendingTasks,
-            inProgress: summary.inProgressTasks,
-          };
-        }
+        let metrics = selectedStaffId
+          ? apiData.data?.taskMetrics
+          : apiData.data?.summary;
         return [
-          { name: "Completed", value: metrics.completed || 0 },
-          { name: "Pending", value: metrics.pending || 0 },
-          { name: "In Progress", value: metrics.inProgress || 0 },
+          { name: "Completed", value: metrics?.completedTasks || metrics?.completed || 0 },
+          { name: "Pending", value: metrics?.pendingTasks || metrics?.pending || 0 },
+          { name: "In Progress", value: metrics?.inProgressTasks || metrics?.inProgress || 0 },
         ].filter(x => x.value > 0);
       }
 
@@ -271,17 +262,15 @@ export default function SalesReport() {
         ].filter(x => x.value > 0);
       }
 
-      if (isTrainer || isMember) {
-        return (apiData.data?.bookingStatus || [])
-          .map(item => {
-            const status = (item.bookingStatus || "Unknown").toString();
-            return {
-              name: status.charAt(0).toUpperCase() + status.slice(1),
-              value: item.count || 0,
-            };
-          })
-          .filter(x => x.value > 0);
-      }
+      return (apiData.data?.bookingStatus || [])
+        .map(item => {
+          const status = (item.bookingStatus || "Unknown").toString();
+          return {
+            name: status.charAt(0).toUpperCase() + status.slice(1),
+            value: item.count || 0,
+          };
+        })
+        .filter(x => x.value > 0);
     } catch (e) {
       console.error("byStatus error:", e);
     }
@@ -322,16 +311,14 @@ export default function SalesReport() {
         }));
       }
 
-      if (isTrainer || isMember) {
-        return (apiData.data?.transactions || []).map(item => ({
-          date: new Date(item.date).toLocaleDateString(),
-          trainer: item.trainer || "-",
-          username: item.username || "-",
-          type: item.type || "-",
-          time: item.time || "-",
-          status: item.status || "N/A",
-        }));
-      }
+      return (apiData.data?.transactions || []).map((item, i) => ({
+        date: item.date ? new Date(item.date).toLocaleDateString() : "-",
+        trainer: item.trainer || "-",
+        username: item.username || "-",
+        type: item.type || "-",
+        time: item.time || "-",
+        status: item.status || "N/A",
+      }));
     } catch (e) {
       console.error("tableRows error:", e);
     }
@@ -341,7 +328,7 @@ export default function SalesReport() {
   // ===== EXPORTS =====
 
   const exportCSV = () => {
-    if (!canFetch() || !apiData) return alert("No data to export.");
+    if (!apiData) return alert("No data to export.");
     const header = ["Date", "Trainer", "Username", "Type", "Time", "Status"];
     const rows = tableRows.map(r => [
       r.date,
@@ -355,17 +342,16 @@ export default function SalesReport() {
       [header, ...rows]
         .map(e => e.map(f => `"${String(f).replace(/"/g, '""')}"`).join(","))
         .join("\n");
-    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `report_${selectedRole}_${dateFrom}_${dateTo}.csv`);
+    link.href = encodeURI(csvContent);
+    link.download = `report_${selectedRole}_${dateFrom}_${dateTo}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   const exportPDF = async () => {
-    if (!canFetch() || !apiData) return alert("No data to export.");
+    if (!apiData) return alert("No data to export.");
     setPdfGenerating(true);
     try {
       const buttons = document.querySelectorAll(".btn");
@@ -374,7 +360,6 @@ export default function SalesReport() {
       buttons.forEach(btn => (btn.style.visibility = "visible"));
 
       const imgWidth = 210;
-      const pageHeight = 295;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       const pdf = new jsPDF("p", "mm", "a4");
       pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, imgWidth, imgHeight);
@@ -388,7 +373,6 @@ export default function SalesReport() {
   };
 
   const shouldShowReport = apiData && !loading && !error;
-  const isFetchingAllowed = canFetch();
 
   return (
     <div className="container-fluid p-4">
@@ -396,7 +380,7 @@ export default function SalesReport() {
       <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
         <div>
           <h2 className="fw-bold mb-1">Sales Report</h2>
-          <p className="text-muted mb-0">Generate reports by role and staff.</p>
+          <p className="text-muted mb-0">View summary or drill down to individual staff.</p>
         </div>
         <div className="d-flex gap-2">
           <button
@@ -465,6 +449,7 @@ export default function SalesReport() {
                 />
               </div>
 
+              {/* Staff filter for all staff roles */}
               {isStaffRole && (
                 <div className="col-6 col-md-3">
                   <label className="form-label"><FaFilter className="me-2" /> Staff</label>
@@ -474,7 +459,7 @@ export default function SalesReport() {
                     onChange={(e) => setSelectedStaffId(e.target.value || null)}
                     disabled={!filteredStaff.length}
                   >
-                    {!isTrainer && <option value="">All / Summary</option>}
+                    <option value="">All / Summary</option>
                     {filteredStaff.map((staff) => (
                       <option key={staff.staffId} value={staff.staffId}>
                         {staff.fullName.trim()}
@@ -484,7 +469,8 @@ export default function SalesReport() {
                 </div>
               )}
 
-              {isTrainer && (
+              {/* Status filter for trainers & member */}
+              {(isTrainer || isMember) && (
                 <div className="col-6 col-md-3">
                   <label className="form-label"><FaFilter className="me-2" /> Status</label>
                   <select
@@ -501,14 +487,6 @@ export default function SalesReport() {
                 </div>
               )}
             </div>
-
-            {!isFetchingAllowed && isTrainer && (
-              <div className="col-12 mt-2">
-                <div className="alert alert-info small mb-0">
-                  Please select a staff member to view the report.
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -516,7 +494,7 @@ export default function SalesReport() {
       {/* Error */}
       {error && <div className="alert alert-danger">{error}</div>}
 
-      {/* REPORT CONTENT */}
+      {/* REPORT */}
       <div ref={reportRef}>
         {shouldShowReport ? (
           <>
@@ -613,7 +591,7 @@ export default function SalesReport() {
                     {tableRows.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="text-center py-5 text-muted">
-                          No data available for the selected period.
+                          No data available.
                         </td>
                       </tr>
                     ) : (
@@ -626,12 +604,13 @@ export default function SalesReport() {
                           <td>{r.time}</td>
                           <td>
                             <span
-                              className={`badge ${["Confirmed", "Completed", "Present", "Active"].includes(r.status)
+                              className={`badge ${
+                                ["Confirmed", "Completed", "Present", "Active"].includes(r.status)
                                   ? "bg-success"
                                   : r.status === "Cancelled"
-                                    ? "bg-danger"
-                                    : "bg-primary"
-                                }`}
+                                  ? "bg-danger"
+                                  : "bg-primary"
+                              }`}
                             >
                               {r.status}
                             </span>
@@ -650,13 +629,11 @@ export default function SalesReport() {
               <span className="visually-hidden">Loading...</span>
             </div>
           </div>
-        ) : selectedRole && !isFetchingAllowed && isTrainer ? null : (
-          !selectedRole && (
-            <div className="text-center py-5">
-              <FaUserCog size={48} className="mb-3 text-muted" />
-              <h5>Select a Role to Generate Report</h5>
-            </div>
-          )
+        ) : (
+          <div className="text-center py-5">
+            <FaUserCog size={48} className="mb-3 text-muted" />
+            <h5>Select a Role to Generate Report</h5>
+          </div>
         )}
       </div>
     </div>

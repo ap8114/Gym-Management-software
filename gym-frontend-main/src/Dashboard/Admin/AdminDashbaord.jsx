@@ -12,6 +12,10 @@ import * as echarts from "echarts";
 import axiosInstance from "../../Api/axiosInstance";
 import GetAdminId from "../../Api/GetAdminId";
 
+// Note: RiMoneyDollarCircleLine is not in your imports — using RiStoreLine as fallback or remove if unused.
+// Since you're not using payment icon in visible cards, and to avoid error, we'll avoid referencing it.
+// If needed, import it from react-icons/ri.
+
 const AdminDashboard = () => {
   const adminId = GetAdminId();
   const memberGrowthChartRef = useRef(null);
@@ -21,8 +25,8 @@ const AdminDashboard = () => {
   const [error, setError] = useState(null);
   const [chartInitialized, setChartInitialized] = useState(false);
 
-  const branchName =JSON.parse(localStorage.getItem("user")) || "Main Branch";
-  const branchDisplayName = branchName.branchName || "Main Branch";
+  const user = JSON.parse(localStorage.getItem("user")) || {};
+  const branchDisplayName = user.branchName || "Main Branch";
 
   // Fetch dashboard data
   useEffect(() => {
@@ -35,7 +39,6 @@ const AdminDashboard = () => {
 
       try {
         setLoading(true);
-        // Updated API endpoint to include adminId
         const response = await axiosInstance.get(
           `auth/admindashboard/${adminId}`
         );
@@ -57,21 +60,16 @@ const AdminDashboard = () => {
     fetchDashboardData();
   }, [adminId]);
 
-  // Initialize chart when component mounts and data is available
+  // Initialize chart
   useEffect(() => {
     if (!memberGrowthChartRef.current || !dashboardData) return;
 
-    // Initialize chart
     const chart = echarts.init(memberGrowthChartRef.current);
     setChartInitialized(true);
 
-    // Handle window resize
-    const handleResize = () => {
-      chart.resize();
-    };
+    const handleResize = () => chart.resize();
     window.addEventListener("resize", handleResize);
 
-    // Cleanup function
     return () => {
       window.removeEventListener("resize", handleResize);
       chart.dispose();
@@ -84,78 +82,71 @@ const AdminDashboard = () => {
     if (!chartInitialized || !memberGrowthChartRef.current || !dashboardData)
       return;
 
-    try {
-      // Get chart instance
-      const chart = echarts.getInstanceByDom(memberGrowthChartRef.current);
-      if (!chart) return;
+    const chart = echarts.getInstanceByDom(memberGrowthChartRef.current);
+    if (!chart) return;
 
-      // Generate dynamic data based on dashboard data
-      const memberGrowthData = generateMemberGrowthData(dashboardData);
+    const memberGrowthData = generateMemberGrowthData(dashboardData);
 
-      const memberGrowthOption = {
-        animation: false,
-        grid: {
-          top: 20,
-          right: 20,
-          bottom: 40,
-          left: 40,
-        },
-        xAxis: {
-          type: "category",
-          data: memberGrowthData.months,
-          axisLine: { show: true, lineStyle: { color: "#E5E7EB" } },
-          axisTick: { show: true, lineStyle: { color: "#E5E7EB" } },
-          axisLabel: { color: "#6B7280", fontSize: 12 },
-        },
-        yAxis: {
-          type: "value",
-          axisLine: { show: true, lineStyle: { color: "#E5E7EB" } },
-          axisTick: { show: true, lineStyle: { color: "#E5E7EB" } },
-          axisLabel: { color: "#6B7280", fontSize: 12 },
-          splitLine: { lineStyle: { color: "#F3F4F6" } },
-        },
-        series: [
-          {
-            data: memberGrowthData.values,
-            type: "line",
-            smooth: true,
-            lineStyle: { color: "#2f6a87", width: 3 },
-            itemStyle: { color: "#2f6a87" },
-            areaStyle: {
-              color: {
-                type: "linear",
-                x: 0,
-                y: 0,
-                x2: 0,
-                y2: 1,
-                colorStops: [
-                  { offset: 0, color: "rgba(47, 106, 135, 0.3)" },
-                  { offset: 1, color: "rgba(47, 106, 135, 0.05)" },
-                ],
-              },
+    const memberGrowthOption = {
+      animation: false,
+      grid: {
+        top: 20,
+        right: 20,
+        bottom: 40,
+        left: 40,
+      },
+      xAxis: {
+        type: "category",
+        data: memberGrowthData.months,
+        axisLine: { show: true, lineStyle: { color: "#E5E7EB" } },
+        axisTick: { show: true, lineStyle: { color: "#E5E7EB" } },
+        axisLabel: { color: "#6B7280", fontSize: 12 },
+      },
+      yAxis: {
+        type: "value",
+        axisLine: { show: true, lineStyle: { color: "#E5E7EB" } },
+        axisTick: { show: true, lineStyle: { color: "#E5E7EB" } },
+        axisLabel: { color: "#6B7280", fontSize: 12 },
+        splitLine: { lineStyle: { color: "#F3F4F6" } },
+      },
+      series: [
+        {
+          data: memberGrowthData.values,
+          type: "line",
+          smooth: true,
+          lineStyle: { color: "#2f6a87", width: 3 },
+          itemStyle: { color: "#2f6a87" },
+          areaStyle: {
+            color: {
+              type: "linear",
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: "rgba(47, 106, 135, 0.3)" },
+                { offset: 1, color: "rgba(47, 106, 135, 0.05)" },
+              ],
             },
-            showSymbol: true,
-            symbolSize: 6,
           },
-        ],
-        tooltip: {
-          trigger: "axis",
-          backgroundColor: "rgba(255, 255, 255, 0.95)",
-          borderColor: "#E5E7EB",
-          textStyle: { color: "#1F2937" },
-          formatter: function (params) {
-            return `${params[0].name}<br/>Members: ${params[0].value}`;
-          },
+          showSymbol: true,
+          symbolSize: 6,
         },
-      };
+      ],
+      tooltip: {
+        trigger: "axis",
+        backgroundColor: "rgba(255, 255, 255, 0.95)",
+        borderColor: "#E5E7EB",
+        textStyle: { color: "#1F2937" },
+        formatter: (params) => {
+          return `${params[0].name}<br/>Members: ${params[0].value}`;
+        },
+      },
+    };
 
-      chart.setOption(memberGrowthOption);
-    } catch (error) {
-      console.error("Error updating member growth chart:", error);
-    }
+    chart.setOption(memberGrowthOption);
   }, [chartInitialized, dashboardData]);
 
-  // Generate member growth data based on dashboard data
   const generateMemberGrowthData = (data) => {
     if (!data || !data.memberGrowth || data.memberGrowth.length === 0) {
       return {
@@ -164,47 +155,41 @@ const AdminDashboard = () => {
       };
     }
 
-    // Extract months and counts from API data
     const months = data.memberGrowth.map((item) => item.month);
     const values = data.memberGrowth.map((item) => item.count);
 
-    // If we have less than 6 months of data, pad with zeros
     while (months.length < 6) {
-      months.push("Month " + (months.length + 1));
+      months.push(`Month ${months.length + 1}`);
       values.push(0);
     }
 
-    return {
-      months: months,
-      values: values,
-    };
+    return { months, values };
   };
 
-  // Format time for activities
   const formatTime = (dateString) => {
+    if (!dateString) return "—";
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Invalid date";
+
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 60) {
-      return `${diffMins} min ago`;
-    } else if (diffHours < 24) {
-      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-    } else {
-      return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-    }
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
   };
 
-  // Get icon for activity type
+  // Removed reference to RiMoneyDollarCircleLine since it's not imported
   const getActivityIcon = (type) => {
     switch (type) {
       case "member":
         return <RiUserAddLine className="text-success" />;
       case "payment":
-        return <RiMoneyDollarCircleLine className="text-primary" />;
+        return <RiStoreLine className="text-primary" />; // fallback icon
       case "booking":
       case "class_booking":
         return <RiCalendarLine className="text-warning" />;
@@ -215,7 +200,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // Get icon background color for activity type
   const getActivityIconBg = (type) => {
     switch (type) {
       case "member":
@@ -232,9 +216,16 @@ const AdminDashboard = () => {
     }
   };
 
-  // Parse activity text to extract title and description
+  // ✅ FIXED: Safely handle null/undefined activity text
   const parseActivityText = (activityText) => {
-    const parts = activityText.split(": ");
+    if (!activityText || typeof activityText !== "string") {
+      return {
+        title: "Unknown Activity",
+        description: "",
+      };
+    }
+
+    const parts = activityText.split(": ", 2); // Limit to 2 parts for safety
     if (parts.length > 1) {
       return {
         title: parts[0],
@@ -251,7 +242,6 @@ const AdminDashboard = () => {
     setShowAllActivities(!showAllActivities);
   };
 
-  // Loading state
   if (loading) {
     return (
       <div className="w-100 min-vh-100 p-0 d-flex justify-content-center align-items-center">
@@ -265,7 +255,6 @@ const AdminDashboard = () => {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="w-100 min-vh-100 p-0 d-flex justify-content-center align-items-center">
@@ -287,54 +276,34 @@ const AdminDashboard = () => {
   return (
     <div className="w-100 min-vh-100 p-0">
       <div className="p-4">
-        <div className="mb-4 d-flex justify-content-between align-items-center">
+        <div className="mb-4 d-flex justify-content-between align-items-center flex-wrap">
           <div>
             <h1 className="fw-bold">Dashboard Overview</h1>
             <p className="text-muted">
               Welcome back! Here's what's happening at your gym today.
             </p>
           </div>
-          <div>
-            <h4>Branch Name:- <span class="badge bg-primary">{branchDisplayName}</span></h4>
+          <div className="mt-2 mt-md-0">
+            <h4>
+              Branch Name:{" "}
+              <span className="badge bg-primary">{branchDisplayName}</span>
+            </h4>
           </div>
         </div>
 
-        {/* Stats Cards - Responsive Grid */}
+        {/* Stats Cards */}
         <div className="row g-3 mb-4">
-          {/* Total Branches Card */}
-          {/* <div className="col-6 col-md-4 col-lg">
-            <div className="card shadow-sm h-100" data-testid="total-branches-card">
-              <div className="card-body d-flex justify-content-between align-items-start">
-                <div>
-                  <div className="d-flex align-items-center mb-3">
-                    <div className="bg-danger bg-opacity-10 p-2 rounded me-2">
-                      <RiStoreLine className="text-danger fs-4 fs-md-5" />
-                    </div>
-                  </div>
-                  <h3 className="h2 fw-bold mb-1" data-testid="total-branches-value">{dashboardData?.totalBranches || 0}</h3>
-                  <p className="text-muted small mb-0">Total Branches</p>
-                </div>
-              </div>
-            </div>
-          </div> */}
-
-          {/* Total Members Card */}
+          {/* Total Members */}
           <div className="col-6 col-md-4 col-lg">
-            <div
-              className="card shadow-sm h-100"
-              data-testid="total-members-card"
-            >
+            <div className="card shadow-sm h-100" data-testid="total-members-card">
               <div className="card-body d-flex justify-content-between align-items-start">
                 <div>
                   <div className="d-flex align-items-center mb-3">
                     <div className="bg-primary bg-opacity-10 p-2 rounded me-2">
-                      <RiUserLine className="text-primary fs-4 fs-md-5" />
+                      <RiUserLine className="text-primary fs-4" />
                     </div>
                   </div>
-                  <h3
-                    className="h2 fw-bold mb-1"
-                    data-testid="total-members-value"
-                  >
+                  <h3 className="h2 fw-bold mb-1" data-testid="total-members-value">
                     {dashboardData?.totalMembers || 0}
                   </h3>
                   <p className="text-muted small mb-0">Total Members</p>
@@ -343,23 +312,17 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Total Staff Card */}
+          {/* Total Staff */}
           <div className="col-6 col-md-4 col-lg">
-            <div
-              className="card shadow-sm h-100"
-              data-testid="total-staff-card"
-            >
+            <div className="card shadow-sm h-100" data-testid="total-staff-card">
               <div className="card-body d-flex justify-content-between align-items-start">
                 <div>
                   <div className="d-flex align-items-center mb-3">
                     <div className="bg-info bg-opacity-10 p-2 rounded me-2">
-                      <RiTeamLine className="text-info fs-4 fs-md-5" />
+                      <RiTeamLine className="text-info fs-4" />
                     </div>
                   </div>
-                  <h3
-                    className="h2 fw-bold mb-1"
-                    data-testid="total-staff-value"
-                  >
+                  <h3 className="h2 fw-bold mb-1" data-testid="total-staff-value">
                     {dashboardData?.totalStaff || 0}
                   </h3>
                   <p className="text-muted small mb-0">Total Staff</p>
@@ -368,129 +331,86 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Today's Member Check-ins Card */}
+          {/* Today's Member Check-ins */}
           <div className="col-6 col-md-4 col-lg">
-            <div
-              className="card shadow-sm h-100"
-              data-testid="today-member-checkins-card"
-            >
+            <div className="card shadow-sm h-100" data-testid="today-member-checkins-card">
               <div className="card-body d-flex justify-content-between align-items-start">
                 <div>
                   <div className="d-flex align-items-center mb-3">
                     <div className="bg-success bg-opacity-10 p-2 rounded me-2">
-                      <RiCalendarCheckLine className="text-success fs-4 fs-md-5" />
+                      <RiCalendarCheckLine className="text-success fs-4" />
                     </div>
                   </div>
-                  <h3
-                    className="h2 fw-bold mb-1"
-                    data-testid="today-member-checkins-value"
-                  >
+                  <h3 className="h2 fw-bold mb-1" data-testid="today-member-checkins-value">
                     {dashboardData?.todaysMemberCheckins || 0}
                   </h3>
-                  <p className="text-muted small mb-0">
-                    Today's Member Check-ins
-                  </p>
+                  <p className="text-muted small mb-0">Today's Member Check-ins</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Today's Staff Check-ins Card */}
+          {/* Today's Staff Check-ins */}
           <div className="col-6 col-md-4 col-lg">
-            <div
-              className="card shadow-sm h-100"
-              data-testid="today-staff-checkins-card"
-            >
+            <div className="card shadow-sm h-100" data-testid="today-staff-checkins-card">
               <div className="card-body d-flex justify-content-between align-items-start">
                 <div>
                   <div className="d-flex align-items-center mb-3">
                     <div className="bg-warning bg-opacity-10 p-2 rounded me-2">
-                      <RiUserLine className="text-warning fs-4 fs-md-5" />
+                      <RiUserLine className="text-warning fs-4" />
                     </div>
                   </div>
-                  <h3
-                    className="h2 fw-bold mb-1"
-                    data-testid="today-staff-checkins-value"
-                  >
+                  <h3 className="h2 fw-bold mb-1" data-testid="today-staff-checkins-value">
                     {dashboardData?.todaysStaffCheckins || 0}
                   </h3>
-                  <p className="text-muted small mb-0">
-                    Today's Staff Check-ins
-                  </p>
+                  <p className="text-muted small mb-0">Today's Staff Check-ins</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Charts Section */}
+        {/* Member Growth Chart */}
         <div className="row g-3 mb-4">
-          <div className="col-12 col-lg-12">
-            <div
-              className="card shadow-sm h-100"
-              data-testid="member-growth-chart"
-            >
+          <div className="col-12">
+            <div className="card shadow-sm h-100" data-testid="member-growth-chart">
               <div className="card-header bg-white border-0 pt-4 pb-0">
-                <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
-                  <h3 className="h5 fw-semibold mb-2 mb-md-0">Member Growth</h3>
-                </div>
+                <h3 className="h5 fw-semibold">Member Growth</h3>
               </div>
               <div className="card-body">
-                <div
-                  ref={memberGrowthChartRef}
-                  style={{ height: "300px", width: "100%" }}
-                ></div>
+                <div ref={memberGrowthChartRef} style={{ height: "300px", width: "100%" }}></div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Activities Section */}
+        {/* Recent Activities */}
         <div className="row g-3">
-          <div className="col-12 col-lg-12">
-            <div
-              className="card shadow-sm h-100"
-              data-testid="recent-activities-section"
-            >
+          <div className="col-12">
+            <div className="card shadow-sm h-100" data-testid="recent-activities-section">
               <div className="card-header bg-white border-0 pt-4 pb-0">
-                <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
-                  <h3 className="h5 fw-semibold mb-2 mb-md-0">
-                    Recent Activities
-                  </h3>
-                  {/* <button
-                    className="btn btn-sm btn-link text-primary p-0"
-                    data-testid="view-all-activities-btn"
-                    onClick={handleViewAllActivities}
-                  >
-                    {showAllActivities ? "Show Less" : "View All"}
-                  </button> */}
-                </div>
+                <h3 className="h5 fw-semibold">Recent Activities</h3>
               </div>
               <div className="card-body">
                 <div className="d-flex flex-column gap-3">
-                  {/* API Activities */}
                   {dashboardData?.recentActivities &&
                     dashboardData.recentActivities.map((activity, index) => {
-                      const { title, description } = parseActivityText(
-                        activity.activity
-                      );
+                      const { title, description } = parseActivityText(activity.activity);
                       return (
                         <div
                           key={index}
-                          className="d-flex align-items-center p-3 border rounded"
+                          className="d-flex align-items-start p-3 border rounded"
                         >
                           <div
-                            className={`${getActivityIconBg(
-                              activity.type
-                            )} p-2 rounded-circle me-3`}
+                            className={`${getActivityIconBg(activity.type)} p-2 rounded-circle me-3`}
                           >
                             {getActivityIcon(activity.type)}
                           </div>
                           <div className="flex-grow-1">
                             <p className="fw-medium mb-0">{title}</p>
-                            <p className="text-muted small mb-0">
-                              {description}
-                            </p>
+                            {description && (
+                              <p className="text-muted small mb-0">{description}</p>
+                            )}
                           </div>
                           <span className="text-muted small">
                             {formatTime(activity.time)}
@@ -498,6 +418,9 @@ const AdminDashboard = () => {
                         </div>
                       );
                     })}
+                  {dashboardData?.recentActivities?.length === 0 && (
+                    <p className="text-muted text-center py-3">No recent activities.</p>
+                  )}
                 </div>
               </div>
             </div>
