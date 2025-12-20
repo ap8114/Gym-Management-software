@@ -130,10 +130,10 @@ const CreatePlan = () => {
           // 👇 Use userName if available, else memberName
           memberName: req.userName || req.memberName || "Unknown",
           // 👇 Email is NOT in response → mark as not provided
-          memberEmail: req.email, // or omit entirely
+          memberEmail: req.userEmail, // or omit entirely
           memberPhone: req.userPhone || req.memberPhone || "N/A",
           memberStatus: req.memberStatus || "Inactive",
-          requestedPlan: "Membership", // since it's a membership request
+          requestedPlan: req.planName, // since it's a membership request
           price: "N/A", // not in response
           validity: "N/A",
           upiId: "N/A",
@@ -204,7 +204,7 @@ const CreatePlan = () => {
                 memberId: member.id,
                 previewPlanId: preview.planId,
                 memberName: member.fullName || "Unknown",
-                memberEmail: member.email || "N/A",
+                memberEmail: member.userEmail || "N/A",
                 memberPhone: member.phone || "N/A",
                 currentPlan:
                   plans.find((p) => p.id === member.planId)?.name ||

@@ -296,13 +296,12 @@ const SessionBookingPage = () => {
         <div className="d-flex justify-content-between align-items-start mb-2">
           <h5 className="card-title mb-0">{session.sessionName}</h5>
           <span
-            className={`badge ${
-              session.status === "Completed"
-                ? "bg-success"
-                : session.status === "Cancelled"
+            className={`badge ${session.status === "Complete"
+              ? "bg-success"
+              : session.status === "Cancelled"
                 ? "bg-danger"
                 : ""
-            }`}
+              }`}
             style={
               session.status === "Upcoming"
                 ? { backgroundColor: customColor }
@@ -348,7 +347,7 @@ const SessionBookingPage = () => {
                 <button
                   className="btn btn-outline-success"
                   title="Complete"
-                  onClick={() => handleStatusChange(session.id, "Completed")}
+                  onClick={() => handleStatusChange(session.id, "Complete")}
                 >
                   <FaCheck />
                 </button>
@@ -409,7 +408,7 @@ const SessionBookingPage = () => {
                 >
                   <option value="All">All Statuses</option>
                   <option value="Upcoming">Upcoming</option>
-                  <option value="Completed">Completed</option>
+                  <option value="Complete">Complete</option>
                   <option value="Cancelled">Cancelled</option>
                 </select>
               </div>
@@ -479,13 +478,12 @@ const SessionBookingPage = () => {
                           </td> */}
                           <td>
                             <span
-                              className={`badge ${
-                                s.status === "Completed"
-                                  ? "bg-success"
-                                  : s.status === "Cancelled"
+                              className={`badge ${s.status === "Complete"
+                                ? "bg-success"
+                                : s.status === "Cancelled"
                                   ? "bg-danger"
                                   : ""
-                              }`}
+                                }`}
                               style={
                                 s.status === "Upcoming"
                                   ? { backgroundColor: customColor }
@@ -514,7 +512,7 @@ const SessionBookingPage = () => {
                                     className="btn btn-sm btn-outline-success"
                                     title="Complete"
                                     onClick={() =>
-                                      handleStatusChange(s.id, "Completed")
+                                      handleStatusChange(s.id, "Complete")
                                     }
                                   >
                                     <FaCheck />
@@ -783,13 +781,12 @@ const SessionBookingPage = () => {
                         <p>
                           <strong>Status:</strong>{" "}
                           <span
-                            className={`badge ${
-                              selectedSession.status === "Completed"
-                                ? "bg-success"
-                                : selectedSession.status === "Cancelled"
+                            className={`badge ${selectedSession.status === "Complete"
+                              ? "bg-success"
+                              : selectedSession.status === "Cancelled"
                                 ? "bg-danger"
                                 : ""
-                            }`}
+                              }`}
                             style={
                               selectedSession.status === "Upcoming"
                                 ? { backgroundColor: customColor }
@@ -814,7 +811,7 @@ const SessionBookingPage = () => {
                         <button
                           className="btn btn-success flex-fill flex-md-grow-0"
                           onClick={() =>
-                            handleStatusChange(selectedSession.id, "Completed")
+                            handleStatusChange(selectedSession.id, "Complete")
                           }
                         >
                           <FaCheck className="me-1" /> Complete
