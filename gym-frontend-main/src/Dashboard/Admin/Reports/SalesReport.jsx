@@ -25,17 +25,18 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 export default function SalesReport() {
-  // -------------------- STEP 1: ROLE SELECTION --------------------
   const adminId = GetAdminId();
   const [selectedRole, setSelectedRole] = useState("member");
+  const [selectedStaffId, setSelectedStaffId] = useState(null);
   const [apiData, setApiData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const reportRef = useRef(null);
   const [staffList, setStaffList] = useState([]);
+
   const roles = [
-    { value: "", label: "Select Role..." },
+    // { value: "", label: "Select Role..." },
     { value: "member", label: "Total Sales" },
     { value: "receptionist", label: "Receptionist" },
     { value: "personal_trainer", label: "Personal Trainer" },
@@ -43,88 +44,14 @@ export default function SalesReport() {
     { value: "housekeeping", label: "Housekeeping" },
   ];
 
-  // -------------------- STEP 2: FILTERS --------------------
   const [dateFrom, setDateFrom] = useState("2025-09-01");
   const [dateTo, setDateTo] = useState("2025-09-30");
   const [bookingStatus, setBookingStatus] = useState("All");
-  const [trainer, setTrainer] = useState("All");
-
   const statuses = ["All", "Booked", "Confirmed", "Cancelled", "Completed"];
 
-  // -------------------- MOCK DATA --------------------
-  const bookings = useMemo(
-    () => [
-      {
-        username: "john_doe",
-        trainer: "John Smith",
-        type: "Strength Training",
-        date: "2023-06-20",
-        time: "10:00 - 11:00",
-        price: 50,
-        paymentStatus: "Paid",
-        bookingStatus: "Booked",
-      },
-      {
-        username: "mike_w",
-        trainer: "Mike Williams",
-        type: "Cardio & HIIT",
-        date: "2023-06-22",
-        time: "14:00 - 15:00",
-        price: 60,
-        paymentStatus: "Paid",
-        bookingStatus: "Booked",
-      },
-      {
-        username: "mike_w",
-        trainer: "Mike Williams",
-        date: "2025-09-18",
-        time: "23:34 - 03:04",
-        price: 70,
-        paymentStatus: "Paid",
-        bookingStatus: "Confirmed",
-      },
-      {
-        username: "guest_user",
-        trainer: "Unknown",
-        date: "",
-        time: "",
-        price: 0,
-        paymentStatus: "Paid",
-        bookingStatus: "Booked",
-      },
-      {
-        username: "john_doe",
-        trainer: "John Smith",
-        type: "Strength Training",
-        date: "2023-06-21",
-        time: "16:00 - 17:00",
-        price: 50,
-        paymentStatus: "Paid",
-        bookingStatus: "Cancelled",
-      },
-      {
-        username: "alice_123",
-        trainer: "John Smith",
-        date: "2023-06-25",
-        time: "09:00 - 10:00",
-        price: 50,
-        paymentStatus: "Paid",
-        bookingStatus: "Confirmed",
-      },
-      {
-        username: "bob_456",
-        trainer: "Mike Williams",
-        date: "2023-06-26",
-        time: "17:00 - 18:00",
-        price: 60,
-        paymentStatus: "Paid",
-        bookingStatus: "Booked",
-      },
-    ],
-    []
-  );
-
+  // Fetch staff list
   useEffect(() => {
+    if (!adminId) return;
     const fetchStaff = async () => {
       try {
         const res = await axiosInstance.get(`/staff/admin/${adminId}`);
@@ -135,394 +62,333 @@ export default function SalesReport() {
         console.error("Error fetching staff", error);
       }
     };
-
     fetchStaff();
   }, [adminId]);
 
-  // ✅ Helper: Get staff filtered by selected role
+  const roleToIdMap = {
+    personal_trainer: 5,
+    general_trainer: 6,
+    receptionist: 7,
+    housekeeping: 8,
+  };
+
   const getFilteredStaff = () => {
     if (!selectedRole || selectedRole === "member") return [];
-    // Map selectedRole (from dropdown value) to expected roleId
-    const roleToIdMap = {
-      personal_trainer: 5,
-      general_trainer: 6,
-      receptionist: 7,
-      housekeeping: 8,
-    };
-
     const expectedRoleId = roleToIdMap[selectedRole];
     if (expectedRoleId === undefined) return [];
-
     return staffList.filter(staff => staff.roleId === expectedRoleId);
   };
 
-  // ✅ Helper: Get current user's trainer name (for "My" filter)
-  const getMyTrainer = () => {
-    // If user is staff (check localStorage for staffId)
-    const storedStaffId = localStorage.getItem("staffId");
-    if (storedStaffId) {
-      const staffUser = staffList.find(s => s.staffId == storedStaffId);
-      if (staffUser) return staffUser.fullName.trim();
-    }
+  const filteredStaff = getFilteredStaff();
 
-    // Fallback for members
-    const userMap = {
-      john_doe: "John Smith",
-      mike_w: "Mike Williams",
-      guest_user: "Unknown",
-    };
-    const username = localStorage.getItem("username") || "guest_user";
-    return userMap[username] || "Unknown";
-  };
-  const isInRange = (d) => {
-    if (!d) return false;
-    const x = new Date(d).getTime();
-    const a = new Date(dateFrom).getTime();
-    const b = new Date(dateTo).getTime();
-    return x >= a && x <= b;
-  };
-
-  const isStaff = [
-    "receptionist",
-    "personal_trainer",
-    "general_trainer",
-    "housekeeping",
-  ].includes(selectedRole);
+  const isStaffRole = ["receptionist", "personal_trainer", "general_trainer", "housekeeping"].includes(selectedRole);
+  const isTrainer = ["personal_trainer", "general_trainer"].includes(selectedRole);
+  const isHousekeeping = selectedRole === "housekeeping";
+  const isReceptionist = selectedRole === "receptionist";
   const isMember = selectedRole === "member";
-  const isApiRole = ["member", "personal_trainer", "general_trainer", "receptionist"].includes(selectedRole);
 
-  // -------------------- API CALL --------------------
-  useEffect(() => {
-    if (isApiRole) {
-      fetchReport();
-    }
-  }, [isApiRole, selectedRole, dateFrom, dateTo]);
+  // Decide if we can fetch
+  const canFetch = () => {
+    if (!selectedRole) return false;
+    if (isTrainer && !selectedStaffId) return false; // Trainers require staffId
+    return true;
+  };
 
   const fetchReport = async () => {
+    if (!canFetch()) {
+      setApiData(null);
+      return;
+    }
+
     setLoading(true);
     setError(null);
-    setApiData(null);
 
     try {
-      let url;
-      if (selectedRole === 'receptionist') {
+      let url = "";
+
+      if (isMember) {
+        url = `reports/members?adminId=${adminId}`;
+      } else if (isTrainer && selectedStaffId) {
+        const rolePath = selectedRole === "personal_trainer" ? "personal-trainer" : "general-trainer";
+        url = `reports/${rolePath}/staff/${adminId}/${selectedStaffId}?fromDate=${dateFrom}&toDate=${dateTo}`;
+      } else if (isHousekeeping) {
+        if (selectedStaffId) {
+          url = `reports/housekeeping/admin/${adminId}/staff/${selectedStaffId}?startDate=${dateFrom}&endDate=${dateTo}`;
+        } else {
+          url = `reports/housekeeping/admin/${adminId}?startDate=${dateFrom}&endDate=${dateTo}`;
+        }
+      } else if (isReceptionist) {
         url = `reports/reception/${adminId}`;
       } else {
-        const roleUrlMap = {
-          member: `reports/members?adminId=${adminId}`,
-          personal_trainer: `reports/personal-trainer?adminId=${adminId}`,
-          general_trainer: `reports/general-trainer?adminId=${adminId}`,
-        };
-        url = roleUrlMap[selectedRole];
-      }
-
-      if (!url) {
-        throw new Error("API endpoint not defined for the selected role.");
+        throw new Error("Unsupported report configuration");
       }
 
       const response = await axiosInstance.get(url);
 
-      if (response.data && response.data.success) {
+      if (response.data?.success) {
         setApiData(response.data);
       } else {
-        throw new Error(response.data.message || "Failed to fetch report");
+        throw new Error(response.data.message || "Failed to load report");
       }
     } catch (err) {
       setError(err.message);
-      console.error("Error fetching report:", err);
+      setApiData(null);
+      console.error("Fetch error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  // -------------------- FILTERED DATA --------------------
-  const filtered = useMemo(() => {
-    if (!selectedRole) return [];
+  useEffect(() => {
+    fetchReport();
+  }, [selectedRole, selectedStaffId, dateFrom, dateTo]);
 
-    if (isApiRole && apiData) {
-      if (selectedRole === 'receptionist') {
-        return apiData.receptionists || [];
-      }
-      const sourceData = apiData.data?.transactions || [];
-      return sourceData.filter((r) => {
-        if (bookingStatus !== "All" && r.status !== bookingStatus) return false;
-        if (trainer !== "All" && trainer !== "My" && r.trainer !== trainer) return false;
-        if (trainer === "My") {
-          const myTrainer = getMyTrainer();
-          return r.trainer === myTrainer;
-        }
-        return true;
-      });
-    }
+  // ===== DATA PROCESSING =====
 
-    return bookings.filter((r) => {
-      if (!isInRange(r.date)) return false;
-      if (bookingStatus !== "All" && r.bookingStatus !== bookingStatus) return false;
-
-      if (isMember) {
-        const loggedinUser = localStorage.getItem("username") || "guest_user";
-        return r.username === loggedinUser;
-      }
-
-      if (isStaff) {
-        if (trainer === "My") {
-          const myTrainer = getMyTrainer();
-          return r.trainer === myTrainer;
-        } else if (trainer !== "All") {
-          return r.trainer === trainer;
-        }
-      }
-
-      return true;
-    });
-  }, [
-    bookings,
-    selectedRole,
-    dateFrom,
-    dateTo,
-    bookingStatus,
-    trainer,
-    isMember,
-    isStaff,
-    apiData,
-    isApiRole,
-    staffList,
-  ]);
-
-  // -------------------- KPIs --------------------
   const kpis = useMemo(() => {
-    if (isApiRole && apiData) {
-      if (selectedRole === 'receptionist') {
+    const fallback = { totalBookings: 0, totalRevenue: 0, confirmed: 0, cancelled: 0, booked: 0, avgTicket: 0 };
+    if (!apiData) return fallback;
+
+    try {
+      if (isHousekeeping) {
+        const data = apiData.data;
+        if (selectedStaffId) {
+          return {
+            totalBookings: data.taskMetrics?.total || 0,
+            totalRevenue: 0,
+            confirmed: data.taskMetrics?.completed || 0,
+            cancelled: data.taskMetrics?.pending || 0,
+            booked: data.taskMetrics?.inProgress || 0,
+            avgTicket: 0,
+          };
+        } else {
+          // Admin-level housekeeping
+          return {
+            totalBookings: data.summary?.totalTasks || 0,
+            totalRevenue: 0,
+            confirmed: data.summary?.completedTasks || 0,
+            cancelled: data.summary?.pendingTasks || 0,
+            booked: data.summary?.inProgressTasks || 0,
+            avgTicket: 0,
+          };
+        }
+      }
+
+      if (isReceptionist) {
         const summary = apiData.summary || {};
-        const revenue = apiData.revenue || {};
         return {
           totalBookings: summary.present || 0,
-          totalRevenue: revenue.total || 0,
+          totalRevenue: 0,
           confirmed: summary.active || 0,
           cancelled: 0,
           booked: summary.completed || 0,
           avgTicket: 0,
         };
       }
-      if (apiData.data?.stats) {
+
+      if (isTrainer || isMember) {
+        const stats = apiData.data?.stats || {};
         return {
-          totalBookings: parseInt(apiData.data.stats.totalBookings) || 0,
-          totalRevenue: parseFloat(apiData.data.stats.totalRevenue) || 0,
-          confirmed: parseInt(apiData.data.stats.confirmed) || 0,
-          cancelled: parseInt(apiData.data.stats.cancelled) || 0,
-          booked: parseInt(apiData.data.stats.booked) || 0,
-          avgTicket: parseFloat(apiData.data.stats.avgTicket) || 0,
+          totalBookings: parseInt(stats.totalBookings) || 0,
+          totalRevenue: parseFloat(stats.totalRevenue) || 0,
+          confirmed: parseInt(stats.confirmed) || 0,
+          cancelled: parseInt(stats.cancelled) || 0,
+          booked: parseInt(stats.booked) || 0,
+          avgTicket: parseFloat(stats.avgTicket) || 0,
         };
       }
+    } catch (e) {
+      console.error("KPI error:", e);
     }
 
-    const totalBookings = filtered.length;
-    const totalRevenue = filtered.reduce((sum, r) => sum + (r.price || 0), 0);
-    const confirmed = filtered.filter((b) => b.bookingStatus === "Confirmed").length;
-    const cancelled = filtered.filter((b) => b.bookingStatus === "Cancelled").length;
-    const booked = filtered.filter((b) => b.bookingStatus === "Booked").length;
-    const avgTicket = totalBookings ? Math.round(totalRevenue / totalBookings) : 0;
+    return fallback;
+  }, [apiData, selectedRole, selectedStaffId]);
 
-    return {
-      totalBookings,
-      totalRevenue,
-      confirmed,
-      cancelled,
-      booked,
-      avgTicket,
-    };
-  }, [filtered, isApiRole, apiData, selectedRole]);
-
-  // -------------------- CHART DATA --------------------
   const byDay = useMemo(() => {
-    if (isApiRole && apiData) {
-      if (selectedRole === 'receptionist') {
+    if (!apiData) return [];
+
+    try {
+      if (isHousekeeping) {
+        const records = selectedStaffId
+          ? apiData.data?.recentAttendance || []
+          : (apiData.data?.staffDetails || []).flatMap(s => s.recentAttendance || []);
+        const map = new Map();
+        records.forEach(r => {
+          const d = new Date(r.checkIn).toLocaleDateString();
+          map.set(d, (map.get(d) || 0) + 1);
+        });
+        return Array.from(map, ([date, count]) => ({ date, count }));
+      }
+
+      if (isReceptionist) {
         return (apiData.weeklyTrend || []).map(item => ({
           date: item.day,
-          count: item.count
-        })).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+          count: item.count,
+        }));
       }
-      if (apiData.data?.bookingsByDay) {
-        return apiData.data.bookingsByDay.map((item) => ({
+
+      if (isTrainer || isMember) {
+        return (apiData.data?.bookingsByDay || []).map(item => ({
           date: new Date(item.date).toLocaleDateString(),
           count: item.count,
         }));
       }
+    } catch (e) {
+      console.error("byDay error:", e);
     }
-
-    const map = new Map();
-    filtered.forEach((r) => {
-      if (!r.date) return;
-      const prev = map.get(r.date) || { date: r.date, count: 0 };
-      prev.count += 1;
-      map.set(r.date, prev);
-    });
-    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
-  }, [filtered, isApiRole, apiData, selectedRole]);
+    return [];
+  }, [apiData, selectedRole, selectedStaffId]);
 
   const byStatus = useMemo(() => {
-    if (isApiRole && apiData) {
-      if (selectedRole === 'receptionist') {
-        const summary = apiData.summary || {};
-        return [
-          { name: 'Present', value: summary.present || 0 },
-          { name: 'Active', value: summary.active || 0 },
-          { name: 'Completed', value: summary.completed || 0 },
-        ].filter(item => item.value > 0);
-      }
-      if (apiData.data?.bookingStatus) {
-        return apiData.data.bookingStatus.map((item) => {
-          const statusName = item.bookingStatus ? item.bookingStatus : "Unknown";
-          return {
-            name: statusName.charAt(0).toUpperCase() + statusName.slice(1),
-            value: item.count,
-          };
-        });
-      }
-    }
+    if (!apiData) return [];
 
-    const data = [
-      { name: "Booked", value: kpis.booked },
-      { name: "Confirmed", value: kpis.confirmed },
-      { name: "Cancelled", value: kpis.cancelled },
-    ].filter((item) => item.value > 0);
-    return data;
-  }, [kpis, isApiRole, apiData, selectedRole]);
+    try {
+      if (isHousekeeping) {
+        let metrics;
+        if (selectedStaffId) {
+          metrics = apiData.data?.taskMetrics || {};
+        } else {
+          const summary = apiData.data?.summary || {};
+          metrics = {
+            completed: summary.completedTasks,
+            pending: summary.pendingTasks,
+            inProgress: summary.inProgressTasks,
+          };
+        }
+        return [
+          { name: "Completed", value: metrics.completed || 0 },
+          { name: "Pending", value: metrics.pending || 0 },
+          { name: "In Progress", value: metrics.inProgress || 0 },
+        ].filter(x => x.value > 0);
+      }
+
+      if (isReceptionist) {
+        const s = apiData.summary || {};
+        return [
+          { name: "Present", value: s.present || 0 },
+          { name: "Active", value: s.active || 0 },
+          { name: "Completed", value: s.completed || 0 },
+        ].filter(x => x.value > 0);
+      }
+
+      if (isTrainer || isMember) {
+        return (apiData.data?.bookingStatus || [])
+          .map(item => {
+            const status = (item.bookingStatus || "Unknown").toString();
+            return {
+              name: status.charAt(0).toUpperCase() + status.slice(1),
+              value: item.count || 0,
+            };
+          })
+          .filter(x => x.value > 0);
+      }
+    } catch (e) {
+      console.error("byStatus error:", e);
+    }
+    return [];
+  }, [apiData, selectedRole, selectedStaffId]);
 
   const tableRows = useMemo(() => {
-    if (isApiRole && apiData) {
-      if (selectedRole === 'receptionist') {
+    if (!apiData) return [];
+
+    try {
+      if (isHousekeeping) {
+        let attendance = [];
+        if (selectedStaffId) {
+          attendance = apiData.data?.recentAttendance || [];
+        } else {
+          attendance = (apiData.data?.staffDetails || []).flatMap(s =>
+            (s.recentAttendance || []).map(r => ({ ...r, staffName: s.staffName }))
+          );
+        }
+        return attendance.map(r => ({
+          date: new Date(r.checkIn).toLocaleDateString(),
+          trainer: r.staffName || (apiData.data?.staffInfo?.fullName || "Housekeeping"),
+          username: "-",
+          type: "Attendance",
+          time: `${new Date(r.checkIn).toLocaleTimeString()} - ${new Date(r.checkOut).toLocaleTimeString()}`,
+          status: r.status || "N/A",
+        }));
+      }
+
+      if (isReceptionist) {
         return (apiData.receptionists || []).map(item => ({
-          date: '-',
+          date: "-",
           trainer: item.name,
-          username: '-',
-          type: '-',
-          time: '-',
-          revenue: item.totalRevenue,
-          status: `Check-ins: ${item.totalCheckins}`
+          username: "-",
+          type: "-",
+          time: "-",
+          status: `Check-ins: ${item.totalCheckins || 0}`,
         }));
       }
-      if (apiData.data?.transactions) {
-        return apiData.data.transactions.map((item) => ({
+
+      if (isTrainer || isMember) {
+        return (apiData.data?.transactions || []).map(item => ({
           date: new Date(item.date).toLocaleDateString(),
-          trainer: item.trainer,
-          username: item.username,
-          type: item.type,
-          time: item.time,
-          revenue: 0,
-          status: item.status,
+          trainer: item.trainer || "-",
+          username: item.username || "-",
+          type: item.type || "-",
+          time: item.time || "-",
+          status: item.status || "N/A",
         }));
       }
+    } catch (e) {
+      console.error("tableRows error:", e);
     }
+    return [];
+  }, [apiData, selectedRole, selectedStaffId]);
 
-    const key = (r) => `${r.date}__${r.trainer}`;
-    const map = new Map();
-    filtered.forEach((r) => {
-      const k = key(r);
-      const prev = map.get(k) || {
-        date: r.date,
-        trainer: r.trainer,
-        count: 0,
-        revenue: 0,
-      };
-      prev.count += 1;
-      prev.revenue += r.price || 0;
-      map.set(k, prev);
-    });
-    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
-  }, [filtered, isApiRole, apiData, selectedRole]);
+  // ===== EXPORTS =====
 
-  // -------------------- EXPORT CSV --------------------
   const exportCSV = () => {
-    if (!selectedRole) return alert("Please select a role first!");
-
-    const header = [
-      "Date",
-      "Trainer",
-      "Username",
-      "Type",
-      "Time",
-      "Price",
-      "Payment Status",
-      "Booking Status",
-    ];
-    const rows = filtered.map((r) => [
+    if (!canFetch() || !apiData) return alert("No data to export.");
+    const header = ["Date", "Trainer", "Username", "Type", "Time", "Status"];
+    const rows = tableRows.map(r => [
       r.date,
       r.trainer,
       r.username,
-      r.type || "-",
-      r.time || "-",
-      r.price || 0,
-      r.paymentStatus || "-",
-      r.bookingStatus || r.status || "-",
+      r.type,
+      r.time,
+      r.status,
     ]);
-    const csv = [header, ...rows].map((row) => row.join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `sales_report_${selectedRole}_${dateFrom}_${dateTo}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const csvContent = "data:text/csv;charset=utf-8," +
+      [header, ...rows]
+        .map(e => e.map(f => `"${String(f).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `report_${selectedRole}_${dateFrom}_${dateTo}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  // -------------------- EXPORT PDF --------------------
   const exportPDF = async () => {
-    if (!selectedRole) return alert("Please select a role first!");
-
+    if (!canFetch() || !apiData) return alert("No data to export.");
     setPdfGenerating(true);
-
     try {
       const buttons = document.querySelectorAll(".btn");
-      buttons.forEach((button) => {
-        button.style.display = "none";
-      });
-
-      const element = reportRef.current;
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        logging: false,
-        useCORS: true,
-      });
-
-      buttons.forEach((button) => {
-        button.style.display = "";
-      });
-
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
+      buttons.forEach(btn => (btn.style.visibility = "hidden"));
+      const canvas = await html2canvas(reportRef.current, { scale: 2, useCORS: true });
+      buttons.forEach(btn => (btn.style.visibility = "visible"));
 
       const imgWidth = 210;
-      const pageHeight = 297;
+      const pageHeight = 295;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`sales_report_${selectedRole}_${dateFrom}_${dateTo}.pdf`);
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert("Failed to generate PDF. Please try again.");
+      const pdf = new jsPDF("p", "mm", "a4");
+      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, imgWidth, imgHeight);
+      pdf.save(`report_${selectedRole}_${dateFrom}_${dateTo}.pdf`);
+    } catch (err) {
+      alert("PDF generation failed.");
+      console.error(err);
     } finally {
       setPdfGenerating(false);
     }
   };
 
-  const canGenerate = selectedRole !== "";
-  const filteredStaff = getFilteredStaff();
+  const shouldShowReport = apiData && !loading && !error;
+  const isFetchingAllowed = canFetch();
 
   return (
     <div className="container-fluid p-4">
@@ -530,25 +396,22 @@ export default function SalesReport() {
       <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
         <div>
           <h2 className="fw-bold mb-1">Sales Report</h2>
-          <p className="text-muted mb-0">
-            Generate personalized sales reports based on your role.
-          </p>
+          <p className="text-muted mb-0">Generate reports by role and staff.</p>
         </div>
         <div className="d-flex gap-2">
           <button
             className="btn btn-outline-secondary"
             onClick={exportCSV}
-            disabled={!canGenerate}
+            disabled={!shouldShowReport}
           >
             <FaDownload className="me-2" /> Export CSV
           </button>
           <button
             className="btn btn-outline-danger"
             onClick={exportPDF}
-            disabled={!canGenerate || pdfGenerating}
+            disabled={!shouldShowReport || pdfGenerating}
           >
-            <FaFilePdf className="me-2" />{" "}
-            {pdfGenerating ? "Generating PDF..." : "Export PDF"}
+            <FaFilePdf className="me-2" /> {pdfGenerating ? "Generating..." : "Export PDF"}
           </button>
         </div>
       </div>
@@ -558,13 +421,14 @@ export default function SalesReport() {
         <div className="card-body">
           <div className="row g-3 align-items-center">
             <div className="col-12 col-md-6">
-              <label className="form-label">
-                <FaUserCog className="me-2" /> Select Your Role
-              </label>
+              <label className="form-label"><FaUserCog className="me-2" /> Select Role</label>
               <select
                 className="form-select"
                 value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value)}
+                onChange={(e) => {
+                  setSelectedRole(e.target.value);
+                  setSelectedStaffId(null);
+                }}
               >
                 {roles.map((role) => (
                   <option key={role.value} value={role.value}>
@@ -573,16 +437,6 @@ export default function SalesReport() {
                 ))}
               </select>
             </div>
-
-            {!selectedRole && (
-              <div className="col-12">
-                <div className="alert alert-warning">
-                  <strong>Please select your role to proceed.</strong>
-                  <br />
-                  Members see only their bookings. Staff can view all or their own.
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -593,9 +447,7 @@ export default function SalesReport() {
           <div className="card-body">
             <div className="row g-3 align-items-end">
               <div className="col-6 col-md-3">
-                <label className="form-label">
-                  <FaCalendarAlt className="me-2" /> From
-                </label>
+                <label className="form-label"><FaCalendarAlt className="me-2" /> From</label>
                 <input
                   type="date"
                   value={dateFrom}
@@ -604,9 +456,7 @@ export default function SalesReport() {
                 />
               </div>
               <div className="col-6 col-md-3">
-                <label className="form-label">
-                  <FaCalendarAlt className="me-2" /> To
-                </label>
+                <label className="form-label"><FaCalendarAlt className="me-2" /> To</label>
                 <input
                   type="date"
                   value={dateTo}
@@ -615,69 +465,60 @@ export default function SalesReport() {
                 />
               </div>
 
-              {isStaff && (
-                <>
-                  <div className="col-6 col-md-2">
-                    <label className="form-label">
-                      <FaFilter className="me-2" /> Booking Status
-                    </label>
-                    <select
-                      className="form-select"
-                      value={bookingStatus}
-                      onChange={(e) => setBookingStatus(e.target.value)}
-                    >
-                      {statuses.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="col-6 col-md-2">
-                    <label className="form-label">View</label>
-                    <select
-                      className="form-select"
-                      value={trainer}
-                      onChange={(e) => setTrainer(e.target.value)}
-                    >
-                      <option value="All">All</option>
-                      {filteredStaff.map((staff) => (
-                        <option key={staff.staffId} value={staff.fullName.trim()}>
-                          {staff.fullName.trim()}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </>
+              {isStaffRole && (
+                <div className="col-6 col-md-3">
+                  <label className="form-label"><FaFilter className="me-2" /> Staff</label>
+                  <select
+                    className="form-select"
+                    value={selectedStaffId || ""}
+                    onChange={(e) => setSelectedStaffId(e.target.value || null)}
+                    disabled={!filteredStaff.length}
+                  >
+                    {!isTrainer && <option value="">All / Summary</option>}
+                    {filteredStaff.map((staff) => (
+                      <option key={staff.staffId} value={staff.staffId}>
+                        {staff.fullName.trim()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {isTrainer && (
+                <div className="col-6 col-md-3">
+                  <label className="form-label"><FaFilter className="me-2" /> Status</label>
+                  <select
+                    className="form-select"
+                    value={bookingStatus}
+                    onChange={(e) => setBookingStatus(e.target.value)}
+                  >
+                    {statuses.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
             </div>
+
+            {!isFetchingAllowed && isTrainer && (
+              <div className="col-12 mt-2">
+                <div className="alert alert-info small mb-0">
+                  Please select a staff member to view the report.
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Generate Button */}
-      {selectedRole && (
-        <div className="mb-4 text-end">
-          <button
-            className="btn btn-primary"
-            onClick={() => (isApiRole ? fetchReport() : alert(`Report generated for ${selectedRole}`))}
-            disabled={loading}
-          >
-            {loading ? "Loading..." : "Generate Report"}
-          </button>
-        </div>
-      )}
-
       {/* Error */}
-      {error && (
-        <div className="alert alert-danger" role="alert">
-          <strong>Error:</strong> {error}
-        </div>
-      )}
+      {error && <div className="alert alert-danger">{error}</div>}
 
       {/* REPORT CONTENT */}
       <div ref={reportRef}>
-        {selectedRole && !loading && !error && (
+        {shouldShowReport ? (
           <>
             {/* KPIs */}
             <div className="row g-3 mb-4">
@@ -700,27 +541,17 @@ export default function SalesReport() {
               <div className="col-12 col-lg-7">
                 <div className="card border-0 shadow-sm h-100">
                   <div className="card-header bg-white border-0 fw-semibold">
-                    Bookings by Day
+                    {isHousekeeping ? "Attendance by Day" : "Bookings by Day"}
                   </div>
                   <div className="card-body" style={{ height: 320 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={byDay}
-                        margin={{ top: 10, right: 10, bottom: 0, left: 0 }}
-                      >
+                      <LineChart data={byDay} margin={{ top: 10, right: 10 }}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="date" />
                         <YAxis />
-                        <Tooltip formatter={(v) => `${v} session(s)`} />
+                        <Tooltip />
                         <Legend />
-                        <Line
-                          type="monotone"
-                          dataKey="count"
-                          stroke="#0d6efd"
-                          strokeWidth={2}
-                          dot={false}
-                          name="Bookings"
-                        />
+                        <Line type="monotone" dataKey="count" stroke="#0d6efd" name="Count" />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -730,7 +561,7 @@ export default function SalesReport() {
               <div className="col-12 col-lg-5">
                 <div className="card border-0 shadow-sm h-100">
                   <div className="card-header bg-white border-0 fw-semibold">
-                    Booking Status
+                    {isHousekeeping ? "Task Status" : "Booking Status"}
                   </div>
                   <div className="card-body" style={{ height: 320 }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -739,24 +570,22 @@ export default function SalesReport() {
                           data={byStatus}
                           cx="50%"
                           cy="50%"
-                          labelLine={false}
                           label={({ name, percent }) =>
                             `${name}: ${(percent * 100).toFixed(0)}%`
                           }
                           outerRadius={80}
                           fill="#8884d8"
                           dataKey="value"
+                          nameKey="name"
                         >
                           {byStatus.map((entry, index) => (
                             <Cell
                               key={`cell-${index}`}
-                              fill={
-                                ["#20c997", "#dc3545", "#ffc107", "#0d6efd"][index % 4]
-                              }
+                              fill={["#20c997", "#dc3545", "#ffc107", "#0d6efd"][index % 4]}
                             />
                           ))}
                         </Pie>
-                        <Tooltip formatter={(value, name) => [value, name]} />
+                        <Tooltip />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
@@ -767,9 +596,7 @@ export default function SalesReport() {
 
             {/* Table */}
             <div className="card border-0 shadow-sm">
-              <div className="card-header bg-white border-0 fw-semibold">
-                Transactions
-              </div>
+              <div className="card-header bg-white border-0 fw-semibold">Transactions</div>
               <div className="table-responsive">
                 <table className="table table-hover align-middle mb-0">
                   <thead className="bg-light">
@@ -786,7 +613,7 @@ export default function SalesReport() {
                     {tableRows.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="text-center py-5 text-muted">
-                          No transactions found for the selected filters.
+                          No data available for the selected period.
                         </td>
                       </tr>
                     ) : (
@@ -795,20 +622,18 @@ export default function SalesReport() {
                           <td>{r.date}</td>
                           <td>{r.trainer}</td>
                           <td>{r.username}</td>
-                          <td>{r.type || "-"}</td>
-                          <td>{r.time || "-"}</td>
+                          <td>{r.type}</td>
+                          <td>{r.time}</td>
                           <td>
                             <span
-                              className={`badge ${["Confirmed", "Completed", "approved", "Present", "Active"].includes(
-                                r.status || r.bookingStatus
-                              )
+                              className={`badge ${["Confirmed", "Completed", "Present", "Active"].includes(r.status)
                                   ? "bg-success"
-                                  : r.status === "Cancelled" || r.bookingStatus === "Cancelled"
+                                  : r.status === "Cancelled"
                                     ? "bg-danger"
                                     : "bg-primary"
                                 }`}
                             >
-                              {r.status || r.bookingStatus || "N/A"}
+                              {r.status}
                             </span>
                           </td>
                         </tr>
@@ -819,20 +644,21 @@ export default function SalesReport() {
               </div>
             </div>
           </>
+        ) : loading ? (
+          <div className="text-center py-5">
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        ) : selectedRole && !isFetchingAllowed && isTrainer ? null : (
+          !selectedRole && (
+            <div className="text-center py-5">
+              <FaUserCog size={48} className="mb-3 text-muted" />
+              <h5>Select a Role to Generate Report</h5>
+            </div>
+          )
         )}
       </div>
-
-      {!selectedRole && (
-        <div className="text-center py-5">
-          <div className="text-muted">
-            <FaUserCog size={48} className="mb-3" />
-            <h5>Select Your Role to Generate Report</h5>
-            <p className="lead">
-              Choose whether you're a Member or Staff member to see relevant training sales data.
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
