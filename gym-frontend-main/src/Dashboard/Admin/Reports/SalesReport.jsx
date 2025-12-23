@@ -160,6 +160,7 @@ export default function SalesReport() {
       if (isHousekeeping) {
         const data = apiData.data;
         if (selectedStaffId) {
+          // Individual staff response structure (by staff ID)
           return {
             totalBookings: data.taskMetrics?.total || 0,
             totalRevenue: 0,
@@ -169,6 +170,7 @@ export default function SalesReport() {
             avgTicket: 0,
           };
         } else {
+          // Summary response structure (by admin ID)
           return {
             totalBookings: data.summary?.totalTasks || 0,
             confirmed: data.summary?.completedTasks || 0,
@@ -213,9 +215,15 @@ export default function SalesReport() {
 
     try {
       if (isHousekeeping) {
-        const records = selectedStaffId
-          ? apiData.data?.recentAttendance || []
-          : (apiData.data?.staffDetails || []).flatMap(s => s.recentAttendance || []);
+        let records = [];
+        if (selectedStaffId) {
+          // Individual staff - recentAttendance is directly in data
+          records = apiData.data?.recentAttendance || [];
+        } else {
+          // Summary - recentAttendance is inside staffDetails array
+          records = (apiData.data?.staffDetails || []).flatMap(s => s.recentAttendance || []);
+        }
+        
         const map = new Map();
         records.forEach(r => {
           const d = new Date(r.checkIn).toLocaleDateString();
@@ -243,13 +251,19 @@ export default function SalesReport() {
 
     try {
       if (isHousekeeping) {
-        let metrics = selectedStaffId
-          ? apiData.data?.taskMetrics
-          : apiData.data?.summary;
+        let metrics = {};
+        if (selectedStaffId) {
+          // Individual staff - taskMetrics is directly in data
+          metrics = apiData.data?.taskMetrics || {};
+        } else {
+          // Summary - metrics are in summary object
+          metrics = apiData.data?.summary || {};
+        }
+        
         return [
-          { name: "Completed", value: metrics?.completedTasks || metrics?.completed || 0 },
-          { name: "Pending", value: metrics?.pendingTasks || metrics?.pending || 0 },
-          { name: "In Progress", value: metrics?.inProgressTasks || metrics?.inProgress || 0 },
+          { name: "Completed", value: metrics.completedTasks || metrics.completed || 0 },
+          { name: "Pending", value: metrics.pendingTasks || metrics.pending || 0 },
+          { name: "In Progress", value: metrics.inProgressTasks || metrics.inProgress || 0 },
         ].filter(x => x.value > 0);
       }
 
@@ -284,18 +298,49 @@ export default function SalesReport() {
       if (isHousekeeping) {
         let attendance = [];
         if (selectedStaffId) {
+          // Individual staff - recentAttendance is directly in data
           attendance = apiData.data?.recentAttendance || [];
         } else {
+          // Summary - recentAttendance is inside staffDetails array
           attendance = (apiData.data?.staffDetails || []).flatMap(s =>
             (s.recentAttendance || []).map(r => ({ ...r, staffName: s.staffName }))
           );
         }
+        
+        // Even if attendance is empty, show meaningful info
+        if (attendance.length === 0) {
+          if (selectedStaffId) {
+            // Show individual staff info when no attendance records
+            const staffInfo = apiData.data?.staffInfo;
+            if (staffInfo) {
+              return [{
+                date: staffInfo.joinDate ? new Date(staffInfo.joinDate).toLocaleDateString() : "-",
+                trainer: staffInfo.fullName || "Housekeeping",
+                username: staffInfo.email || "-",
+                type: "Staff Info",
+                time: staffInfo.status || "Active",
+                status: "No attendance records"
+              }];
+            }
+          } else {
+            // Show summary for each staff member from staffDetails
+            return (apiData.data?.staffDetails || []).map(staff => ({
+              date: "-",
+              trainer: staff.staffName || "Housekeeping",
+              username: staff.email || "-",
+              type: "Staff Summary",
+              time: `Tasks: ${staff.totalTasks || 0}`,
+              status: staff.status || "Active"
+            }));
+          }
+        }
+        
         return attendance.map(r => ({
           date: new Date(r.checkIn).toLocaleDateString(),
           trainer: r.staffName || (apiData.data?.staffInfo?.fullName || "Housekeeping"),
           username: "-",
           type: "Attendance",
-          time: `${new Date(r.checkIn).toLocaleTimeString()} - ${new Date(r.checkOut).toLocaleTimeString()}`,
+          time: r.checkOut ? `${new Date(r.checkIn).toLocaleTimeString()} - ${new Date(r.checkOut).toLocaleTimeString()}` : new Date(r.checkIn).toLocaleTimeString(),
           status: r.status || "N/A",
         }));
       }
@@ -492,7 +537,7 @@ export default function SalesReport() {
       )}
 
       {/* Error */}
-      {error && <div className="alert alert-danger">{error}</div>}
+      {/* {error && <div className="alert alert-danger">{error}</div>} */}
 
       {/* REPORT */}
       <div ref={reportRef}>
@@ -604,13 +649,12 @@ export default function SalesReport() {
                           <td>{r.time}</td>
                           <td>
                             <span
-                              className={`badge ${
-                                ["Confirmed", "Completed", "Present", "Active"].includes(r.status)
+                              className={`badge ${["Confirmed", "Completed", "Present", "Active"].includes(r.status)
                                   ? "bg-success"
                                   : r.status === "Cancelled"
-                                  ? "bg-danger"
-                                  : "bg-primary"
-                              }`}
+                                    ? "bg-danger"
+                                    : "bg-primary"
+                                }`}
                             >
                               {r.status}
                             </span>

@@ -196,30 +196,6 @@ const ClassSchedule = () => {
     );
   }
 
-  if (error) {
-    return (
-      <div className="p-2">
-        <div className="row mb-3">
-          <div className="col-12 text-center text-md-start">
-            <h1 className="fw-bold">Weekly Class Schedule</h1>
-            <p className="text-muted mb-0">Book your favorite classes for the week</p>
-          </div>
-        </div>
-        <div className="alert alert-danger" role="alert">
-          {error}
-        </div>
-        <div className="text-center">
-          <button
-            className="btn btn-primary"
-            onClick={() => window.location.reload()}
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="p-2">
       <div className="row mb-3">

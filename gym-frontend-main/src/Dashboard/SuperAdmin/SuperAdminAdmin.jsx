@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
-import { FaEye, FaEdit, FaTrashAlt } from "react-icons/fa";
+import { FaEye, FaEdit, FaTrashAlt, FaUser } from "react-icons/fa";
 import axiosInstance from "../../Api/axiosInstance";
 
 const SuperAdminAdmin = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isMemberModalOpen, setIsMemberModalOpen] = useState(false); // 🔹 New state
   const [modalType, setModalType] = useState("add");
   const [selectedAdmin, setSelectedAdmin] = useState(null);
+  const [selectedAdminMembers, setSelectedAdminMembers] = useState([]); // 🔹 New state
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMembers, setLoadingMembers] = useState(false); // 🔹 New state
 
   const [plans, setPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
@@ -108,6 +111,27 @@ const SuperAdminAdmin = () => {
     setIsDeleteModalOpen(true);
   };
 
+  // 🔹 NEW: Fetch members and open modal
+  const handleViewMembers = async (admin) => {
+    setSelectedAdmin(admin);
+    setLoadingMembers(true);
+    setIsMemberModalOpen(true);
+    try {
+      const response = await axiosInstance.get(`/members/admin/${admin.id}`);
+      if (response.data.success && Array.isArray(response.data.data)) {
+        setSelectedAdminMembers(response.data.data);
+      } else {
+        setSelectedAdminMembers([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch members:", error);
+      alert("Failed to load members.");
+      setSelectedAdminMembers([]);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
   const confirmDelete = async () => {
     if (selectedAdmin) {
       try {
@@ -140,12 +164,18 @@ const SuperAdminAdmin = () => {
     setSelectedAdmin(null);
   };
 
+  const closeMemberModal = () => {
+    setIsMemberModalOpen(false);
+    setSelectedAdmin(null);
+    setSelectedAdminMembers([]);
+  };
+
   useEffect(() => {
-    document.body.style.overflow = isModalOpen || isDeleteModalOpen ? "hidden" : "unset";
+    document.body.style.overflow = isModalOpen || isDeleteModalOpen || isMemberModalOpen ? "hidden" : "unset";
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [isModalOpen, isDeleteModalOpen]);
+  }, [isModalOpen, isDeleteModalOpen, isMemberModalOpen]);
 
   const getStatusBadge = (status) => {
     const normalized = (status || "inactive").toLowerCase();
@@ -177,7 +207,6 @@ const SuperAdminAdmin = () => {
     try {
       const formData = new FormData();
 
-      // Always send these fields
       formData.append("fullName", payload.fullName);
       formData.append("email", payload.email);
       formData.append("phone", payload.phone);
@@ -191,12 +220,10 @@ const SuperAdminAdmin = () => {
       formData.append("description", payload.planDescription);
       formData.append("status", payload.status.toLowerCase());
 
-      // Only include password when adding
       if (modalType === "add") {
         formData.append("password", payload.password);
       }
 
-      // Append image only if provided
       if (profileImageFile) {
         formData.append("profileImage", profileImageFile);
       }
@@ -285,7 +312,7 @@ const SuperAdminAdmin = () => {
                 <tbody>
                   {admins.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="text-center text-muted py-4">
+                      <td colSpan="9" className="text-center text-muted py-4">
                         No admins found
                       </td>
                     </tr>
@@ -304,11 +331,11 @@ const SuperAdminAdmin = () => {
                           >
                             {admin.profileImage ? (
                               <img
-                                src={admin.profileImage.trim()} // ⚠️ Trim whitespace from URL
+                                src={admin.profileImage.trim()}
                                 alt="Profile"
                                 className="w-100 h-100 object-fit-cover"
                                 onError={(e) => {
-                                  e.target.src = '/assets/images/default-avatar.png'; // optional fallback
+                                  e.target.src = '/assets/images/default-avatar.png';
                                 }}
                               />
                             ) : (
@@ -334,6 +361,9 @@ const SuperAdminAdmin = () => {
                             </button>
                             <button className="btn btn-sm btn-outline-primary" onClick={() => handleEdit(admin)}>
                               <FaEdit size={14} />
+                            </button>
+                            <button className="btn btn-sm btn-outline-info" onClick={() => handleViewMembers(admin)}>
+                              <FaUser size={14} />
                             </button>
                             <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteClick(admin)}>
                               <FaTrashAlt size={14} />
@@ -390,6 +420,9 @@ const SuperAdminAdmin = () => {
                         <button className="btn btn-sm btn-outline-primary" onClick={() => handleEdit(admin)}>
                           <FaEdit size={14} />
                         </button>
+                        <button className="btn btn-sm btn-outline-info" onClick={() => handleViewMembers(admin)}>
+                          <FaUser size={14} />
+                        </button>
                         <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteClick(admin)}>
                           <FaTrashAlt size={14} />
                         </button>
@@ -434,6 +467,78 @@ const SuperAdminAdmin = () => {
                 Delete
               </button>
             </div>
+          </div>
+        </ModalWrapper>
+      )}
+
+      {/* 🔹 MEMBERS MODAL */}
+      {isMemberModalOpen && (
+        <ModalWrapper title={`Members of ${selectedAdmin?.fullName || "Admin"}`} onClose={closeMemberModal}>
+          <div className="py-2" style={{ maxHeight: "70vh",maxWidth: "900px", overflowX: "hidden" }}>
+            {loadingMembers ? (
+              <div className="text-center py-4">Loading members...</div>
+            ) : selectedAdminMembers.length === 0 ? (
+              <div className="text-center text-muted py-4">No members found</div>
+            ) : (
+              <div className="row g-3">
+                {selectedAdminMembers.map((member) => (
+                  <div key={member.id} className="col-12">
+                    <div className="d-flex align-items-start p-3 border rounded-3 bg-light">
+                      <div
+                        className="rounded-circle overflow-hidden flex-shrink-0 me-3"
+                        style={{ width: "48px", height: "48px", border: "1px solid #ddd" }}
+                      >
+                        {member.profileImage ? (
+                          <img
+                            src={member.profileImage.trim()}
+                            alt="Member"
+                            className="w-100 h-100 object-fit-cover"
+                            onError={(e) => {
+                              e.target.src = '/assets/images/default-avatar.png';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-100 h-100 d-flex align-items-center justify-content-center bg-secondary text-white">
+                            <span className="fw-bold" style={{ fontSize: '0.7rem' }}>
+                              {member.fullName.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-grow-1">
+                        <div className="d-flex justify-content-between align-items-start">
+                          <h6 className="mb-1 fw-bold">{member.fullName}</h6>
+                          {getStatusBadge(member.status)}
+                        </div>
+                        <p className="mb-1 text-muted" style={{ fontSize: '0.875rem' }}>
+                          {member.phone} • {member.email}
+                        </p>
+                        <div className="d-flex flex-wrap gap-2 mt-1">
+                          {member.planId && (
+                            <span className="badge bg-light text-dark border">Plan ID: {member.planId}</span>
+                          )}
+                          <span className="badge bg-light text-dark border">
+                            Joined: {new Date(member.joinDate).toLocaleDateString()}
+                          </span>
+                          <span className="badge bg-light text-dark border">{member.gender}</span>
+                          {member.interestedIn && (
+                            <span className="badge bg-light text-dark border">{member.interestedIn}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="text-end mt-2">
+            <button
+              className="btn btn-sm btn-outline-secondary"
+              onClick={closeMemberModal}
+            >
+              Close
+            </button>
           </div>
         </ModalWrapper>
       )}

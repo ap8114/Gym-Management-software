@@ -160,9 +160,20 @@ const ReceptionistBookGroupClasses = () => {
     const fetchPersonalTrainers = async () => {
       try {
         const response = await axiosInstance.get(`booking/unifiedbyPersonalGeneral/${adminId}`);
-        const personalTrainers = response.data.trainers.filter(
-          (trainer) => trainer.roleId === 5
-        );
+        const rawTrainers = response.data.trainers || [];
+
+        // Filter only Personal Trainers (roleId === 5)
+        const personalTrainers = rawTrainers
+          .filter(trainer => trainer.roleId === 5)
+          .map(trainer => ({
+            id: trainer.trainerId,          // normalize to 'id'
+            fullName: trainer.name.trim(),  // normalize to 'fullName'
+            phone: trainer.phone?.trim() || '',
+            availability: trainer.availability,
+            isBooked: trainer.isBooked,
+            bookedSlots: trainer.bookedSlots,
+          }));
+
         setTrainers(personalTrainers);
       } catch (error) {
         console.error('Failed to fetch personal trainers:', error);
@@ -170,8 +181,10 @@ const ReceptionistBookGroupClasses = () => {
       }
     };
 
-    fetchPersonalTrainers();
-  }, []);
+    if (adminId) {
+      fetchPersonalTrainers();
+    }
+  }, [adminId]);
 
   useEffect(() => {
     fetchData();
@@ -418,7 +431,7 @@ const ReceptionistBookGroupClasses = () => {
             alert('Please enter a valid price greater than 0.');
             return;
           }
-          
+
           const payload = {
             memberId: parseInt(member_id, 10),
             memberName: member_name,
@@ -434,7 +447,7 @@ const ReceptionistBookGroupClasses = () => {
             paymentStatus: payment_status,
             price: parsedPrice
           };
-          
+
           await axiosInstance.post('booking/unified/create', payload);
           alert('PT Session booking created successfully!');
         } else {
@@ -453,17 +466,17 @@ const ReceptionistBookGroupClasses = () => {
           } else {
             parsedPrice = parseFloat(price);
           }
-          
+
           if (isNaN(parsedPrice) || parsedPrice <= 0) {
             alert('Please enter a valid price greater than 0.');
             return;
           }
-          
+
           const payload = {
             endTime: formatTime(safeEnd),
             price: parsedPrice
           };
-          
+
           await axiosInstance.put(`booking/unifiedupdate/${selectedBooking.id}`, payload);
           alert('PT Session booking updated successfully!');
         } else {
@@ -476,7 +489,13 @@ const ReceptionistBookGroupClasses = () => {
       closeModal();
     } catch (err) {
       console.error('API Error:', err);
-      alert(`Failed to ${modalType === 'add' ? 'create' : 'update'} booking.`);
+
+      if (err.response && err.response.status === 409) {
+        alert('This Trainer Already booked for this time slot.');
+        toast.error('This Trainer Already booked for this time slot.');
+      } else {
+        alert(`Failed to ${modalType === 'add' ? 'create' : 'update'} booking.`);
+      }
     }
   };
 
@@ -723,11 +742,11 @@ const ReceptionistBookGroupClasses = () => {
                         className={`btn ${bookingType === 'group' ? 'btn-info' : 'btn-outline-secondary'}`}
                         onClick={() => {
                           setBookingType('group');
-                          setFormData((prev) => ({ 
-                            ...prev, 
-                            trainer_id: '', 
-                            trainer_name: '', 
-                            class_schedule_id: '', 
+                          setFormData((prev) => ({
+                            ...prev,
+                            trainer_id: '',
+                            trainer_name: '',
+                            class_schedule_id: '',
                             class_name: '',
                             end_date: '' // Reset end_date when switching booking type
                           }));
@@ -740,11 +759,11 @@ const ReceptionistBookGroupClasses = () => {
                         className={`btn ${bookingType === 'pt' ? 'btn-info' : 'btn-outline-secondary'}`}
                         onClick={() => {
                           setBookingType('pt');
-                          setFormData((prev) => ({ 
-                            ...prev, 
-                            trainer_id: '', 
-                            trainer_name: '', 
-                            class_schedule_id: '', 
+                          setFormData((prev) => ({
+                            ...prev,
+                            trainer_id: '',
+                            trainer_name: '',
+                            class_schedule_id: '',
                             class_name: '',
                             end_date: '' // Reset end_date when switching booking type
                           }));
