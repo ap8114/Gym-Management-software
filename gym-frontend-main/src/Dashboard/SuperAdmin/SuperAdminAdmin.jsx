@@ -1,17 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FaEye, FaEdit, FaTrashAlt, FaUser } from "react-icons/fa";
 import axiosInstance from "../../Api/axiosInstance";
+// 🔽 New imports for export
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const SuperAdminAdmin = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isMemberModalOpen, setIsMemberModalOpen] = useState(false); // 🔹 New state
+  const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
   const [modalType, setModalType] = useState("add");
   const [selectedAdmin, setSelectedAdmin] = useState(null);
-  const [selectedAdminMembers, setSelectedAdminMembers] = useState([]); // 🔹 New state
+  const [selectedAdminMembers, setSelectedAdminMembers] = useState([]);
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMembers, setLoadingMembers] = useState(false); // 🔹 New state
+  const [loadingMembers, setLoadingMembers] = useState(false);
 
   const [plans, setPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
@@ -131,6 +135,63 @@ const SuperAdminAdmin = () => {
       setLoadingMembers(false);
     }
   };
+
+  // 🔹 EXPORT TO EXCEL
+  const exportMembersToExcel = () => {
+    if (!selectedAdminMembers.length) return;
+
+    const worksheetData = selectedAdminMembers.map(member => ({
+      'Name': member.fullName,
+      'Phone': member.phone,
+      'Email': member.email,
+      'Gender': member.gender,
+      'Plan ID': member.planId || '—',
+      'Interested In': member.interestedIn || '—',
+      'Join Date': member.joinDate ? new Date(member.joinDate).toLocaleDateString() : '—',
+      'Status': member.status,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Members");
+    XLSX.writeFile(workbook, `Members_of_${selectedAdmin?.fullName || 'Admin'}.xlsx`);
+  };
+
+  // 🔹 EXPORT TO PDF
+const exportMembersToPDF = async () => {
+  if (!selectedAdminMembers.length) return;
+
+  // Dynamically import autoTable only when needed
+  const { default: autoTable } = await import('jspdf-autotable');
+
+  const doc = new jsPDF();
+
+  // ✅ Manually attach autoTable to this doc instance
+  autoTable(doc, {
+    startY: 30,
+    head: [['Name', 'Phone', 'Email', 'Gender', 'Plan ID', 'Interested In', 'Join Date', 'Status']],
+    body: selectedAdminMembers.map(member => [
+      member.fullName,
+      member.phone || '—',
+      member.email || '—',
+      member.gender || '—',
+      member.planId || '—',
+      member.interestedIn || '—',
+      member.joinDate ? new Date(member.joinDate).toLocaleDateString() : '—',
+      member.status || '—',
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: [110, 178, 204] }, // #6EB2CC
+    styles: { fontSize: 9, cellPadding: 3 },
+  });
+
+  const title = `Members of ${selectedAdmin?.fullName || 'Admin'}`;
+  doc.setFontSize(16);
+  const pageWidth = doc.internal.pageSize.getWidth();
+  doc.text(title, pageWidth / 2, 20, { align: 'center' });
+
+  doc.save(`${title.replace(/\s+/g, '_')}.pdf`);
+};
 
   const confirmDelete = async () => {
     if (selectedAdmin) {
@@ -474,7 +535,7 @@ const SuperAdminAdmin = () => {
       {/* 🔹 MEMBERS MODAL */}
       {isMemberModalOpen && (
         <ModalWrapper title={`Members of ${selectedAdmin?.fullName || "Admin"}`} onClose={closeMemberModal}>
-          <div className="py-2" style={{ maxHeight: "70vh",maxWidth: "900px", overflowX: "hidden" }}>
+          <div className="py-2" style={{ maxHeight: "70vh", maxWidth: "900px", overflowX: "hidden" }}>
             {loadingMembers ? (
               <div className="text-center py-4">Loading members...</div>
             ) : selectedAdminMembers.length === 0 ? (
@@ -532,7 +593,24 @@ const SuperAdminAdmin = () => {
               </div>
             )}
           </div>
-          <div className="text-end mt-2">
+          {/* 🔽 Export Buttons */}
+          <div className="d-flex justify-content-between align-items-center mt-3 px-3">
+            <div>
+              <button
+                className="btn btn-sm btn-success me-2"
+                onClick={exportMembersToExcel}
+                disabled={loadingMembers || selectedAdminMembers.length === 0}
+              >
+                Download Excel
+              </button>
+              <button
+                className="btn btn-sm btn-danger"
+                onClick={exportMembersToPDF}
+                disabled={loadingMembers || selectedAdminMembers.length === 0}
+              >
+                Download PDF
+              </button>
+            </div>
             <button
               className="btn btn-sm btn-outline-secondary"
               onClick={closeMemberModal}
