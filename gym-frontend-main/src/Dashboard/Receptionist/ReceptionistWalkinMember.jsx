@@ -16,7 +16,10 @@ import {
   Mail,
   MapPin,
   Filter,
+  Download,
 } from "lucide-react";
+import html2canvas from "html2canvas";
+import GymLogo from "../../assets/Logo/Logo1.png";
 
 const ReceptionistWalkinMember = () => {
   const [members, setMembers] = useState([]);
@@ -54,7 +57,6 @@ const ReceptionistWalkinMember = () => {
   const name = user?.fullName || null;
   const staffId = user?.staffId || null;
   const adminId = user?.adminId || null;
-
   // Form states
   const [newMember, setNewMember] = useState({
     fullName: "",
@@ -239,7 +241,7 @@ const ReceptionistWalkinMember = () => {
       console.error("Error fetching plans:", err);
       setPlanError(
         err.response?.data?.message ||
-          "Failed to fetch plans. Please try again."
+        "Failed to fetch plans. Please try again."
       );
     } finally {
       setPlanLoading(false);
@@ -276,7 +278,7 @@ const ReceptionistWalkinMember = () => {
       formData.append(
         "paymentMode",
         newMember.paymentMode.charAt(0).toUpperCase() +
-          newMember.paymentMode.slice(1)
+        newMember.paymentMode.slice(1)
       );
       formData.append("amountPaid", newMember.amountPaid);
       formData.append("status", newMember.status);
@@ -543,6 +545,261 @@ const ReceptionistWalkinMember = () => {
     return filtered;
   };
 
+  // Function to generate and download receipt as image using html2canvas
+  const handleDownloadReceipt = async (member) => {
+    try {
+      // Fetch full member details to get payment information
+      let memberDetails = null;
+      let paymentData = null;
+      
+      try {
+        const memberResponse = await axiosInstance.get(
+          `${BaseUrl}members/detail/${member.id}`
+        );
+        if (memberResponse.data?.success) {
+          memberDetails = memberResponse.data.data;
+        }
+      } catch (err) {
+        console.log("Member details not available");
+      }
+
+      // Fetch payment history for the member
+      try {
+        const paymentResponse = await axiosInstance.get(
+          `${BaseUrl}payment/member/${member.id}`
+        );
+        if (paymentResponse.data?.success && paymentResponse.data.payments?.length > 0) {
+          paymentData = paymentResponse.data.payments[0]; // Get latest payment
+        }
+      } catch (err) {
+        console.log("Payment history not available");
+      }
+
+      // Get plan details
+      const plan = apiPlans.find((p) => p.id === parseInt(member.planId));
+      const planName = plan ? plan.name : "Membership Plan";
+      const planPrice = plan ? parseFloat(plan.price.toString().replace("₹", "").replace(/,/g, "")) : 0;
+      const planValidity = plan ? plan.validity : "N/A";
+      const planSessions = plan ? plan.sessions : "N/A";
+      
+      // Use payment data if available, otherwise use member details or plan price
+      const totalAmount = paymentData?.amount || memberDetails?.amountPaid || planPrice || 0;
+      const paymentMode = paymentData?.paymentMode || memberDetails?.paymentMode || "Cash";
+      const cashPaid = paymentData?.amount || memberDetails?.amountPaid || planPrice || 0;
+      const change = 0; // Assuming exact payment, no change
+      const invoiceNo = paymentData?.invoiceNo || `INV-${member.id}-${Date.now()}`;
+      const paymentDate = paymentData?.paymentDate 
+        ? new Date(paymentData.paymentDate).toLocaleDateString() 
+        : new Date().toLocaleDateString();
+
+      // Member details
+      const memberName = memberDetails?.fullName || member.name || "N/A";
+      const memberPhone = memberDetails?.phone || member.phone || "N/A";
+      const memberEmail = memberDetails?.email || member.email || "N/A";
+      const memberAddress = memberDetails?.address || member.address || "N/A";
+      const memberGender = memberDetails?.gender || member.gender || "N/A";
+      const memberDOB = memberDetails?.dateOfBirth 
+        ? new Date(memberDetails.dateOfBirth).toLocaleDateString() 
+        : (member.dob ? new Date(member.dob).toLocaleDateString() : "N/A");
+      const membershipFrom = memberDetails?.membershipFrom 
+        ? new Date(memberDetails.membershipFrom).toLocaleDateString() 
+        : (member.planStart ? new Date(member.planStart).toLocaleDateString() : "N/A");
+      const membershipTo = memberDetails?.membershipTo 
+        ? new Date(memberDetails.membershipTo).toLocaleDateString() 
+        : (member.expiry ? new Date(member.expiry).toLocaleDateString() : "N/A");
+      const memberStatus = memberDetails?.status || member.status || "N/A";
+
+      // Convert logo to data URL for html2canvas
+      let logoDataUrl = "";
+      try {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        logoDataUrl = await new Promise((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement("canvas");
+              const ctx = canvas.getContext("2d");
+              canvas.width = img.width;
+              canvas.height = img.height;
+              ctx.drawImage(img, 0, 0);
+              resolve(canvas.toDataURL("image/png"));
+            } catch (err) {
+              resolve(GymLogo); // Fallback to original path
+            }
+          };
+          img.onerror = () => resolve(GymLogo); // Fallback to original path
+          img.src = GymLogo;
+        });
+      } catch (err) {
+        logoDataUrl = GymLogo; // Use original path if conversion fails
+      }
+
+      // Create receipt HTML with all details matching the image format
+      const receiptHTML = `
+        <div id="receipt-container" style="
+          width: 400px;
+          background: white;
+          padding: 30px 20px;
+          font-family: 'Courier New', monospace;
+          color: black;
+          margin: 0 auto;
+          box-sizing: border-box;
+        ">
+          <div style="border-top: 2px dashed #000; margin-bottom: 15px;"></div>
+          <h1 style="text-align: center; font-weight: bold; font-size: 28px; margin: 15px 0; text-transform: uppercase; letter-spacing: 2px;">RECEIPT</h1>
+          <div style="border-top: 2px dashed #000; margin: 15px 0 25px 0;"></div>
+          
+          <!-- Invoice and Date -->
+          <div style="margin-bottom: 15px; font-size: 11px;">
+            <div style="margin-bottom: 5px;"><strong>Invoice No:</strong> ${invoiceNo}</div>
+            <div><strong>Date:</strong> ${paymentDate}</div>
+          </div>
+          
+          <div style="border-top: 1px dashed #000; margin: 15px 0;"></div>
+          
+          <!-- Member Details Section -->
+          <div style="margin-bottom: 15px;">
+            <div style="font-weight: bold; font-size: 12px; margin-bottom: 8px;">Member Details:</div>
+            <div style="font-size: 11px; line-height: 1.6;">
+              <div><strong>Name:</strong> ${memberName}</div>
+              <div><strong>Phone:</strong> ${memberPhone}</div>
+              <div><strong>Email:</strong> ${memberEmail}</div>
+              <div><strong>Address:</strong> ${memberAddress}</div>
+              <div><strong>Gender:</strong> ${memberGender}</div>
+              <div><strong>Date of Birth:</strong> ${memberDOB}</div>
+            </div>
+          </div>
+          
+          <div style="border-top: 1px dashed #000; margin: 15px 0;"></div>
+          
+          <!-- Membership Details Section -->
+          <div style="margin-bottom: 15px;">
+            <div style="font-weight: bold; font-size: 12px; margin-bottom: 8px;">Membership Details:</div>
+            <div style="font-size: 11px; line-height: 1.6;">
+              <div><strong>Plan:</strong> ${planName}</div>
+              <div><strong>Validity:</strong> ${planValidity} days</div>
+              <div><strong>Sessions:</strong> ${planSessions}</div>
+              <div><strong>From:</strong> ${membershipFrom}</div>
+              <div><strong>To:</strong> ${membershipTo}</div>
+              <div><strong>Status:</strong> ${memberStatus}</div>
+            </div>
+          </div>
+          
+          <div style="border-top: 2px dashed #000; margin: 20px 0;"></div>
+          
+          <!-- Payment Items -->
+          <div style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
+              <span style="text-align: left;">1x ${planName}</span>
+              <span style="text-align: right; margin-left: 20px;">₹ ${totalAmount.toFixed(2)}</span>
+            </div>
+          </div>
+          
+          <div style="border-top: 2px dashed #000; margin: 20px 0;"></div>
+          
+          <!-- Payment Summary -->
+          <div style="margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
+              <span style="font-weight: bold; text-align: left;">TOTAL AMOUNT</span>
+              <span style="font-weight: bold; text-align: right;">₹ ${totalAmount.toFixed(2)}</span>
+            </div>
+          </div>
+          
+          <div style="border-top: 2px dashed #000; margin: 20px 0;"></div>
+          
+          <!-- Payment Details -->
+          <div style="margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
+              <span style="font-weight: bold; text-align: left;">${paymentMode.toUpperCase()}</span>
+              <span style="font-weight: bold; text-align: right;">₹ ${cashPaid.toFixed(2)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
+              <span style="font-weight: bold; text-align: left;">CHANGE</span>
+              <span style="font-weight: bold; text-align: right;">₹ ${change.toFixed(2)}</span>
+            </div>
+          </div>
+          
+          <div style="border-top: 2px dashed #000; margin: 20px 0;"></div>
+          
+          <!-- Thank You -->
+          <h2 style="text-align: center; font-weight: bold; font-size: 22px; margin: 20px 0; text-transform: uppercase; letter-spacing: 1px;">THANK YOU</h2>
+          <div style="border-top: 2px dashed #000; margin: 15px 0 20px 0;"></div>
+          
+          <!-- Gym Logo in Blank Rectangle Box -->
+          <div style="margin-top: 25px; text-align: center;">
+            <div style="
+              border: 1px solid #000;
+              margin: 15px auto;
+              width: 320px;
+              min-height: 100px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 20px;
+              box-sizing: border-box;
+            ">
+              <img src="${logoDataUrl}" alt="Gym Logo" style="max-width: 100%; max-height: 100px; height: auto; object-fit: contain; display: block;" />
+            </div>
+          </div>
+        
+          
+          <!-- Watermark -->
+          <div style="margin-top: 15px; text-align: left; font-size: 10px; color: #999; opacity: 0.5;">
+            modif.ai
+          </div>
+        </div>
+      `;
+
+      // Create a temporary container
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = receiptHTML;
+      tempDiv.style.position = "absolute";
+      tempDiv.style.left = "-9999px";
+      tempDiv.style.top = "0";
+      document.body.appendChild(tempDiv);
+
+      // Get the receipt container
+      const receiptElement = tempDiv.querySelector("#receipt-container");
+
+      // Wait for images to load before converting to canvas
+      const images = receiptElement.querySelectorAll("img");
+      await Promise.all(
+        Array.from(images).map(
+          (img) =>
+            new Promise((resolve) => {
+              if (img.complete) {
+                resolve();
+              } else {
+                img.onload = resolve;
+                img.onerror = resolve; // Continue even if image fails
+              }
+            })
+        )
+      );
+
+      // Convert to canvas and download
+      const canvas = await html2canvas(receiptElement, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        logging: false,
+        useCORS: true,
+        allowTaint: true,
+      });
+
+      // Create download link
+      const link = document.createElement("a");
+      link.download = `Receipt_${memberName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+
+      // Clean up
+      document.body.removeChild(tempDiv);
+    } catch (error) {
+      console.error("Error generating receipt:", error);
+      alert("Failed to generate receipt. Please try again.");
+    }
+  };
+
   return (
     <div className="container-fluid py-2 py-md-4">
       {/* Header - Responsive */}
@@ -693,6 +950,13 @@ const ReceptionistWalkinMember = () => {
                               <RefreshCw size={16} />
                             </button>
                             <button
+                              className="btn btn-sm btn-outline-success"
+                              onClick={() => handleDownloadReceipt(member)}
+                              title="Download Receipt"
+                            >
+                              <Download size={16} />
+                            </button>
+                            <button
                               className="btn btn-sm btn-outline-danger"
                               onClick={() => handleDeleteMember(member.id)}
                               title="Delete"
@@ -802,6 +1066,14 @@ const ReceptionistWalkinMember = () => {
                             onClick={() => handleRenewFormOpen(member)}
                           >
                             <RefreshCw size={16} className="me-2" /> Renew
+                          </button>
+                        </li>
+                        <li>
+                          <button
+                            className="dropdown-item"
+                            onClick={() => handleDownloadReceipt(member)}
+                          >
+                            <Download size={16} className="me-2" /> Download Receipt
                           </button>
                         </li>
                         <li>
