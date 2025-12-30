@@ -1155,26 +1155,25 @@ const ViewPlans = () => {
                 <tr>
                   <td className="py-2 py-md-3 fw-bold">1</td>
                   <td className="py-2 py-md-3">
-                    <strong style={{ color: '#333', fontSize: '1rem' }}>
-                      {profile.membership_plan || '—'}
+                      <strong style={{ color: '#333', fontSize: '1rem' }}>
+                      {profile?.membership_plan || '—'}
                     </strong>
                   </td>
                   <td className="py-2 py-md-3 d-none d-md-table-cell">
-                    {profile.plan_start_date || '—'}
+                    {profile?.plan_start_date || '—'}
                   </td>
                   <td className="py-2 py-md-3 d-none d-md-table-cell" style={{ fontSize: '0.95rem' }}>
-                    {profile.plan_end_date || '—'}
+                    {profile?.plan_end_date || '—'}
                   </td>
-                  <td className="py-2 py-md-3">₹{profile.membership_fee || '0'}</td>
+                  <td className="py-2 py-md-3">₹{profile?.membership_fee || '0'}</td>
                   <td className="py-2 py-md-3">
-                    {profile.plan_duration ? `${profile.plan_duration} Days` : '—'}
+                    {profile?.plan_duration ? `${profile?.plan_duration} Days` : '—'}
                   </td>
                   <td className="py-2 py-md-3">
                     <span
-                      className={`badge bg-${profile.membership_status === 'Active' ? 'success' : 'secondary'
-                        }`}
+                      className={`badge bg-${profile?.membership_status === 'Active' ? 'success' : 'secondary'}`}
                     >
-                      {profile.membership_status || 'Inactive'}
+                      {profile?.membership_status || 'Inactive'}
                     </span>
                   </td>
                   <td className="py-2 py-md-3">
@@ -1223,20 +1222,20 @@ const ViewPlans = () => {
         <Modal.Body>
           <Row>
             <Col md={6}>
-              <p><strong>Name:</strong> {profile.fullName || '—'}</p>
-              <p><strong>Email:</strong> {profile.email || '—'}</p>
-              <p><strong>Phone:</strong> {profile.phone || '—'}</p>
-              <p><strong>Address:</strong> {profile.address_street || '—'}</p>
-              <p><strong>Gender:</strong> {profile.gender || '—'}</p>
+              <p><strong>Name:</strong> {profile?.fullName || '—'}</p>
+              <p><strong>Email:</strong> {profile?.email || '—'}</p>
+              <p><strong>Phone:</strong> {profile?.phone || '—'}</p>
+              <p><strong>Address:</strong> {profile?.address_street || '—'}</p>
+              <p><strong>Gender:</strong> {profile?.gender || '—'}</p>
             </Col>
             <Col md={6}>
-              <p><strong>Plan:</strong> {profile.membership_plan || '—'}</p>
-              <p><strong>Start Date:</strong> {profile.plan_start_date || '—'}</p>
-              <p><strong>End Date:</strong> {profile.plan_end_date || '—'}</p>
-              <p><strong>Fee:</strong> ₹{profile.membership_fee || '0'}</p>
+              <p><strong>Plan:</strong> {profile?.membership_plan || '—'}</p>
+              <p><strong>Start Date:</strong> {profile?.plan_start_date || '—'}</p>
+              <p><strong>End Date:</strong> {profile?.plan_end_date || '—'}</p>
+              <p><strong>Fee:</strong> ₹{profile?.membership_fee || '0'}</p>
               <p><strong>Status:</strong>{' '}
-                <span className={`badge bg-${profile.membership_status === 'Active' ? 'success' : 'secondary'}`}>
-                  {profile.membership_status || 'Inactive'}
+                <span className={`badge bg-${profile?.membership_status === 'Active' ? 'success' : 'secondary'}`}>
+                  {profile?.membership_status || 'Inactive'}
                 </span>
               </p>
             </Col>
