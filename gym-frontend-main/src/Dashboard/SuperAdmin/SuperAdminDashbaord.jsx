@@ -221,7 +221,7 @@ export default function DashboardHomePage() {
       </div>
 
       {/* Alerts */}
-      <div className="row g-3">
+      {/* <div className="row g-3">
         <div className="col-12 col-lg-4">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-header bg-white border-0 fw-semibold">
@@ -244,7 +244,7 @@ export default function DashboardHomePage() {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }
