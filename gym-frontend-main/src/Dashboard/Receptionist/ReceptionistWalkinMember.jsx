@@ -1347,7 +1347,8 @@ const ReceptionistWalkinMember = () => {
                         Interested In <span className="text-danger">*</span>
                       </label>
                       <div className="d-flex flex-wrap gap-3">
-                        <div className="form-check">
+
+                        {/* <div className="form-check">
                           <input
                             className="form-check-input"
                             type="radio"
@@ -1372,33 +1373,8 @@ const ReceptionistWalkinMember = () => {
                           >
                             Personal Training
                           </label>
-                        </div>
-                        <div className="form-check">
-                          <input
-                            className="form-check-input"
-                            type="radio"
-                            name="interestedIn"
-                            id="personalTrainer"
-                            value="Personal Trainer"
-                            checked={
-                              newMember.interestedIn === "Personal Trainer"
-                            }
-                            onChange={(e) => {
-                              setNewMember({
-                                ...newMember,
-                                interestedIn: e.target.value,
-                                planId: "",
-                              });
-                            }}
-                            required
-                          />
-                          <label
-                            className="form-check-label"
-                            htmlFor="personalTrainer"
-                          >
-                            Personal Trainer
-                          </label>
-                        </div>
+                        </div> */}
+                      
                         <div className="form-check">
                           <input
                             className="form-check-input"
@@ -1425,7 +1401,8 @@ const ReceptionistWalkinMember = () => {
                             General Trainer
                           </label>
                         </div>
-                        <div className="form-check">
+
+                        {/* <div className="form-check">
                           <input
                             className="form-check-input"
                             type="radio"
@@ -1448,7 +1425,8 @@ const ReceptionistWalkinMember = () => {
                           >
                             Group Classes
                           </label>
-                        </div>
+                        </div> */}
+                        
                       </div>
                     </div>
                     <div className="col-12">
@@ -1551,7 +1529,7 @@ const ReceptionistWalkinMember = () => {
                         <option value="bank">Bank Transfer</option>
                       </select>
                     </div>
-                    <div className="col-12 col-md-6">
+                    {/* <div className="col-12 col-md-6">
                       <label className="form-label">
                         Amount Paid <span className="text-danger">*</span>
                       </label>
@@ -1567,7 +1545,7 @@ const ReceptionistWalkinMember = () => {
                         }
                         required
                       />
-                    </div>
+                    </div> */}
                   </div>
                   <div className="modal-footer mt-3">
                     <button
@@ -1749,7 +1727,7 @@ const ReceptionistWalkinMember = () => {
                             Personal Training
                           </label>
                         </div>
-                        <div className="form-check">
+                        {/* <div className="form-check">
                           <input
                             className="form-check-input"
                             type="radio"
@@ -1774,7 +1752,7 @@ const ReceptionistWalkinMember = () => {
                           >
                             Personal Trainer
                           </label>
-                        </div>
+                        </div> */}
                         <div className="form-check">
                           <input
                             className="form-check-input"

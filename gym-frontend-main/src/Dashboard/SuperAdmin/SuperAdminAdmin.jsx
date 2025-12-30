@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FaEye, FaEdit, FaTrashAlt, FaUser } from "react-icons/fa";
 import axiosInstance from "../../Api/axiosInstance";
+import ImageCropper from "../../Components/ImageCropper";
 // 🔽 New imports for export
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
@@ -280,6 +281,9 @@ const exportMembersToPDF = async () => {
       formData.append("duration", payload.planDuration);
       formData.append("description", payload.planDescription);
       formData.append("status", payload.status.toLowerCase());
+      formData.append("gstNumber", payload.gstNumber || "");
+      formData.append("gymAddress", payload.gymAddress || "");
+      formData.append("tax", payload.tax || "5");
 
       if (modalType === "add") {
         formData.append("password", payload.password);
@@ -364,7 +368,8 @@ const exportMembersToPDF = async () => {
                     <th className="py-3">PLAN NAME</th>
                     <th className="py-3">GYM NAME</th>
                     <th className="py-3">BRANCH</th>
-                    <th className="py-3">ADDRESS</th>
+                    <th className="py-3">GST NUMBER</th>
+                    <th className="py-3">TAX</th>
                     <th className="py-3">CONTACT</th>
                     <th className="py-3">STATUS</th>
                     <th className="py-3 text-center">ACTIONS</th>
@@ -373,7 +378,7 @@ const exportMembersToPDF = async () => {
                 <tbody>
                   {admins.length === 0 ? (
                     <tr>
-                      <td colSpan="9" className="text-center text-muted py-4">
+                      <td colSpan="11" className="text-center text-muted py-4">
                         No admins found
                       </td>
                     </tr>
@@ -412,7 +417,8 @@ const exportMembersToPDF = async () => {
                         <td>{admin.planName || <span className="text-muted">No Plan</span>}</td>
                         <td>{admin.gymName || "-"}</td>
                         <td>{getBranchNameById(admin.branchId)}</td>
-                        <td><small className="text-muted">{admin.address || "-"}</small></td>
+                        <td><small className="text-muted">{admin.gstNumber || "-"}</small></td>
+                        <td><span className="badge bg-info text-dark">{admin.tax || "5"}%</span></td>
                         <td>{admin.phone || "-"}</td>
                         <td>{getStatusBadge(admin.status)}</td>
                         <td className="text-center">
@@ -469,6 +475,16 @@ const exportMembersToPDF = async () => {
                       <div className="mb-2">
                         <small className="text-muted d-block">Address</small>
                         <span>{admin.address || "-"}</span>
+                      </div>
+                      <div className="row g-2 mb-2">
+                        <div className="col-6">
+                          <small className="text-muted d-block">GST Number</small>
+                          <span>{admin.gstNumber || "-"}</span>
+                        </div>
+                        <div className="col-6">
+                          <small className="text-muted d-block">Tax Rate</small>
+                          <span className="badge bg-info text-dark">{admin.tax || "5"}%</span>
+                        </div>
                       </div>
                       <div className="mb-2">
                         <small className="text-muted d-block">Phone</small>
@@ -667,10 +683,16 @@ const AdminForm = ({ mode, admin, onCancel, onSubmit, plans, loadingPlans, branc
     planDuration: admin?.duration || "",
     planDescription: admin?.description || "",
     branchId: admin?.branchId || "",
+    gstNumber: admin?.gstNumber || "",
+    gymAddress: admin?.gymAddress || "",
+    tax: admin?.tax || "5",
   });
 
   const [profileImageFile, setProfileImageFile] = useState(null);
   const [profilePreview, setProfilePreview] = useState(admin?.profileImage || null);
+
+  const [showCropper, setShowCropper] = useState(false);
+  const [tempImageSrc, setTempImageSrc] = useState(null);
 
   useEffect(() => {
     if (admin && plans.length > 0 && admin.planName) {
@@ -726,9 +748,30 @@ const AdminForm = ({ mode, admin, onCancel, onSubmit, plans, loadingPlans, branc
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setProfileImageFile(file);
-      setProfilePreview(URL.createObjectURL(file));
+      if (!file.type.startsWith("image/")) {
+        alert("Please upload an image file.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setTempImageSrc(reader.result);
+        setShowCropper(true);
+      };
+      reader.readAsDataURL(file);
     }
+  };
+
+  const handleCropComplete = (croppedImage) => {
+    const file = new File([croppedImage.blob], "profile.jpg", { type: "image/jpeg" });
+    setProfileImageFile(file);
+    setProfilePreview(croppedImage.url);
+    setShowCropper(false);
+    setTempImageSrc(null);
+  };
+
+  const handleCropCancel = () => {
+    setShowCropper(false);
+    setTempImageSrc(null);
   };
 
   const handleSubmit = (e) => {
@@ -859,6 +902,51 @@ const AdminForm = ({ mode, admin, onCancel, onSubmit, plans, loadingPlans, branc
         </div>
       </div>
 
+      {/* Gym Information */}
+      <div className="mb-4">
+        <h6 className="fw-bold mb-3 text-primary">Gym Information</h6>
+        <div className="row g-2 mb-3">
+          <div className="col-12">
+            <label className="form-label fs-6">Gym Address *</label>
+            <textarea
+              name="gymAddress"
+              className="form-control form-control-sm"
+              rows="2"
+              value={formData.gymAddress}
+              onChange={handleInputChange}
+              readOnly={isView}
+              required
+            ></textarea>
+          </div>
+          <div className="col-12 col-md-6">
+            <label className="form-label fs-6">GST Number</label>
+            <input
+              name="gstNumber"
+              className="form-control form-control-sm"
+              value={formData.gstNumber}
+              onChange={handleInputChange}
+              readOnly={isView}
+              placeholder="e.g. 29ABCDE1234F1Z5"
+            />
+          </div>
+          <div className="col-12 col-md-6">
+            <label className="form-label fs-6">Tax Rate *</label>
+            <select
+              name="tax"
+              className="form-select form-select-sm"
+              value={formData.tax}
+              onChange={handleInputChange}
+              disabled={isView}
+              required
+            >
+              <option value="5">5%</option>
+              <option value="10">10%</option>
+              <option value="15">15%</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       {/* Login Info */}
       {isAdd && (
         <div className="mb-4">
@@ -970,6 +1058,13 @@ const AdminForm = ({ mode, admin, onCancel, onSubmit, plans, loadingPlans, branc
           </button>
         )}
       </div>
+      {showCropper && tempImageSrc && (
+        <ImageCropper
+          image={tempImageSrc}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+        />
+      )}
     </form>
   );
 };

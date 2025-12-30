@@ -55,18 +55,30 @@ const GroupPlansBookings = () => {
   const [selectedPlanDetails, setSelectedPlanDetails] = useState(null);
   const [planDetailsLoading, setPlanDetailsLoading] = useState(false);
 
-  // Get user data from localStorage
-  const userData = JSON.parse(localStorage.getItem("userData") || "{}");
-  const branchId = userData.branchId || 1; // Default to 1 if not found
-  const adminId = userData.adminId || 90; // Default to 90 if not found
+   const getUserFromStorage = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (err) {
+      console.error('Error parsing user from localStorage:', err);
+      return null;
+    }
+  };
 
-  // Fetch group plans data from API
+  const user = getUserFromStorage();
+  const memberId = user?.id || null;
+  const branchId = user?.branchId || null;
+  const name = user?.fullName || null;
+  const staffId = user?.staffId || null;
+  const adminId = user?.adminId || null;
+
+  // Fetch group plans from MemberPlan API (filtering for GROUP type)
   useEffect(() => {
     const fetchGroupPlans = async () => {
       try {
         setLoading(true);
         const response = await fetch(
-          `${BaseUrl}generaltrainer/${branchId}/group-plans`
+          `${BaseUrl}MemberPlan?adminId=${adminId}`
         );
 
         if (!response.ok) {
@@ -76,50 +88,31 @@ const GroupPlansBookings = () => {
         const data = await response.json();
 
         if (data.success) {
-          // Transform API data to match component structure
-          const transformedPlans = data.data.map((plan) => ({
-            id: plan.planId,
-            name: plan.planName,
-            sessions: plan.sessions,
-            validity: plan.validityDays,
-            price: plan.price.toString(),
-            description: "Group training plan",
-          }));
+          // Filter only GROUP type plans and transform data to match component structure
+          const groupTypePlans = data.plans
+            .filter((plan) => plan.type === "GROUP")
+            .map((plan) => ({
+              id: plan.id,
+              name: plan.name,
+              sessions: plan.sessions,
+              validity: plan.validityDays,
+              price: plan.price.toString(),
+              description: "Group training plan",
+              totalMembers: 0, // Will be updated when members are fetched
+              type: plan.type,
+              trainerId: plan.trainerId,
+              trainerType: plan.trainerType,
+              status: plan.status,
+            }));
 
-          setGroupPlans(transformedPlans);
+          setGroupPlans(groupTypePlans);
 
-          // Fetch members for each plan
-          const transformedCustomers = {};
-          for (const plan of transformedPlans) {
-            try {
-              const membersResponse = await fetch(
-                `${BaseUrl}members/group-plan/${adminId}/admin/${plan.id}`
-              );
-
-              if (membersResponse.ok) {
-                const membersData = await membersResponse.json();
-                if (membersData.success) {
-                  transformedCustomers[plan.id] = membersData.data.members.map((member) => ({
-                    id: member.id,
-                    name: member.fullName,
-                    purchaseDate: member.membershipFrom,
-                    expiryDate: member.membershipTo,
-                    sessionsBooked: member.attendanceCount || 0,
-                    sessionsRemaining: member.sessions || 0,
-                    contact: member.phone,
-                    email: member.email,
-                    status: member.status,
-                    planId: member.planId,
-                    planName: member.planName,
-                  }));
-                }
-              }
-            } catch (err) {
-              console.error(`Error fetching members for plan ${plan.id}:`, err);
-            }
-          }
-
-          setPlanCustomers(transformedCustomers);
+          // Initialize empty customer arrays for each plan
+          const initialCustomers = {};
+          groupTypePlans.forEach((plan) => {
+            initialCustomers[plan.id] = [];
+          });
+          setPlanCustomers(initialCustomers);
         } else {
           setError("Failed to fetch group plans data");
         }
@@ -131,8 +124,10 @@ const GroupPlansBookings = () => {
       }
     };
 
-    fetchGroupPlans();
-  }, [branchId, adminId]);
+    if (activeTab === "plans") {
+      fetchGroupPlans();
+    }
+  }, [adminId, activeTab]);
 
   // Fetch members data from API
   useEffect(() => {
@@ -184,9 +179,9 @@ const GroupPlansBookings = () => {
         const data = await response.json();
 
         if (data.success) {
-          // Filter only plans with trainer type "general" and transform data
-          const generalPlans = data.plans
-            .filter((plan) => plan.trainerType === "general")
+          // Filter only MEMBER type plans with trainer type "general" and transform data
+          const memberPlansGeneral = data.plans
+            .filter((plan) => plan.type === "MEMBER" && plan.trainerType === "general")
             .map((plan) => ({
               id: plan.id,
               name: plan.name,
@@ -200,12 +195,10 @@ const GroupPlansBookings = () => {
               branchId: plan.branchId,
               createdAt: plan.createdAt,
               updatedAt: plan.updatedAt,
-              daysUsed: plan.daysUsed,
-              daysLeft: plan.daysLeft,
               status: plan.status,
             }));
 
-          setMembershipPlans(generalPlans);
+          setMembershipPlans(memberPlansGeneral);
         } else {
           setMembershipError("Failed to fetch membership plans data");
         }
@@ -470,26 +463,26 @@ const handleViewMember = async (member) => {
           activeMembersCount: data.data.statistics.active,
           expiredMembersCount: data.data.statistics.expired,
           completedMembersCount: data.data.statistics.completed,
-          members: data.data.members.map((member) => ({
+          members: (data.data.members || []).map((member) => ({
             id: member.id,
-            name: member.fullName,
-            email: member.email,
-            phone: member.phone,
-            gender: member.gender,
-            address: member.address,
-            joinDate: member.joinDate,
-            membershipFrom: member.membershipFrom,
-            membershipTo: member.membershipTo,
-            paymentMode: member.paymentMode,
-            amountPaid: member.amountPaid,
-            dateOfBirth: member.dateOfBirth,
-            status: member.status,
-            planId: member.planId,
-            planName: member.planName,
-            sessions: member.sessions,
-            validityDays: member.validityDays,
-            price: member.price,
-            planType: member.planType,
+            name: member.fullName || member.name,
+            email: member.email || '',
+            phone: member.phone || '',
+            gender: member.gender || '',
+            address: member.address || '',
+            joinDate: member.joinDate || '',
+            membershipFrom: member.membershipFrom || '',
+            membershipTo: member.membershipTo || '',
+            paymentMode: member.paymentMode || '',
+            amountPaid: member.amountPaid || '',
+            dateOfBirth: member.dateOfBirth || '',
+            status: member.status || 'Active',
+            planId: member.planId || planId,
+            planName: member.planName || data.data.plan.name,
+            sessions: member.sessions || data.data.plan.sessions,
+            validityDays: member.validityDays || data.data.plan.validityDays,
+            price: member.price || data.data.plan.price,
+            planType: member.planType || data.data.plan.type,
           }))
         };
         

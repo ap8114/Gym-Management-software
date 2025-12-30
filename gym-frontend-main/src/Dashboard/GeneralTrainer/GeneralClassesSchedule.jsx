@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { FaEye, FaEdit, FaTrashAlt, FaUserPlus, FaTimes } from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
-import GetAdminId from "../../Api/GetAdminId";
 import axiosInstance from "../../Api/axiosInstance";
 
 const GeneralClassesSchedule = () => {
-  const adminId = GetAdminId();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [modalType, setModalType] = useState("add");
@@ -17,6 +15,25 @@ const GeneralClassesSchedule = () => {
   const [classes, setClasses] = useState([]);
   const [members, setMembers] = useState([]); // For member dropdown
   const [trainers, setTrainers] = useState([]); // For trainers from API
+
+
+   const getUserFromStorage = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (err) {
+      console.error('Error parsing user from localStorage:', err);
+      return null;
+    }
+  };
+
+  const user = getUserFromStorage();
+  const memberId = user?.id || null;
+  const branchId = user?.branchId || null;
+  const name = user?.fullName || null;
+  const staffId = user?.staffId || null;
+  const adminId = user?.adminId || null;
+
 
   useEffect(() => {
     if (!adminId) {
@@ -30,7 +47,7 @@ const GeneralClassesSchedule = () => {
     setLoading(true);
     try {
       // Fetch classes
-      const classesRes = await axiosInstance.get(`class/scheduled/all`);
+      const classesRes = await axiosInstance.get(`class/scheduled/all/${adminId}`);
       let allClasses = [];
       if (classesRes.data.success) {
         allClasses = classesRes.data.data || [];
@@ -45,7 +62,7 @@ const GeneralClassesSchedule = () => {
       
       // Fetch trainers - Add this API call
       try {
-        const trainersRes = await axiosInstance.get(`trainers/all`);
+        const trainersRes = await axiosInstance.get(`trainers/all/${adminId}`);
         if (trainersRes.data.success) {
           setTrainers(trainersRes.data.data || []);
         }

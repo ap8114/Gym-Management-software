@@ -26,6 +26,13 @@ import html2canvas from "html2canvas";
 
 export default function SalesReport() {
   const adminId = GetAdminId();
+  
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+  
   const [selectedRole, setSelectedRole] = useState("member");
   const [selectedStaffId, setSelectedStaffId] = useState(null);
   const [apiData, setApiData] = useState(null);
@@ -35,7 +42,7 @@ export default function SalesReport() {
   const reportRef = useRef(null);
   const [staffList, setStaffList] = useState([]);
 
-  // All roles including Housekeeping (now restored)
+  // All roles with new report types
   const roles = [
     { value: "member", label: "Total Sales" },
     { value: "receptionist", label: "Receptionist" },
@@ -44,10 +51,11 @@ export default function SalesReport() {
     { value: "housekeeping", label: "Housekeeping" },
   ];
 
-  const [dateFrom, setDateFrom] = useState("2025-09-01");
-  const [dateTo, setDateTo] = useState("2025-09-30");
+  const [dateFrom, setDateFrom] = useState(getTodayDate());
+  const [dateTo, setDateTo] = useState(getTodayDate());
   const [bookingStatus, setBookingStatus] = useState("All");
   const statuses = ["All", "Booked", "Confirmed", "Cancelled", "Completed"];
+
 
   // Fetch staff list
   useEffect(() => {
@@ -74,6 +82,7 @@ export default function SalesReport() {
 
   const getFilteredStaff = () => {
     if (!selectedRole || selectedRole === "member") return [];
+    
     const expectedRoleId = roleToIdMap[selectedRole];
     if (expectedRoleId === undefined) return [];
     return staffList.filter(staff => staff.roleId === expectedRoleId);
@@ -199,7 +208,7 @@ export default function SalesReport() {
       return {
         totalBookings: parseInt(stats.totalBookings) || 0,
         totalRevenue: parseFloat(stats.totalRevenue) || 0,
-        confirmed: parseInt(stats.confirmed) || 0,
+        confirmed: parseInt(stats.confirmed) || parseInt(stats.completed) || 0,
         cancelled: parseInt(stats.cancelled) || 0,
         booked: parseInt(stats.booked) || 0,
         avgTicket: parseFloat(stats.avgTicket) || 0,
@@ -550,10 +559,10 @@ export default function SalesReport() {
                 title="Total Revenue"
                 value={`₹ ${kpis.totalRevenue.toLocaleString("en-IN")}`}
               />
-              <Widget
+              {/* <Widget
                 title="Avg Ticket"
                 value={`₹ ${kpis.avgTicket.toLocaleString("en-IN")}`}
-              />
+              /> */}
               <Widget title="Confirmed" value={kpis.confirmed} />
               <Widget title="Cancelled" value={kpis.cancelled} />
               <Widget title="Booked" value={kpis.booked} />

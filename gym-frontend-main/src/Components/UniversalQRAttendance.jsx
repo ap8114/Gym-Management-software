@@ -239,10 +239,20 @@ const UniversalQRAttendance = () => {
     }
   };
 
+  // Check if HTTPS is available (required for camera access)
+  const isHttps = window.location.protocol === 'https:';
+  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const canAccessCamera = isHttps || isDevelopment;
+
   /**
-   * Start QR scanner
+   * Start QR scanner with improved camera access
    */
   const startScanner = async () => {
+    if (!canAccessCamera && !isDevelopment) {
+      setScannerError('⚠️ Camera access requires HTTPS. Please use a secure connection (https://)');
+      return;
+    }
+
     try {
       setScannerError(null);
       setIsScanning(true);
@@ -260,62 +270,123 @@ const UniversalQRAttendance = () => {
       const html5QrCode = new Html5Qrcode("qr-reader-universal");
       html5QrCodeRef.current = html5QrCode;
 
-      // Try to get available cameras
-      const devices = await Html5Qrcode.getCameras();
-      
-      if (devices && devices.length > 0) {
-        // Use back camera if available, otherwise use first camera
-        const backCamera = devices.find(device => 
-          device.label.toLowerCase().includes('back') || 
-          device.label.toLowerCase().includes('rear')
-        );
-        const cameraId = backCamera ? backCamera.id : devices[0].id;
+      // First, check if we have camera permission
+      let devices = [];
+      try {
+        devices = await Html5Qrcode.getCameras();
+      } catch (e) {
+        console.log("Camera enumeration not available, using facingMode");
+      }
 
-        await html5QrCode.start(
-          cameraId,
-          {
-            fps: 10,
-            qrbox: { width: 300, height: 300 },
-            aspectRatio: 1.0
-          },
-          (decodedText) => {
-            processScannedQR(decodedText);
-          },
-          (errorMessage) => {
-            // Ignore scanning errors
-            if (errorMessage && errorMessage.includes('NotFoundError')) {
-              setScannerError('Camera not found. Please check your device.');
+      let startSuccess = false;
+
+      // Try with back camera if devices available
+      if (devices && devices.length > 0) {
+        for (let i = 0; i < devices.length; i++) {
+          try {
+            const device = devices[i];
+            console.log("Trying camera:", device.label);
+            
+            await html5QrCode.start(
+              device.id,
+              {
+                fps: 15,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0,
+                disableFlip: false
+              },
+              (decodedText) => {
+                processScannedQR(decodedText);
+              },
+              (errorMessage) => {
+                // Ignore QR scanning errors
+              }
+            );
+            startSuccess = true;
+            console.log("Camera started successfully with device:", device.label);
+            break;
+          } catch (deviceErr) {
+            console.log("Camera failed, trying next...");
+            continue;
+          }
+        }
+      }
+
+      // Fallback 1: Try using facingMode environment (rear camera)
+      if (!startSuccess) {
+        try {
+          console.log("Trying facingMode: environment");
+          await html5QrCode.start(
+            { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+            {
+              fps: 15,
+              qrbox: { width: 250, height: 250 },
+              aspectRatio: 1.0,
+              disableFlip: false
+            },
+            (decodedText) => {
+              processScannedQR(decodedText);
+            },
+            (errorMessage) => {
+              // Ignore QR scanning errors
             }
-          }
-        );
-      } else {
-        // Fallback to facingMode if camera enumeration fails
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: { width: 300, height: 300 },
-            aspectRatio: 1.0
-          },
-          (decodedText) => {
-            processScannedQR(decodedText);
-          },
-          (errorMessage) => {
-            // Ignore scanning errors
-          }
-        );
+          );
+          startSuccess = true;
+          console.log("Rear camera started with facingMode");
+        } catch (envErr) {
+          console.log("Environment camera failed");
+        }
+      }
+
+      // Fallback 2: Try using facingMode user (front camera)
+      if (!startSuccess) {
+        try {
+          console.log("Trying facingMode: user");
+          await html5QrCode.start(
+            { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+            {
+              fps: 15,
+              qrbox: { width: 250, height: 250 },
+              aspectRatio: 1.0,
+              disableFlip: false
+            },
+            (decodedText) => {
+              processScannedQR(decodedText);
+            },
+            (errorMessage) => {
+              // Ignore QR scanning errors
+            }
+          );
+          startSuccess = true;
+          console.log("Front camera started with facingMode");
+        } catch (userErr) {
+          console.log("User camera failed");
+        }
+      }
+
+      // If all methods fail
+      if (!startSuccess) {
+        throw new Error("Could not access camera");
       }
     } catch (err) {
+      console.error("Scanner error:", err);
       let errorMsg = 'Failed to start camera. ';
       
-      if (err.name === 'NotAllowedError' || err.message?.includes('permission')) {
-        errorMsg += 'Please allow camera permissions and try again.';
-      } else if (err.name === 'NotFoundError' || err.message?.includes('camera')) {
-        errorMsg += 'No camera found. Please check your device.';
-      } else if (err.message) {
-        errorMsg += err.message;
+      if (err.name === 'NotAllowedError' || 
+          err.message?.includes('permission') ||
+          err.message?.includes('Permission') ||
+          err.message?.includes('denied')) {
+        errorMsg = '📱 Camera permission denied. Please enable camera access in your device settings and try again.';
+      } else if (err.name === 'NotFoundError' || 
+                 err.message?.includes('camera') ||
+                 err.message?.includes('No camera')) {
+        errorMsg = '📸 No camera found on your device. Please check your device has a camera.';
+      } else if (err.name === 'NotReadableError') {
+        errorMsg = '📷 Camera is in use by another app. Please close other apps and try again.';
+      } else if (err.message?.includes('Could not access camera')) {
+        errorMsg = '🔒 Could not access camera. Please check:\n1. Camera permissions are enabled\n2. No other app is using the camera\n3. Your device has a working camera';
       } else {
-        errorMsg += 'Please check camera permissions and try again.';
+        errorMsg += err.message || 'Please check camera permissions and try again.';
       }
       
       setScannerError(errorMsg);
@@ -353,6 +424,14 @@ const UniversalQRAttendance = () => {
           </div>
         </Card.Header>
         <Card.Body>
+          {/* HTTPS Warning for non-secure connections */}
+          {!isHttps && !isDevelopment && (
+            <Alert variant="danger" className="mb-4">
+              <h6 className="fw-bold mb-2">🔒 Secure Connection Required</h6>
+              <p className="mb-0">Camera access requires HTTPS (secure connection). Please use https:// to enable camera access.</p>
+            </Alert>
+          )}
+
           {/* Instructions Card */}
           <Card className="mb-4 border-info">
             <Card.Body>
@@ -425,10 +504,26 @@ const UniversalQRAttendance = () => {
                   </h6>
                 </Card.Header>
                 <Card.Body className="p-3">
-                  <div id="qr-reader-universal" ref={scannerContainerRef} style={{ width: '100%', minHeight: '400px' }}></div>
+                  <div 
+                    id="qr-reader-universal" 
+                    ref={scannerContainerRef} 
+                    style={{ 
+                      width: '100%', 
+                      minHeight: '300px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      backgroundColor: '#f8f9fa',
+                      borderRadius: '8px',
+                      overflow: 'hidden'
+                    }}
+                  ></div>
                   {scannerError && (
                     <Alert variant="warning" className="mt-3 mb-0" dismissible onClose={() => setScannerError(null)}>
-                      {scannerError}
+                      {scannerError.split('\n').map((line, idx) => (
+                        <div key={idx}>{line}</div>
+                      ))}
                     </Alert>
                   )}
                   <div className="text-center mt-3">

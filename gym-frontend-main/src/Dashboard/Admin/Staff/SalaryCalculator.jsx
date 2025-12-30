@@ -12,6 +12,19 @@ const SalaryCalculator = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const getUserFromStorage = () => {
+    try {
+      const userStr = localStorage.getItem("user");
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (err) {
+      console.error("Error parsing user from localStorage:", err);
+      return null;
+    }
+  };
+
+  const user = getUserFromStorage();
+  const adminId = user?.id || null;
+
   // Add state for form data
   const [formData, setFormData] = useState({
     salary_id: "",
@@ -53,7 +66,9 @@ const SalaryCalculator = () => {
   const fetchStaffList = async () => {
     try {
       // Fixed API endpoint
-      const response = await axiosInstance.get(`${BaseUrl}staff/all`);
+      const response = await axiosInstance.get(
+        `${BaseUrl}staff/all/${adminId}`
+      );
       console.log("Staff API response:", response.data); // Debug log
       if (response.data.success) {
         // Transform API response to match component's expected format
@@ -93,46 +108,46 @@ const SalaryCalculator = () => {
     return roles[roleId] || "Unknown";
   };
 
-const fetchSalaries = async () => {
-  try {
-    // Fixed API endpoint
-    const response = await axiosInstance.get(`${BaseUrl}salaries`);
-    console.log("Salaries API response:", response.data); // Debug log
-    if (response.data.success) {
-      // Transform API response to match component's expected format
-      const transformedSalaries = response.data.data.map((salary) => {
-        // Get staff information
-        const staffInfo = getStaffInfo(salary.staffId);
+  const fetchSalaries = async () => {
+    try {
+      // Fixed API endpoint
+      const response = await axiosInstance.get(`${BaseUrl}salaries/${adminId}`);
+      console.log("Salaries API response:", response.data); // Debug log
+      if (response.data.success) {
+        // Transform API response to match component's expected format
+        const transformedSalaries = response.data.data.map((salary) => {
+          // Get staff information
+          const staffInfo = getStaffInfo(salary.staffId);
 
-        return {
-          id: salary.id, // Add internal ID
-          salary_id: salary.salaryId,
-          staff_id: salary.staffId,
-          role: salary.role,
-          period_start: salary.periodStart,
-          period_end: salary.periodEnd,
-          hours_worked: salary.hoursWorked,
-          hourly_rate: salary.hourlyRate,
-          hourly_total: salary.hourlyTotal,
-          fixed_salary: salary.fixedSalary,
-          commission_total: salary.commissionTotal,
-          bonuses: salary.bonuses ? JSON.parse(salary.bonuses) : [],
-          deductions: salary.deductions ? JSON.parse(salary.deductions) : [],
-          net_pay: salary.netPay,
-          status: salary.status,
-          paid_at: salary.paidAt,
-          staff_name: staffInfo ? staffInfo.first_name : "Unknown",
-          staff_email: staffInfo ? staffInfo.email : null,
-          staff_phone: staffInfo ? staffInfo.phone : null,
-        };
-      });
-      setSalaries(transformedSalaries);
+          return {
+            id: salary.id, // Add internal ID
+            salary_id: salary.salaryId,
+            staff_id: salary.staffId,
+            role: salary.role,
+            period_start: salary.periodStart,
+            period_end: salary.periodEnd,
+            hours_worked: salary.hoursWorked,
+            hourly_rate: salary.hourlyRate,
+            hourly_total: salary.hourlyTotal,
+            fixed_salary: salary.fixedSalary,
+            commission_total: salary.commissionTotal,
+            bonuses: salary.bonuses ? JSON.parse(salary.bonuses) : [],
+            deductions: salary.deductions ? JSON.parse(salary.deductions) : [],
+            net_pay: salary.netPay,
+            status: salary.status,
+            paid_at: salary.paidAt,
+            staff_name: staffInfo ? staffInfo.first_name : "Unknown",
+            staff_email: staffInfo ? staffInfo.email : null,
+            staff_phone: staffInfo ? staffInfo.phone : null,
+          };
+        });
+        setSalaries(transformedSalaries);
+      }
+    } catch (err) {
+      console.error("Error fetching salaries:", err);
+      setError("Failed to load salary data");
     }
-  } catch (err) {
-    console.error("Error fetching salaries:", err);
-    setError("Failed to load salary data");
-  }
-};
+  };
   // ===== HANDLERS =====
   const handleAddNew = () => {
     setModalType("add");
@@ -214,31 +229,32 @@ const fetchSalaries = async () => {
     setIsDeleteModalOpen(true);
   };
 
-const confirmDelete = async () => {
-  if (selectedSalary) {
-    try {
-      // Use internal ID for API call
-      const internalId = selectedSalary.id || selectedSalary.salary_id.replace("SAL-", "");
-      
-      const response = await axiosInstance.delete(
-        `${BaseUrl}salaries/${internalId}` // Use internal ID in URL
-      );
-      if (response.data.success) {
-        setSalaries((prev) =>
-          prev.filter((s) => s.salary_id !== selectedSalary.salary_id)
+  const confirmDelete = async () => {
+    if (selectedSalary) {
+      try {
+        // Use internal ID for API call
+        const internalId =
+          selectedSalary.id || selectedSalary.salary_id.replace("SAL-", "");
+
+        const response = await axiosInstance.delete(
+          `${BaseUrl}salaries/${internalId}` // Use internal ID in URL
         );
-        alert(`Salary record ${selectedSalary.salary_id} deleted.`);
-      } else {
+        if (response.data.success) {
+          setSalaries((prev) =>
+            prev.filter((s) => s.salary_id !== selectedSalary.salary_id)
+          );
+          alert(`Salary record ${selectedSalary.salary_id} deleted.`);
+        } else {
+          setError("Failed to delete salary record");
+        }
+      } catch (err) {
+        console.error("Delete error:", err);
         setError("Failed to delete salary record");
       }
-    } catch (err) {
-      console.error("Delete error:", err);
-      setError("Failed to delete salary record");
     }
-  }
-  setIsDeleteModalOpen(false);
-  setSelectedSalary(null);
-};
+    setIsDeleteModalOpen(false);
+    setSelectedSalary(null);
+  };
 
   const closeModal = () => {
     setIsModalOpen(false);
@@ -456,197 +472,201 @@ const confirmDelete = async () => {
     }));
   };
 
-// Handle form submission with API integration
-const handleSubmit = async () => {
-  if (modalType === "add") {
-    try {
-      setLoading(true);
-      setError(null);
+  // Handle form submission with API integration
+  const handleSubmit = async () => {
+    if (modalType === "add") {
+      try {
+        setLoading(true);
+        setError(null);
 
-      // Get staff information to include role in payload
-      const staffInfo = getStaffInfo(formData.staff_id);
+        // Get staff information to include role in payload
+        const staffInfo = getStaffInfo(formData.staff_id);
 
-      // Prepare payload matching API response format
-      const payload = {
-        salaryId: formData.salary_id,
-        staffId: parseInt(formData.staff_id),
-        role: staffInfo.role, // Added role field
-        periodStart: formData.period_start,
-        periodEnd: formData.period_end,
-        hoursWorked: formData.hours_worked
-          ? parseFloat(formData.hours_worked)
-          : null,
-        hourlyRate: formData.staff_id
-          ? getStaffInfo(formData.staff_id)?.hourly_rate || 0
-          : 0,
-        fixedSalary: formData.fixed_salary
-          ? parseFloat(formData.fixed_salary)
-          : null,
-        commissionTotal: formData.commission_total
-          ? parseFloat(formData.commission_total)
-          : 0,
-        bonuses: formData.bonuses,
-        deductions: formData.deductions,
-        status: formData.status,
-      };
-
-      // Call API to create salary
-      const response = await axiosInstance.post(
-        `${BaseUrl}salaries/create`,
-        payload
-      );
-
-      if (response.data.success) {
-        // Add new salary to list with response data
-        const newSalary = {
-          id: response.data.id, // Add internal ID
-          salary_id: response.data.salaryId,
-          staff_id: response.data.staffId,
-          role: response.data.role,
-          period_start: response.data.periodStart,
-          period_end: response.data.periodEnd,
-          hours_worked: response.data.hoursWorked,
-          hourly_rate: response.data.hourlyRate,
-          hourly_total: response.data.hoursWorked * response.data.hourlyRate,
-          fixed_salary: response.data.fixedSalary,
-          commission_total: response.data.commissionTotal,
-          bonuses: response.data.bonuses
-            ? JSON.parse(response.data.bonuses)
-            : [],
-          deductions: response.data.deductions
-            ? JSON.parse(response.data.deductions)
-            : [],
-          net_pay: calculateNetPay(
-            response.data.hoursWorked * response.data.hourlyRate,
-            response.data.fixedSalary || 0,
-            response.data.commissionTotal,
-            response.data.bonuses ? JSON.parse(response.data.bonuses) : [],
-            response.data.deductions
-              ? JSON.parse(response.data.deductions)
-              : []
-          ),
-          status: response.data.status,
-          paid_at: null,
-          staff_name: response.data.staffName,
-          staff_email: response.data.staffEmail,
-          staff_phone: response.data.staffPhone,
+        // Prepare payload matching API response format
+        const payload = {
+          salaryId: formData.salary_id,
+          staffId: parseInt(formData.staff_id),
+          role: staffInfo.role, // Added role field
+          periodStart: formData.period_start,
+          periodEnd: formData.period_end,
+          hoursWorked: formData.hours_worked
+            ? parseFloat(formData.hours_worked)
+            : null,
+          hourlyRate: formData.staff_id
+            ? getStaffInfo(formData.staff_id)?.hourly_rate || 0
+            : 0,
+          fixedSalary: formData.fixed_salary
+            ? parseFloat(formData.fixed_salary)
+            : null,
+          commissionTotal: formData.commission_total
+            ? parseFloat(formData.commission_total)
+            : 0,
+          bonuses: formData.bonuses,
+          deductions: formData.deductions,
+          status: formData.status,
         };
 
-        setSalaries((prev) => [...prev, newSalary]);
-        closeModal();
-        alert("Salary record added successfully!");
-      } else {
-        setError(response.data.message || "Failed to create salary record");
-      }
-    } catch (err) {
-      console.error("Create error:", err);
-      setError(
-        err.response?.data?.message || "Failed to create salary record"
-      );
-    } finally {
-      setLoading(false);
-    }
-  } else if (modalType === "edit") {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Get staff information to include role in payload
-      const staffInfo = getStaffInfo(formData.staff_id);
-
-      // Find salary record to get internal ID
-      const salaryRecord = salaries.find(s => s.salary_id === formData.salary_id);
-      const internalId = salaryRecord ? salaryRecord.id : formData.salary_id.replace("SAL-", "");
-
-      // Prepare payload matching API response format
-      const payload = {
-        salaryId: formData.salary_id,
-        staffId: parseInt(formData.staff_id),
-        role: staffInfo.role, // Added role field
-        periodStart: formData.period_start,
-        periodEnd: formData.period_end,
-        hoursWorked: formData.hours_worked
-          ? parseFloat(formData.hours_worked)
-          : null,
-        hourlyRate: formData.staff_id
-          ? getStaffInfo(formData.staff_id)?.hourly_rate || 0
-          : 0,
-        fixedSalary: formData.fixed_salary
-          ? parseFloat(formData.fixed_salary)
-          : null,
-        commissionTotal: formData.commission_total
-          ? parseFloat(formData.commission_total)
-          : 0,
-        bonuses: formData.bonuses,
-        deductions: formData.deductions,
-        status: formData.status,
-        paidAt: formData.paid_at
-          ? new Date(formData.paid_at).toISOString()
-          : null,
-      };
-
-      // Call API to update salary with internal ID
-      const response = await axiosInstance.put(
-        `${BaseUrl}salaries/${internalId}`, // Use internal ID in URL
-        payload
-      );
-
-      if (response.data.success) {
-        // Update salary in list with response data
-        const updatedSalary = {
-          id: salaryRecord ? salaryRecord.id : internalId, // Keep internal ID
-          salary_id: response.data.salaryId,
-          staff_id: response.data.staffId,
-          role: response.data.role,
-          period_start: response.data.periodStart,
-          period_end: response.data.periodEnd,
-          hours_worked: response.data.hoursWorked,
-          hourly_rate: response.data.hourlyRate,
-          hourly_total: response.data.hoursWorked * response.data.hourlyRate,
-          fixed_salary: response.data.fixedSalary,
-          commission_total: response.data.commissionTotal,
-          bonuses: response.data.bonuses
-            ? JSON.parse(response.data.bonuses)
-            : [],
-          deductions: response.data.deductions
-            ? JSON.parse(response.data.deductions)
-            : [],
-          net_pay: calculateNetPay(
-            response.data.hoursWorked * response.data.hourlyRate,
-            response.data.fixedSalary || 0,
-            response.data.commissionTotal,
-            response.data.bonuses ? JSON.parse(response.data.bonuses) : [],
-            response.data.deductions
-              ? JSON.parse(response.data.deductions)
-              : []
-          ),
-          status: response.data.status,
-          paid_at: response.data.paidAt,
-          staff_name: response.data.staffName,
-          staff_email: response.data.staffEmail,
-          staff_phone: response.data.staffPhone,
-        };
-
-        setSalaries((prev) =>
-          prev.map((s) =>
-            s.salary_id === formData.salary_id ? updatedSalary : s
-          )
+        // Call API to create salary
+        const response = await axiosInstance.post(
+          `${BaseUrl}salaries/create`,
+          payload
         );
-        closeModal();
-        alert("Salary record updated successfully!");
-      } else {
-        setError(response.data.message || "Failed to update salary record");
+
+        if (response.data.success) {
+          // Add new salary to list with response data
+          const newSalary = {
+            id: response.data.id, // Add internal ID
+            salary_id: response.data.salaryId,
+            staff_id: response.data.staffId,
+            role: response.data.role,
+            period_start: response.data.periodStart,
+            period_end: response.data.periodEnd,
+            hours_worked: response.data.hoursWorked,
+            hourly_rate: response.data.hourlyRate,
+            hourly_total: response.data.hoursWorked * response.data.hourlyRate,
+            fixed_salary: response.data.fixedSalary,
+            commission_total: response.data.commissionTotal,
+            bonuses: response.data.bonuses
+              ? JSON.parse(response.data.bonuses)
+              : [],
+            deductions: response.data.deductions
+              ? JSON.parse(response.data.deductions)
+              : [],
+            net_pay: calculateNetPay(
+              response.data.hoursWorked * response.data.hourlyRate,
+              response.data.fixedSalary || 0,
+              response.data.commissionTotal,
+              response.data.bonuses ? JSON.parse(response.data.bonuses) : [],
+              response.data.deductions
+                ? JSON.parse(response.data.deductions)
+                : []
+            ),
+            status: response.data.status,
+            paid_at: null,
+            staff_name: response.data.staffName,
+            staff_email: response.data.staffEmail,
+            staff_phone: response.data.staffPhone,
+          };
+
+          setSalaries((prev) => [...prev, newSalary]);
+          closeModal();
+          alert("Salary record added successfully!");
+        } else {
+          setError(response.data.message || "Failed to create salary record");
+        }
+      } catch (err) {
+        console.error("Create error:", err);
+        setError(
+          err.response?.data?.message || "Failed to create salary record"
+        );
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Update error:", err);
-      setError(
-        err.response?.data?.message || "Failed to update salary record"
-      );
-    } finally {
-      setLoading(false);
+    } else if (modalType === "edit") {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Get staff information to include role in payload
+        const staffInfo = getStaffInfo(formData.staff_id);
+
+        // Find salary record to get internal ID
+        const salaryRecord = salaries.find(
+          (s) => s.salary_id === formData.salary_id
+        );
+        const internalId = salaryRecord
+          ? salaryRecord.id
+          : formData.salary_id.replace("SAL-", "");
+
+        // Prepare payload matching API response format
+        const payload = {
+          salaryId: formData.salary_id,
+          staffId: parseInt(formData.staff_id),
+          role: staffInfo.role, // Added role field
+          periodStart: formData.period_start,
+          periodEnd: formData.period_end,
+          hoursWorked: formData.hours_worked
+            ? parseFloat(formData.hours_worked)
+            : null,
+          hourlyRate: formData.staff_id
+            ? getStaffInfo(formData.staff_id)?.hourly_rate || 0
+            : 0,
+          fixedSalary: formData.fixed_salary
+            ? parseFloat(formData.fixed_salary)
+            : null,
+          commissionTotal: formData.commission_total
+            ? parseFloat(formData.commission_total)
+            : 0,
+          bonuses: formData.bonuses,
+          deductions: formData.deductions,
+          status: formData.status,
+          paidAt: formData.paid_at
+            ? new Date(formData.paid_at).toISOString()
+            : null,
+        };
+
+        // Call API to update salary with internal ID
+        const response = await axiosInstance.put(
+          `${BaseUrl}salaries/${internalId}`, // Use internal ID in URL
+          payload
+        );
+
+        if (response.data.success) {
+          // Update salary in list with response data
+          const updatedSalary = {
+            id: salaryRecord ? salaryRecord.id : internalId, // Keep internal ID
+            salary_id: response.data.salaryId,
+            staff_id: response.data.staffId,
+            role: response.data.role,
+            period_start: response.data.periodStart,
+            period_end: response.data.periodEnd,
+            hours_worked: response.data.hoursWorked,
+            hourly_rate: response.data.hourlyRate,
+            hourly_total: response.data.hoursWorked * response.data.hourlyRate,
+            fixed_salary: response.data.fixedSalary,
+            commission_total: response.data.commissionTotal,
+            bonuses: response.data.bonuses
+              ? JSON.parse(response.data.bonuses)
+              : [],
+            deductions: response.data.deductions
+              ? JSON.parse(response.data.deductions)
+              : [],
+            net_pay: calculateNetPay(
+              response.data.hoursWorked * response.data.hourlyRate,
+              response.data.fixedSalary || 0,
+              response.data.commissionTotal,
+              response.data.bonuses ? JSON.parse(response.data.bonuses) : [],
+              response.data.deductions
+                ? JSON.parse(response.data.deductions)
+                : []
+            ),
+            status: response.data.status,
+            paid_at: response.data.paidAt,
+            staff_name: response.data.staffName,
+            staff_email: response.data.staffEmail,
+            staff_phone: response.data.staffPhone,
+          };
+
+          setSalaries((prev) =>
+            prev.map((s) =>
+              s.salary_id === formData.salary_id ? updatedSalary : s
+            )
+          );
+          closeModal();
+          alert("Salary record updated successfully!");
+        } else {
+          setError(response.data.message || "Failed to update salary record");
+        }
+      } catch (err) {
+        console.error("Update error:", err);
+        setError(
+          err.response?.data?.message || "Failed to update salary record"
+        );
+      } finally {
+        setLoading(false);
+      }
     }
-  }
-};
+  };
   // Prevent background scroll
   useEffect(() => {
     if (isModalOpen || isDeleteModalOpen) {
@@ -883,7 +903,9 @@ const handleSubmit = async () => {
                         to {formatDate(salary.period_end)}
                       </small>
                     </td>
-                    <td className="text-end fw-bold">{formatCurrency(salary.net_pay)}</td>
+                    <td className="text-end fw-bold">
+                      {formatCurrency(salary.net_pay)}
+                    </td>
                     <td className="text-center d-none d-lg-table-cell">
                       {getStatusBadge(salary.status)}
                     </td>
