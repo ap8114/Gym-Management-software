@@ -23,13 +23,13 @@ const ClassSchedule = () => {
   };
 
   const user = getUserFromStorage();
-  const memberId = user?.id || null;
+  const id = user?.id || null;
   const adminId = user?.adminId || null;
 
   // Fetch classes (includes isBooked)
   useEffect(() => {
     const fetchClasses = async () => {
-      if (!memberId) {
+      if (!id) {
         setError('User not logged in.');
         setLoading(false);
         return;
@@ -37,41 +37,29 @@ const ClassSchedule = () => {
 
       try {
         setLoading(true);
-        const response = await axiosInstance.get(`class/classes/member/${memberId}`);
+        const response = await axiosInstance.get(`class/classes/member/${id}/${adminId}`);
 
-        if (response.data.success && Array.isArray(response.data.data)) {
-          const transformedClasses = response.data.data.map(cls => {
-            const timeParts = cls.time.split(' - ');
-            const startTime = timeParts[0] || '';
-            const endTime = timeParts[1] || '';
-
-            // const generatePrice = (className) => {
-            //   if (className.toLowerCase().includes('yoga')) return 350;
-            //   if (className.toLowerCase().includes('pilates')) return 450;
-            //   if (className.toLowerCase().includes('hiit') || className.toLowerCase().includes('hit')) return 400;
-            //   if (className.toLowerCase().includes('zumba')) return 250;
-            //   return 300;
-            // };
-
+        if (response.data.success && Array.isArray(response.data.bookings)) {
+          const transformedClasses = response.data.bookings.map(booking => {
             // Use real capacity if available, else fallback
-            const capacity = cls.capacity || Math.floor(Math.random() * 15) + 10;
-            const bookedSeats = cls.membersCount || 0;
+            const capacity = booking.capacity || Math.floor(Math.random() * 15) + 10;
+            const bookedSeats = booking.membersCount || 0;
 
             return {
-              id: cls.id,
-              name: cls.className,
-              trainer_name: cls.trainer,
-              date: cls.date.split('T')[0],
-              start_time: startTime,
-              end_time: endTime,
-              day: cls.day,
-              branch: cls.branch || 'Main Branch',
-              status: cls.status,
+              id: booking.scheduleId,
+              bookingId: booking.id,
+              name: booking.className,
+              trainer_name: booking.trainerName,
+              date: booking.date.split('T')[0], // Extract date part
+              start_time: booking.startTime,
+              end_time: booking.endTime,
+              day: booking.day,
+              branch: booking.branch || 'Main Branch',
+              status: 'Active', // Assuming all fetched bookings are active
               capacity,
               booked_seats: bookedSeats,
-              // price: generatePrice(cls.className),
-              isBooked: cls.isBooked, // ✅ Direct from API
-              bookingId: cls.bookingId
+              isBooked: true, // Since these are bookings, they are already booked
+              id: booking.id
             };
           });
 
@@ -89,7 +77,7 @@ const ClassSchedule = () => {
     };
 
     fetchClasses();
-  }, [memberId]);
+  }, [id]);
 
   const formatTime = (timeString) => {
     if (!timeString) return '';
@@ -138,7 +126,7 @@ const ClassSchedule = () => {
   }, [isModalOpen]);
 
   const handleConfirmBooking = async () => {
-    if (!memberId || !selectedClass) {
+    if (!id || !selectedClass) {
       alert('User not logged in or class not selected.');
       return;
     }
@@ -148,7 +136,7 @@ const ClassSchedule = () => {
 
     try {
       const payload = {
-        memberId: memberId,
+        id: id,
         scheduleId: selectedClass.id
       };
 
@@ -183,15 +171,15 @@ const ClassSchedule = () => {
       <div className="p-2">
         <div className="row mb-3">
           <div className="col-12 text-center text-md-start">
-            <h1 className="fw-bold">Weekly Class Schedule</h1>
-            <p className="text-muted mb-0">Book your favorite classes for the week</p>
+            <h1 className="fw-bold">My Booked Classes</h1>
+            <p className="text-muted mb-0">View your upcoming class bookings</p>
           </div>
         </div>
         <div className="text-center py-5">
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
-          <p className="mt-3">Loading classes...</p>
+          <p className="mt-3">Loading bookings...</p>
         </div>
       </div>
     );
@@ -201,8 +189,8 @@ const ClassSchedule = () => {
     <div className="p-2">
       <div className="row mb-3">
         <div className="col-12 text-center text-md-start">
-          <h1 className="fw-bold">Weekly Class Schedule</h1>
-          <p className="text-muted mb-0">Book your favorite classes for the week</p>
+          <h1 className="fw-bold">My Booked Classes</h1>
+          <p className="text-muted mb-0">View your upcoming class bookings</p>
         </div>
       </div>
 
@@ -210,28 +198,18 @@ const ClassSchedule = () => {
         {groupClasses.map(cls => {
           const isFull = cls.booked_seats >= cls.capacity;
           const isActive = cls.status === 'Active';
-          const isBooked = cls.isBooked; // ✅ Use directly from API
+          const isBooked = cls.isBooked; // These are all booked since they come from bookings API
 
-          let buttonText = 'Book Now';
+          let buttonText = 'View Details';
           let buttonDisabled = false;
           let buttonStyle = '#2f6a87';
 
-          if (isBooked) {
-            buttonText = 'Booked';
-            buttonDisabled = true;
-            buttonStyle = '#2f6e34ff';
-          } else if (isFull) {
-            buttonText = 'Class Full';
-            buttonDisabled = true;
-            buttonStyle = '#6b3730ff';
-          } else if (!isActive) {
-            buttonText = 'Inactive';
-            buttonDisabled = true;
-            buttonStyle = '#6c757d';
-          }
+          // Since these are booked classes, we always show as booked
+          buttonText = 'View Booking';
+          buttonStyle = '#2f6e34ff';
 
           return (
-            <div key={cls.id} className="col-12 col-md-6 col-lg-4">
+            <div key={`${cls.id}-${cls.bookingId}`} className="col-12 col-md-6 col-lg-4">
               <div className="card shadow-sm border-0" style={{ borderRadius: '12px', overflow: 'hidden' }}>
                 <div
                   className="p-4"
@@ -242,6 +220,9 @@ const ClassSchedule = () => {
                 >
                   <h5 className="mb-0 fw-bold">{cls.name}</h5>
                   <small className="text-muted">{cls.branch}</small>
+                  <div className="mt-2">
+                    <span className="badge bg-success">Booked</span>
+                  </div>
                 </div>
                 <div className="card-body p-4">
                   <div className="d-flex align-items-center mb-3">
@@ -252,14 +233,9 @@ const ClassSchedule = () => {
                     <FaUser size={16} className="me-2 text-primary" />
                     <small>{cls.trainer_name}</small>
                   </div>
-                  {/* <div className="d-flex align-items-center mb-3">
-                    <FaRupeeSign size={16} className="me-2 text-success" />
-                    <strong className="text-success">{formatPrice(cls.price)}</strong>
-                  </div> */}
                   <div className="d-flex align-items-center mb-3">
-                    <span className={`badge ${cls.status === 'Active' ? 'bg-success' : 'bg-secondary'}`}>
-                      {cls.status}
-                    </span>
+                    <FaCalendarAlt size={16} className="me-2 text-primary" />
+                    <small>{cls.day}</small>
                   </div>
 
                   <div className="mt-4">
@@ -274,7 +250,7 @@ const ClassSchedule = () => {
                         transition: 'all 0.2s ease'
                       }}
                       disabled={buttonDisabled}
-                      onClick={() => !buttonDisabled && openBookingModal(cls)}
+                      onClick={() => openBookingModal(cls)}
                     >
                       {buttonText}
                     </button>
@@ -300,7 +276,7 @@ const ClassSchedule = () => {
           >
             <div className="modal-content" style={{ borderRadius: '16px' }}>
               <div className="modal-header border-0 pb-0">
-                <h3 className="modal-title fw-bold">Book Your Class</h3>
+                <h3 className="modal-title fw-bold">Booking Details</h3>
                 <button
                   type="button"
                   className="btn-close"
@@ -312,7 +288,7 @@ const ClassSchedule = () => {
                   <div
                     className="card-header p-4 text-white"
                     style={{
-                      background: '#2f6a87',
+                      background: '#2f6e34ff',
                       borderRadius: '12px 12px 0 0'
                     }}
                   >
@@ -321,7 +297,7 @@ const ClassSchedule = () => {
                         <h4 className="mb-2 fw-bold">{selectedClass.name}</h4>
                         <div className="d-flex align-items-center mb-2">
                           <FaCalendarAlt size={16} className="me-2" />
-                          <small>{formatDate(selectedClass.date)}</small>
+                          <small>{formatDate(selectedClass.date)} ({selectedClass.day})</small>
                         </div>
                         <div className="d-flex align-items-center mb-2">
                           <FaClock size={16} className="me-2" />
@@ -332,10 +308,13 @@ const ClassSchedule = () => {
                           <small>{selectedClass.trainer_name}</small>
                         </div>
                       </div>
+                      <div className="text-end">
+                        <span className="badge bg-light text-success fw-bold">✓ BOOKED</span>
+                      </div>
                     </div>
                   </div>
                   <div className="card-body p-4">
-                    <h5 className="fw-bold mb-3">Class Details</h5>
+                    <h5 className="fw-bold mb-3">Booking Information</h5>
                     <div className="row g-4 mb-4">
                       <div className="col-md-6">
                         <div className="d-flex align-items-center">
@@ -345,6 +324,17 @@ const ClassSchedule = () => {
                           <div>
                             <div className="fw-medium">Trainer</div>
                             <div>{selectedClass.trainer_name}</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-md-6">
+                        <div className="d-flex align-items-center">
+                          <div className="bg-light rounded-circle p-2 me-3">
+                            <span className="text-primary">🆔</span>
+                          </div>
+                          <div>
+                            <div className="fw-medium">Booking ID</div>
+                            <div>#{selectedClass.bookingId}</div>
                           </div>
                         </div>
                       </div>
@@ -363,17 +353,6 @@ const ClassSchedule = () => {
                           </div>
                         </div>
                       </div>
-                      {/* <div className="col-md-6">
-                        <div className="d-flex align-items-center">
-                          <div className="bg-light rounded-circle p-2 me-3">
-                            <FaRupeeSign size={16} className="text-success" />
-                          </div>
-                          <div>
-                            <div className="fw-medium">Price</div>
-                            <div className="text-success fw-bold">{formatPrice(selectedClass.price)}</div>
-                          </div>
-                        </div>
-                      </div> */}
                       <div className="col-md-6">
                         <div className="d-flex align-items-center">
                           <div className="bg-light rounded-circle p-2 me-3">
@@ -387,33 +366,19 @@ const ClassSchedule = () => {
                       </div>
                     </div>
 
-                    {bookingError && (
-                      <div className="alert alert-danger mb-4">
-                        {bookingError}
-                      </div>
-                    )}
-
                     <div className="text-center">
                       <button
                         className="btn btn-lg px-5 py-3 fw-bold"
                         style={{
-                          backgroundColor: '#2f6a87',
+                          backgroundColor: '#6c757d',
                           color: 'white',
                           borderRadius: '8px',
                           border: 'none',
                           fontSize: '1.1rem'
                         }}
-                        onClick={handleConfirmBooking}
-                        disabled={bookingLoading}
+                        onClick={closeBookingModal}
                       >
-                        {bookingLoading ? (
-                          <>
-                            <span className="spinner-border spinner-border-sm me-2"></span>
-                            Processing...
-                          </>
-                        ) : (
-                          'Confirm Booking'
-                        )}
+                        Close
                       </button>
                     </div>
                   </div>
