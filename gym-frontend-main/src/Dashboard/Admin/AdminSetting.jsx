@@ -178,12 +178,6 @@ const AdminSetting = () => {
         <h3 className="fw-bold">Settings</h3>
         <p className="text-muted">Manage your website & plans</p>
 
-        {error && (
-          <Alert variant="danger">
-            <FaExclamationTriangle className="me-2" />
-            {error}
-          </Alert>
-        )}
         {success && (
           <Alert variant="success">
             <FaCheck className="me-2" />

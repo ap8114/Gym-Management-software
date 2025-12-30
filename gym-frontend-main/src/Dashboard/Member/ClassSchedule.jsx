@@ -24,6 +24,7 @@ const ClassSchedule = () => {
 
   const user = getUserFromStorage();
   const memberId = user?.id || null;
+  const adminId = user?.adminId || null;
 
   // Fetch classes (includes isBooked)
   useEffect(() => {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import GetAdminId from "../../Api/GetAdminId";
 import axiosInstance from "../../Api/axiosInstance";
+import ImageCropper from "../../Components/ImageCropper";
 
 const Account = () => {
   const adminId = GetAdminId();
@@ -12,6 +13,9 @@ const Account = () => {
   const [saving, setSaving] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [userRole, setUserRole] = useState("");
+
+  const [showCropper, setShowCropper] = useState(false);
+  const [tempImageSrc, setTempImageSrc] = useState(null);
 
   const [personal, setPersonal] = useState({
     member_id: "M23456789",
@@ -36,6 +40,12 @@ const Account = () => {
     status: "",
     membership_type: "",
     membership_fee: "",
+  });
+
+  const [gymInfo, setGymInfo] = useState({
+    gstNumber: "",
+    gymAddress: "",
+    tax: "5",
   });
 
   const [password, setPassword] = useState({
@@ -100,6 +110,12 @@ const Account = () => {
           membership_fee: profile.membership_fee?.toString() || "",
         });
 
+        setGymInfo({
+          gstNumber: profile.gstNumber || "",
+          gymAddress: profile.gymAddress || "",
+          tax: profile.tax?.toString() || "5",
+        });
+
         setError(null);
         setShowErrorAlert(false);
       } else {
@@ -128,19 +144,41 @@ const Account = () => {
         alert("Please upload an image file.");
         return;
       }
-      setPersonal((p) => ({
-        ...p,
-        profile_picture: file,
-        profile_preview: URL.createObjectURL(file),
-      }));
+      const reader = new FileReader();
+      reader.onload = () => {
+        setTempImageSrc(reader.result);
+        setShowCropper(true);
+      };
+      reader.readAsDataURL(file);
     } else {
       setPersonal((p) => ({ ...p, [name]: value }));
     }
   };
 
+  const handleCropComplete = (croppedImage) => {
+    const file = new File([croppedImage.blob], "profile.jpg", { type: "image/jpeg" });
+    setPersonal((p) => ({
+      ...p,
+      profile_picture: file,
+      profile_preview: croppedImage.url,
+    }));
+    setShowCropper(false);
+    setTempImageSrc(null);
+  };
+
+  const handleCropCancel = () => {
+    setShowCropper(false);
+    setTempImageSrc(null);
+  };
+
   const handleMembershipChange = (e) => {
     const { name, value } = e.target;
     setMembership((m) => ({ ...m, [name]: value }));
+  };
+
+  const handleGymInfoChange = (e) => {
+    const { name, value } = e.target;
+    setGymInfo((g) => ({ ...g, [name]: value }));
   };
 
   const handlePasswordChange = (e) => {
@@ -191,6 +229,12 @@ const Account = () => {
         formData.append("address_city", personal.address_city);
         formData.append("address_state", personal.address_state);
         formData.append("address_zip", personal.address_zip);
+
+        if (userRole === "ADMIN") {
+          formData.append("gstNumber", gymInfo.gstNumber || "");
+          formData.append("gymAddress", gymInfo.gymAddress || "");
+          formData.append("tax", gymInfo.tax || "5");
+        }
 
         if (personal.profile_picture) {
           formData.append("profileImage", personal.profile_picture);
@@ -454,6 +498,52 @@ const Account = () => {
                       </div>
                     </div>
                   </div>
+
+                  {userRole === "ADMIN" && (
+                    <>
+                      <div className="col-12">
+                        <hr className="my-3" />
+                        <h6 className="fw-bold text-primary mb-3">Gym Information</h6>
+                      </div>
+                      <div className="col-12">
+                        <label className="form-label">Gym Address</label>
+                        <textarea
+                          name="gymAddress"
+                          className="form-control"
+                          rows="2"
+                          value={gymInfo.gymAddress}
+                          onChange={handleGymInfoChange}
+                          readOnly={!isEditMode}
+                          placeholder="Full gym address"
+                        ></textarea>
+                      </div>
+                      <div className="col-12 col-sm-6">
+                        <label className="form-label">GST Number</label>
+                        <input
+                          name="gstNumber"
+                          className="form-control"
+                          value={gymInfo.gstNumber}
+                          onChange={handleGymInfoChange}
+                          readOnly={!isEditMode}
+                          placeholder="e.g. 29ABCDE1234F1Z5"
+                        />
+                      </div>
+                      <div className="col-12 col-sm-6">
+                        <label className="form-label">Tax Rate</label>
+                        <select
+                          name="tax"
+                          className="form-select"
+                          value={gymInfo.tax}
+                          onChange={handleGymInfoChange}
+                          disabled={!isEditMode}
+                        >
+                          <option value="5">5%</option>
+                          <option value="10">10%</option>
+                          <option value="15">15%</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
                 </div>
                 {isEditMode && (
                   <div className="d-flex gap-2 mt-4">
@@ -608,6 +698,14 @@ const Account = () => {
           </div>
         </div>
       </div>
+
+      {showCropper && tempImageSrc && (
+        <ImageCropper
+          image={tempImageSrc}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+        />
+      )}
     </div>
   );
 };

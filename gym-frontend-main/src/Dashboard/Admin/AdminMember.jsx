@@ -157,7 +157,14 @@ const AdminMember = () => {
           expiry: member.membershipTo,
           status: member.status,
           interestedIn: member.interestedIn,
-          profileImage: member.profileImage || "", // ✅ ADD THIS LINE
+          profileImage: member.profileImage || "",
+          // Use API's remainingDays if provided, otherwise compute from expiry
+          remainingDays:
+            typeof member.remainingDays === "number"
+              ? member.remainingDays
+              : member.membershipTo
+                ? Math.ceil((new Date(member.membershipTo) - new Date()) / (1000 * 60 * 60 * 24))
+                : null,
         }));
 
         setMembers(formattedMembers);
@@ -497,14 +504,8 @@ const AdminMember = () => {
   };
 
   const getStatusClass = (status) => {
-    switch (status) {
-      case "Active":
-        return "bg-success";
-      case "Inactive":
-        return "bg-secondary";
-      default:
-        return "bg-secondary";
-    }
+    if (!status) return "bg-danger";
+    return String(status).toLowerCase() === "active" ? "bg-success" : "bg-danger";
   };
 
   const getPlanNameById = (planId) => {
@@ -552,7 +553,7 @@ const AdminMember = () => {
       // Fetch full member details to get payment information
       let memberDetails = null;
       let paymentData = null;
-      
+
       try {
         const memberResponse = await axiosInstance.get(
           `${BaseUrl}members/detail/${member.id}`
@@ -582,15 +583,15 @@ const AdminMember = () => {
       const planPrice = plan ? parseFloat(plan.price.toString().replace("₹", "").replace(/,/g, "")) : 0;
       const planValidity = plan ? plan.validity : "N/A";
       const planSessions = plan ? plan.sessions : "N/A";
-      
+
       // Use payment data if available, otherwise use member details or plan price
       const totalAmount = paymentData?.amount || memberDetails?.amountPaid || planPrice || 0;
       const paymentMode = paymentData?.paymentMode || memberDetails?.paymentMode || "Cash";
       const cashPaid = paymentData?.amount || memberDetails?.amountPaid || planPrice || 0;
       const change = 0; // Assuming exact payment, no change
       const invoiceNo = paymentData?.invoiceNo || `INV-${member.id}-${Date.now()}`;
-      const paymentDate = paymentData?.paymentDate 
-        ? new Date(paymentData.paymentDate).toLocaleDateString() 
+      const paymentDate = paymentData?.paymentDate
+        ? new Date(paymentData.paymentDate).toLocaleDateString()
         : new Date().toLocaleDateString();
 
       // Member details
@@ -599,14 +600,14 @@ const AdminMember = () => {
       const memberEmail = memberDetails?.email || member.email || "N/A";
       const memberAddress = memberDetails?.address || member.address || "N/A";
       const memberGender = memberDetails?.gender || member.gender || "N/A";
-      const memberDOB = memberDetails?.dateOfBirth 
-        ? new Date(memberDetails.dateOfBirth).toLocaleDateString() 
+      const memberDOB = memberDetails?.dateOfBirth
+        ? new Date(memberDetails.dateOfBirth).toLocaleDateString()
         : (member.dob ? new Date(member.dob).toLocaleDateString() : "N/A");
-      const membershipFrom = memberDetails?.membershipFrom 
-        ? new Date(memberDetails.membershipFrom).toLocaleDateString() 
+      const membershipFrom = memberDetails?.membershipFrom
+        ? new Date(memberDetails.membershipFrom).toLocaleDateString()
         : (member.planStart ? new Date(member.planStart).toLocaleDateString() : "N/A");
-      const membershipTo = memberDetails?.membershipTo 
-        ? new Date(memberDetails.membershipTo).toLocaleDateString() 
+      const membershipTo = memberDetails?.membershipTo
+        ? new Date(memberDetails.membershipTo).toLocaleDateString()
         : (member.expiry ? new Date(member.expiry).toLocaleDateString() : "N/A");
       const memberStatus = memberDetails?.status || member.status || "N/A";
 
@@ -870,6 +871,7 @@ const AdminMember = () => {
                     <th>Gender</th>
                     <th>Plan</th>
                     <th>Expiry</th>
+                    <th>Remaining Days</th>
                     <th>Status</th>
                     <th className="text-center">Actions</th>
                   </tr>
@@ -916,6 +918,15 @@ const AdminMember = () => {
                         <td>{member.gender}</td>
                         <td>{getPlanNameById(member.planId)}</td>
                         <td>{new Date(member.expiry).toLocaleDateString()}</td>
+                        <td>
+                          {member.remainingDays === null || member.remainingDays === undefined ? (
+                            "-"
+                          ) : member.remainingDays <= 10 ? (
+                            <span style={{ color: "red", fontWeight: "600" }}>{member.remainingDays}</span>
+                          ) : (
+                            member.remainingDays
+                          )}
+                        </td>
                         <td>
                           <span
                             className={`badge ${getStatusClass(member.status)}`}
@@ -1118,6 +1129,16 @@ const AdminMember = () => {
                     <div className="col-6">
                       <strong>Expiry:</strong>{" "}
                       {new Date(member.expiry).toLocaleDateString()}
+                    </div>
+                    <div className="col-6">
+                      <strong>Remaining:</strong>{" "}
+                      {member.remainingDays === null || member.remainingDays === undefined
+                        ? "-"
+                        : member.remainingDays <= 10
+                          ? (
+                            <span style={{ color: "red", fontWeight: 600 }}>{member.remainingDays}</span>
+                          )
+                          : member.remainingDays}
                     </div>
                     <div className="col-12">
                       <strong>Email:</strong> {member.email}
@@ -1374,7 +1395,7 @@ const AdminMember = () => {
                             Personal Training
                           </label>
                         </div>
-                        <div className="form-check">
+                        {/* <div className="form-check">
                           <input
                             className="form-check-input"
                             type="radio"
@@ -1399,7 +1420,7 @@ const AdminMember = () => {
                           >
                             Personal Trainer
                           </label>
-                        </div>
+                        </div> */}
                         <div className="form-check">
                           <input
                             className="form-check-input"
@@ -1552,23 +1573,7 @@ const AdminMember = () => {
                         <option value="bank">Bank Transfer</option>
                       </select>
                     </div>
-                    <div className="col-12 col-md-6">
-                      <label className="form-label">
-                        Amount Paid <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        value={newMember.amountPaid}
-                        onChange={(e) =>
-                          setNewMember({
-                            ...newMember,
-                            amountPaid: e.target.value,
-                          })
-                        }
-                        required
-                      />
-                    </div>
+
                   </div>
                   <div className="modal-footer mt-3">
                     <button
@@ -1750,7 +1755,7 @@ const AdminMember = () => {
                             Personal Training
                           </label>
                         </div>
-                        <div className="form-check">
+                        {/* <div className="form-check">
                           <input
                             className="form-check-input"
                             type="radio"
@@ -1775,7 +1780,7 @@ const AdminMember = () => {
                           >
                             Personal Trainer
                           </label>
-                        </div>
+                        </div> */}
                         <div className="form-check">
                           <input
                             className="form-check-input"

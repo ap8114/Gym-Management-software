@@ -49,7 +49,7 @@ const ClassesSchedule = () => {
       console.log('Processed branches:', branchList);
 
       // Fetch trainers
-      const trainersRes = await axiosInstance.get(`class/trainers/personal-general?adminId=${adminId}`);
+      const trainersRes = await axiosInstance.get(`booking/unifiedbyPersonalGeneral/${adminId}`);
       let trainerList = [];
       console.log('Trainers API response:', trainersRes.data);
       
@@ -84,7 +84,7 @@ const ClassesSchedule = () => {
       console.log('Processed members:', memberList);
 
       // Fetch classes
-      const classesRes = await axiosInstance.get(`class/scheduled/all`);
+      const classesRes = await axiosInstance.get(`class/scheduled/all/${adminId}`);
       if (classesRes.data.success) {
         setClasses(classesRes.data.data || []);
       }
@@ -140,7 +140,7 @@ const ClassesSchedule = () => {
     setModalType('add');
     setSelectedClass({
       className: '',
-      trainerId: trainers.length > 0 ? trainers[0].id : '', // Default to first trainer
+      trainerId: trainers.length > 0 ? trainers[0].trainerId : '', // Default to first trainer
       // branchId: branches.length > 0 ? branches[0].id : '', // Commented out branch field
       date: '',
       day: '',
@@ -173,8 +173,8 @@ const ClassesSchedule = () => {
     // Find trainer ID from name
     let trainerId = '';
     if (gymClass.trainer) {
-      const trainer = trainers.find(t => t.fullName === gymClass.trainer);
-      trainerId = trainer ? trainer.id : '';
+      const trainer = trainers.find(t => t.name === gymClass.trainer);
+      trainerId = trainer ? trainer.trainerId : '';
     }
     
     setSelectedClass({ 
@@ -208,8 +208,8 @@ const ClassesSchedule = () => {
     // Find trainer ID from name
     let trainerId = '';
     if (gymClass.trainer) {
-      const trainer = trainers.find(t => t.fullName === gymClass.trainer);
-      trainerId = trainer ? trainer.id : '';
+      const trainer = trainers.find(t => t.name === gymClass.trainer);
+      trainerId = trainer ? trainer.trainerId : '';
     }
     
     setSelectedClass({ 
@@ -276,8 +276,8 @@ const ClassesSchedule = () => {
   };
 
   const getTrainerName = (trainerId) => {
-    const trainer = trainers.find(t => t.id === trainerId);
-    return trainer?.fullName || '—';
+    const trainer = trainers.find(t => t.trainerId === trainerId);
+    return trainer?.name || '—';
   };
 
   const saveClass = async () => {
@@ -301,6 +301,7 @@ const ClassesSchedule = () => {
     setLoading(true);
     try {
       const payload = {
+        adminId: Number(adminId), // Add adminId to payload
         className,
         trainerId: Number(trainerId), // Convert to number since API returns numeric IDs
         // branchId: Number(branchId), // Commented out branch field
@@ -530,7 +531,7 @@ const ClassesSchedule = () => {
                       >
                         <option value="">Select trainer</option>
                         {trainers.map(t => (
-                          <option key={t.id} value={t.id}>{t.fullName} ({getRoleName(t.roleId)})</option>
+                          <option key={t.trainerId} value={t.trainerId}>{t.name} ({getRoleName(t.roleId)})</option>
                         ))}
                       </select>
                     )}

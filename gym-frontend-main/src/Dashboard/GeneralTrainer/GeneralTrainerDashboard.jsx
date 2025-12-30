@@ -29,10 +29,24 @@ const GeneralTrainerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-    // Get user data from localStorage
-  const userData = JSON.parse(localStorage.getItem("userData") || "{}");
-  const branchId = userData.branchId || 1; // Default to 1 if not found
-  const adminId = userData.adminId || 90; // Default to 90 if not found
+ const getUserFromStorage = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (err) {
+      console.error('Error parsing user from localStorage:', err);
+      return null;
+    }
+  };
+
+  const user = getUserFromStorage();
+  const memberId = user?.id || null;
+  const branchId = user?.branchId || null;
+  const name = user?.fullName || null;
+  const staffId = user?.staffId || null;
+  const adminId = user?.adminId || null;
+  const fullName = user?.fullName || null;
+
 
   // Fetch data from API using axios
   useEffect(() => {
@@ -246,16 +260,6 @@ const GeneralTrainerDashboard = () => {
     );
   }
 
-  if (error) {
-    return (
-      <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
-        <div className="alert alert-danger" role="alert">
-          Error loading dashboard: {error}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-light p-0">
       <div className="p-2 p-sm-3 p-md-4">
@@ -263,7 +267,7 @@ const GeneralTrainerDashboard = () => {
         <header className="bg-white border-bottom border-gray-200 p-3 p-sm-4 mb-4 rounded shadow-sm">
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-center">
             <div className="mb-3 mb-md-0 text-center text-md-start">
-              <h1 className="h3 h2-md fw-bold text-dark">Welcome, Rahul!</h1>
+              <h1 className="h3 h2-md fw-bold text-dark">Welcome, {fullName}!</h1>
               <p className="text-secondary">Your schedule and tasks for today</p>
             </div>
           </div>
@@ -455,7 +459,7 @@ const GeneralTrainerDashboard = () => {
                         {weekDays.map((day, dayIndex) => {
                           const classesForSlot = dashboardData.dailyClassSchedule.filter(classItem => {
                             const classDate = new Date(classItem.date);
-                            const classHour = parseInt(classItem.startTime.split(':')[0]);
+                            const classHour = classItem.startTime ? parseInt(classItem.startTime.split(':')[0]) : 0;
                             
                             return (
                               classDate.getDay() === dayIndex && 

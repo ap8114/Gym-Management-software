@@ -12,6 +12,7 @@ import {
   FaTrash,
 } from 'react-icons/fa';
 import axiosInstance from '../../Api/axiosInstance';
+import { toast } from 'react-toastify'; // Ensure you have react-toastify installed & configured
 
 const ReceptionistBookGroupClasses = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -22,7 +23,6 @@ const ReceptionistBookGroupClasses = () => {
   const [members, setMembers] = useState([]);
   const [trainers, setTrainers] = useState([]);
   const [bookings, setBookings] = useState([]);
-
   const [bookingSearch, setBookingSearch] = useState('');
 
   // ---------------- SearchableSelect Component ----------------
@@ -30,7 +30,6 @@ const ReceptionistBookGroupClasses = () => {
     const [open, setOpen] = useState(false);
     const [filter, setFilter] = useState('');
     const containerRef = useRef(null);
-
     useEffect(() => {
       const onDocClick = (e) => {
         if (containerRef.current && !containerRef.current.contains(e.target)) {
@@ -40,24 +39,41 @@ const ReceptionistBookGroupClasses = () => {
       document.addEventListener('click', onDocClick);
       return () => document.removeEventListener('click', onDocClick);
     }, []);
-
     const selected = options.find(o => String(o.value) === String(value));
     const filtered = filter ? options.filter(o => (o.label || '').toLowerCase().includes(filter.toLowerCase())) : options;
-
     return (
       <div ref={containerRef} className="position-relative" style={{ minWidth: 200 }}>
-        <button type="button" className={`form-control text-start ${disabled ? 'disabled' : ''}`} onClick={() => !disabled && setOpen(s => !s)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <button
+          type="button"
+          className={`form-control text-start ${disabled ? 'disabled' : ''}`}
+          onClick={() => !disabled && setOpen(s => !s)}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        >
           <span>{selected ? selected.label : placeholder || 'Select'}</span>
           <span style={{ opacity: 0.6 }}>▾</span>
         </button>
         {open && (
           <div className="card shadow-sm" style={{ position: 'absolute', zIndex: 2000, width: '100%', maxHeight: 260, overflow: 'auto' }}>
             <div className="card-body p-2">
-              <input className="form-control form-control-sm mb-2" placeholder="Search..." value={filter} onChange={e => setFilter(e.target.value)} />
+              <input
+                className="form-control form-control-sm mb-2"
+                placeholder="Search..."
+                value={filter}
+                onChange={e => setFilter(e.target.value)}
+              />
               <div>
                 {filtered.length === 0 && <div className="text-muted small p-2">No results</div>}
                 {filtered.map((opt) => (
-                  <div key={opt.value} className="py-1 px-2" style={{ cursor: 'pointer' }} onClick={() => { onChange({ target: { name, value: opt.value } }); setOpen(false); setFilter(''); }}>
+                  <div
+                    key={opt.value}
+                    className="py-1 px-2"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      onChange({ target: { name, value: opt.value } });
+                      setOpen(false);
+                      setFilter('');
+                    }}
+                  >
                     {opt.label}
                   </div>
                 ))}
@@ -68,10 +84,10 @@ const ReceptionistBookGroupClasses = () => {
       </div>
     );
   };
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Form state for modals (add/edit) — now includes names and end_date
   const [formData, setFormData] = useState({
     member_id: '',
     member_name: '',
@@ -80,7 +96,7 @@ const ReceptionistBookGroupClasses = () => {
     trainer_id: '',
     trainer_name: '',
     date: '',
-    end_date: '', // Added end_date field
+    end_date: '',
     start_time: '',
     end_time: '',
     booking_status: 'Booked',
@@ -89,7 +105,6 @@ const ReceptionistBookGroupClasses = () => {
     price: '',
   });
 
-  // Pagination
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -107,8 +122,6 @@ const ReceptionistBookGroupClasses = () => {
   const branchId = user?.branchId || null;
   const adminId = user?.adminId || null;
 
-  console.log(adminId)
-
   const normalizeBooking = (apiBooking) => {
     const isGroup = apiBooking.bookingType === 'GROUP';
     return {
@@ -121,32 +134,27 @@ const ReceptionistBookGroupClasses = () => {
       trainer_id: !isGroup ? apiBooking.trainerId : null,
       trainer_name: !isGroup ? apiBooking.trainerName || 'PT Session' : null,
       date: apiBooking.date ? new Date(apiBooking.date).toISOString().split('T')[0] : '',
-      end_date: apiBooking.endDate ? new Date(apiBooking.endDate).toISOString().split('T')[0] : '', // Added end_date field
+      end_date: apiBooking.endDate ? new Date(apiBooking.endDate).toISOString().split('T')[0] : '',
       start_time: apiBooking.startTime?.slice(0, 5) || '',
       end_time: apiBooking.endTime?.slice(0, 5) || '',
       booking_status: apiBooking.bookingStatus || 'Booked',
       payment_status: apiBooking.paymentStatus || 'Pending',
       notes: apiBooking.notes || '',
       branchId: apiBooking.branchId,
-      price: apiBooking.price || '', // Added price field
+      price: apiBooking.price || '',
     };
   };
 
   const fetchData = async () => {
     try {
-      const [membersRes, bookingsRes, trainersRes] = await Promise.all([
+      const [membersRes, bookingsRes] = await Promise.all([
         axiosInstance.get(`members/admin/${adminId}`),
         axiosInstance.get(`booking/unifiedbybranch/${adminId}`),
-        // axiosInstance.get(`class/trainers/personal-general?adminId=${adminId}`),
       ]);
-
       const membersData = membersRes.data?.data || [];
       const rawBookings = bookingsRes.data?.bookings || [];
       const normalizedBookings = rawBookings.map(normalizeBooking);
-      // const trainersData = trainersRes.data?.trainers || [];
-
       setMembers(membersData);
-      // setTrainers(trainersData);
       setBookings(normalizedBookings);
     } catch (err) {
       console.error('API Error:', err);
@@ -161,26 +169,21 @@ const ReceptionistBookGroupClasses = () => {
       try {
         const response = await axiosInstance.get(`booking/unifiedbyPersonalGeneral/${adminId}`);
         const rawTrainers = response.data.trainers || [];
-
-        // Filter only Personal Trainers (roleId === 5)
         const personalTrainers = rawTrainers
           .filter(trainer => trainer.roleId === 5)
           .map(trainer => ({
-            id: trainer.trainerId,          // normalize to 'id'
-            fullName: trainer.name.trim(),  // normalize to 'fullName'
+            id: trainer.trainerId,
+            fullName: trainer.name.trim(),
             phone: trainer.phone?.trim() || '',
             availability: trainer.availability,
             isBooked: trainer.isBooked,
             bookedSlots: trainer.bookedSlots,
           }));
-
         setTrainers(personalTrainers);
       } catch (error) {
         console.error('Failed to fetch personal trainers:', error);
-        // Optional: show toast error
       }
     };
-
     if (adminId) {
       fetchPersonalTrainers();
     }
@@ -191,12 +194,10 @@ const ReceptionistBookGroupClasses = () => {
   }, [branchId]);
 
   // Pagination
-  // Apply booking search filter
   const filteredBookings = bookings.filter(b => {
     if (!bookingSearch) return true;
     return b.member_name?.toString().toLowerCase().includes(bookingSearch.toLowerCase());
   });
-
   const indexOfLastEntry = currentPage * entriesPerPage;
   const indexOfFirstEntry = indexOfLastEntry - entriesPerPage;
   const currentBookings = filteredBookings.slice(indexOfFirstEntry, indexOfLastEntry);
@@ -224,7 +225,7 @@ const ReceptionistBookGroupClasses = () => {
       trainer_id: '',
       trainer_name: '',
       date: '',
-      end_date: '', // Added end_date field
+      end_date: '',
       start_time: '',
       end_time: '',
       booking_status: 'Booked',
@@ -247,7 +248,7 @@ const ReceptionistBookGroupClasses = () => {
       trainer_id: booking.trainer_id || '',
       trainer_name: booking.trainer_name || '',
       date: booking.date,
-      end_date: booking.end_date || '', // Added end_date field
+      end_date: booking.end_date || '',
       start_time: booking.start_time,
       end_time: booking.end_time,
       booking_status: booking.booking_status,
@@ -270,7 +271,7 @@ const ReceptionistBookGroupClasses = () => {
       trainer_id: booking.trainer_id || '',
       trainer_name: booking.trainer_name || '',
       date: booking.date,
-      end_date: booking.end_date || '', // Added end_date field
+      end_date: booking.end_date || '',
       start_time: booking.start_time,
       end_time: booking.end_time,
       booking_status: booking.booking_status,
@@ -317,7 +318,7 @@ const ReceptionistBookGroupClasses = () => {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
-    }
+    };
     return () => {
       document.body.style.overflow = 'unset';
     };
@@ -361,8 +362,6 @@ const ReceptionistBookGroupClasses = () => {
     const { name, value } = e.target;
     setFormData((prev) => {
       let updated = { ...prev, [name]: value };
-
-      // Auto-fill names
       if (name === 'member_id') {
         const member = members.find(m => m.id == value);
         updated.member_name = member ? member.fullName : '';
@@ -373,14 +372,14 @@ const ReceptionistBookGroupClasses = () => {
         const trainer = trainers.find(t => t.id == value);
         updated.trainer_name = trainer ? trainer.fullName : '';
       }
-
       return updated;
     });
   };
 
+  // ✅ FIXED: Now handles BOTH group and PT bookings
   const handleSubmit = async () => {
     if (!adminId) {
-      alert('admin ID missing. Please log in again.');
+      alert('Admin ID missing. Please log in again.');
       return;
     }
 
@@ -392,7 +391,7 @@ const ReceptionistBookGroupClasses = () => {
       trainer_id,
       trainer_name,
       date,
-      end_date, // Added end_date field
+      end_date,
       start_time,
       end_time,
       booking_status,
@@ -401,87 +400,90 @@ const ReceptionistBookGroupClasses = () => {
       price,
     } = formData;
 
-    // Validation: require member and date. If times are missing, default to 00:00.
     if (!member_id || !date) {
-      alert('Please select a member and date. Start/End time will default to 00:00 if left empty.');
+      alert('Please select a member and date.');
       return;
     }
 
-    if (bookingType === 'group' && !class_schedule_id) {
-      alert('Please select a group class.');
-      return;
-    }
-    if (bookingType === 'pt' && !trainer_id) {
-      alert('Please select a trainer.');
-      return;
-    }
+    const formatTime = (t) => (t && t.length === 5 ? `${t}:00` : '00:00:00');
 
-    const formatTime = (t) => (t.length === 5 ? `${t}:00` : t);
-
-    // Ensure times are present; default to '00:00' which becomes '00:00:00'
-    const safeStart = (start_time && start_time.trim()) ? start_time : '00:00';
-    const safeEnd = (end_time && end_time.trim()) ? end_time : '00:00';
+    const safeStart = start_time || '00:00';
+    const safeEnd = end_time || '00:00';
 
     try {
       if (modalType === 'add') {
-        // Only call API for PT sessions
-        if (bookingType === 'pt') {
+        let payload;
+
+        if (bookingType === 'group') {
+          if (!class_schedule_id) {
+            alert('Please select a group class.');
+            return;
+          }
+          payload = {
+            memberId: parseInt(member_id, 10),
+            memberName: member_name,
+            bookingType: 'GROUP',
+            classId: parseInt(class_schedule_id, 10),
+            className: class_name,
+            date,
+            startTime: formatTime(safeStart),
+            endTime: formatTime(safeEnd),
+            notes: notes || '',
+            bookingStatus: booking_status,
+            paymentStatus: payment_status,
+            // No price or endDate for group classes (optional: add if needed)
+          };
+        } else {
+          // PT Session
+          if (!trainer_id) {
+            alert('Please select a trainer.');
+            return;
+          }
           const parsedPrice = parseFloat(price);
           if (isNaN(parsedPrice) || parsedPrice <= 0) {
             alert('Please enter a valid price greater than 0.');
             return;
           }
-
-          const payload = {
+          if (!end_date) {
+            alert('Please select an end date for PT session.');
+            return;
+          }
+          payload = {
             memberId: parseInt(member_id, 10),
             memberName: member_name,
             bookingType: 'PT',
             trainerId: parseInt(trainer_id, 10),
             trainerName: trainer_name,
             date,
-            endDate: end_date, // Added end_date field
+            endDate: end_date,
             startTime: formatTime(safeStart),
             endTime: formatTime(safeEnd),
             notes: notes || '',
             bookingStatus: booking_status,
             paymentStatus: payment_status,
-            price: parsedPrice
+            price: parsedPrice,
           };
-
-          await axiosInstance.post('booking/unified/create', payload);
-          alert('PT Session booking created successfully!');
-        } else {
-          // For group classes, you might have a different API endpoint
-          // This is just a placeholder - you'll need to implement the actual API call for group classes
-          alert('Group class booking functionality would be implemented here.');
         }
-      } else if (modalType === 'edit' && selectedBooking) {
-        // For edit, only send endTime and price for PT sessions
-        if (bookingType === 'pt') {
-          // Ensure price is a valid number
-          let parsedPrice;
-          if (price === '' || price === null || price === undefined) {
-            // If price is empty, use the existing price from the booking
-            parsedPrice = selectedBooking.price || 0;
-          } else {
-            parsedPrice = parseFloat(price);
-          }
 
+        await axiosInstance.post('booking/unified/create', payload);
+        alert(`${bookingType === 'group' ? 'Group class' : 'PT session'} booking created successfully!`);
+      } else if (modalType === 'edit' && selectedBooking) {
+        // Only PT sessions are editable in current logic
+        if (bookingType === 'pt') {
+          const parsedPrice = price !== '' ? parseFloat(price) : selectedBooking.price;
           if (isNaN(parsedPrice) || parsedPrice <= 0) {
-            alert('Please enter a valid price greater than 0.');
+            alert('Please enter a valid price.');
             return;
           }
-
           const payload = {
             endTime: formatTime(safeEnd),
-            price: parsedPrice
+            price: parsedPrice,
           };
-
           await axiosInstance.put(`booking/unifiedupdate/${selectedBooking.id}`, payload);
           alert('PT Session booking updated successfully!');
         } else {
-          // For group classes, you might have a different API endpoint
-          alert('Group class update functionality would be implemented here.');
+          alert('Editing group class bookings is not yet supported.');
+          return;
         }
       }
 
@@ -489,19 +491,16 @@ const ReceptionistBookGroupClasses = () => {
       closeModal();
     } catch (err) {
       console.error('API Error:', err);
-
-      if (err.response && err.response.status === 409) {
-        alert('This Trainer Already booked for this time slot.');
-        toast.error('This Trainer Already booked for this time slot.');
+      if (err.response?.status === 409) {
+        toast.error('This trainer is already booked for this time slot.');
+        alert('This trainer is already booked for this time slot.');
       } else {
         alert(`Failed to ${modalType === 'add' ? 'create' : 'update'} booking.`);
       }
     }
   };
 
-  // Inside your component
   const [groupPlans, setGroupPlans] = useState([]);
-
   useEffect(() => {
     const fetchGroupPlans = async () => {
       try {
@@ -510,12 +509,10 @@ const ReceptionistBookGroupClasses = () => {
         setGroupPlans(groupPlansOnly);
       } catch (error) {
         console.error('Failed to fetch group plans:', error);
-        // Optionally show toast error
       }
     };
-
-    fetchGroupPlans();
-  }, []);
+    if (adminId) fetchGroupPlans();
+  }, [adminId]);
 
   if (loading) return <div className="text-center mt-5">Loading bookings...</div>;
 
@@ -525,9 +522,7 @@ const ReceptionistBookGroupClasses = () => {
       <div className="row mb-4 align-items-center">
         <div className="col-12 col-lg-8">
           <h2 className="fw-bold">Book Group Classes & PT Sessions</h2>
-          <p className="text-muted mb-0">
-            Manage bookings for group classes and personal training sessions.
-          </p>
+          <p className="text-muted mb-0">Manage bookings for group classes and personal training sessions.</p>
         </div>
         <div className="col-12 col-lg-4 text-lg-end mt-3 mt-lg-0">
           <button
@@ -548,7 +543,7 @@ const ReceptionistBookGroupClasses = () => {
         </div>
       </div>
 
-      {/* Search & Actions */}
+      {/* Search */}
       <div className="row mb-4 g-3">
         <div className="col-12 col-md-6 col-lg-5">
           <div className="input-group">
@@ -574,9 +569,7 @@ const ReceptionistBookGroupClasses = () => {
               onChange={handleEntriesChange}
             >
               {[5, 10, 25, 50, 100].map((val) => (
-                <option key={val} value={val}>
-                  {val}
-                </option>
+                <option key={val} value={val}>{val}</option>
               ))}
             </select>
             <span className="ms-2">entries</span>
@@ -614,16 +607,14 @@ const ReceptionistBookGroupClasses = () => {
                   <td>
                     <span
                       className={`badge rounded-pill ${booking.type === 'group'
-                        ? 'bg-info-subtle text-info-emphasis'
-                        : 'bg-secondary-subtle text-secondary-emphasis'
+                          ? 'bg-info-subtle text-info-emphasis'
+                          : 'bg-secondary-subtle text-secondary-emphasis'
                         } px-2 py-1`}
                     >
                       {booking.type === 'group' ? 'Group Class' : 'PT Session'}
                     </span>
                   </td>
-                  <td>
-                    {booking.type === 'group' ? booking.class_name : booking.trainer_name}
-                  </td>
+                  <td>{booking.type === 'group' ? booking.class_name : booking.trainer_name}</td>
                   <td>
                     {formatDate(booking.date)}
                     {booking.end_date && booking.type === 'pt' && (
@@ -685,29 +676,21 @@ const ReceptionistBookGroupClasses = () => {
             <nav>
               <ul className="pagination mb-0">
                 <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={prevPage}>
-                    Previous
-                  </button>
+                  <button className="page-link" onClick={prevPage}>Previous</button>
                 </li>
                 {[...Array(Math.min(3, totalPages))].map((_, i) => (
                   <li key={i + 1} className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}>
-                    <button className="page-link" onClick={() => paginate(i + 1)}>
-                      {i + 1}
-                    </button>
+                    <button className="page-link" onClick={() => paginate(i + 1)}>{i + 1}</button>
                   </li>
                 ))}
                 {totalPages > 3 && <li className="page-item disabled"><span className="page-link">...</span></li>}
                 {totalPages > 3 && (
                   <li className={`page-item ${currentPage === totalPages ? 'active' : ''}`}>
-                    <button className="page-link" onClick={() => paginate(totalPages)}>
-                      {totalPages}
-                    </button>
+                    <button className="page-link" onClick={() => paginate(totalPages)}>{totalPages}</button>
                   </li>
                 )}
                 <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={nextPage}>
-                    Next
-                  </button>
+                  <button className="page-link" onClick={nextPage}>Next</button>
                 </li>
               </ul>
             </nav>
@@ -723,10 +706,7 @@ const ReceptionistBookGroupClasses = () => {
           style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}
           onClick={closeModal}
         >
-          <div
-            className="modal-dialog modal-lg modal-dialog-centered"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="modal-dialog modal-lg modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
             <div className="modal-content">
               <div className="modal-header border-0 pb-0">
                 <h5 className="modal-title fw-bold">{getModalTitle()}</h5>
@@ -742,13 +722,14 @@ const ReceptionistBookGroupClasses = () => {
                         className={`btn ${bookingType === 'group' ? 'btn-info' : 'btn-outline-secondary'}`}
                         onClick={() => {
                           setBookingType('group');
-                          setFormData((prev) => ({
+                          setFormData(prev => ({
                             ...prev,
                             trainer_id: '',
                             trainer_name: '',
                             class_schedule_id: '',
                             class_name: '',
-                            end_date: '' // Reset end_date when switching booking type
+                            end_date: '',
+                            price: '',
                           }));
                         }}
                       >
@@ -759,13 +740,14 @@ const ReceptionistBookGroupClasses = () => {
                         className={`btn ${bookingType === 'pt' ? 'btn-info' : 'btn-outline-secondary'}`}
                         onClick={() => {
                           setBookingType('pt');
-                          setFormData((prev) => ({
+                          setFormData(prev => ({
                             ...prev,
                             trainer_id: '',
                             trainer_name: '',
                             class_schedule_id: '',
                             class_name: '',
-                            end_date: '' // Reset end_date when switching booking type
+                            end_date: '',
+                            price: '',
                           }));
                         }}
                       >
@@ -774,7 +756,6 @@ const ReceptionistBookGroupClasses = () => {
                     </div>
                   </div>
                 )}
-
                 <form>
                   <div>
                     <div className="mb-3">
@@ -791,7 +772,6 @@ const ReceptionistBookGroupClasses = () => {
                         required
                       />
                     </div>
-
                     {bookingType === 'group' ? (
                       <div className="mb-3">
                         <label className="form-label d-flex align-items-center">
@@ -825,7 +805,6 @@ const ReceptionistBookGroupClasses = () => {
                         />
                       </div>
                     )}
-
                     <div className="row mb-3 g-3">
                       <div className="col-12 col-md-6">
                         <label className="form-label d-flex align-items-center">
@@ -843,8 +822,6 @@ const ReceptionistBookGroupClasses = () => {
                           required
                         />
                       </div>
-
-                      {/* Added End Date field - only show for PT sessions */}
                       {bookingType === 'pt' && (
                         <div className="col-12 col-md-6">
                           <label className="form-label d-flex align-items-center">
@@ -863,7 +840,6 @@ const ReceptionistBookGroupClasses = () => {
                           />
                         </div>
                       )}
-
                       <div className="col-6 col-md-6">
                         <label className="form-label d-flex align-items-center">
                           <FaClock className="me-2 text-muted" /> Start Time{' '}
@@ -879,7 +855,6 @@ const ReceptionistBookGroupClasses = () => {
                           required
                         />
                       </div>
-
                       <div className="col-6 col-md-6">
                         <label className="form-label d-flex align-items-center">
                           <FaClock className="me-2 text-muted" /> End Time{' '}
@@ -896,28 +871,25 @@ const ReceptionistBookGroupClasses = () => {
                         />
                       </div>
                     </div>
-
-                    {/* 💰 PRICE FIELD - Show for both add and edit for PT sessions */}
                     {(modalType === 'add' || (modalType === 'edit' && bookingType === 'pt')) && (
-                      <div className="mb-3">
-                        <label className="form-label d-flex align-items-center">
-                          <FaMoneyBillWave className="me-2 text-muted" /> Price <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          className="form-control rounded-3"
-                          name="price"
-                          value={formData.price}
-                          onChange={handleInputChange}
-                          min="0.01"
-                          step="0.01"
-                          placeholder="Enter amount"
-                          disabled={modalType === 'view'}
-                          required
-                        />
-                      </div>
+                        <div className="mb-3">
+                          <label className="form-label d-flex align-items-center">
+                            <FaMoneyBillWave className="me-2 text-muted" /> Price <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            className="form-control rounded-3"
+                            name="price"
+                            value={formData.price}
+                            onChange={handleInputChange}
+                            min="0.01"
+                            step="0.01"
+                            placeholder="Enter amount"
+                            disabled={modalType === 'view'}
+                            required={bookingType === 'pt'}
+                          />
+                        </div>
                     )}
-
                     <div className="row mb-3 g-3">
                       <div className="col-12 col-md-6">
                         <label className="form-label">Booking Status <span className="text-danger">*</span></label>
@@ -953,7 +925,6 @@ const ReceptionistBookGroupClasses = () => {
                         </select>
                       </div>
                     </div>
-
                     <div className="mb-4">
                       <label className="form-label">Notes</label>
                       <textarea
@@ -966,7 +937,6 @@ const ReceptionistBookGroupClasses = () => {
                         disabled={modalType === 'view'}
                       ></textarea>
                     </div>
-
                     <div className="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-4">
                       <button
                         type="button"
@@ -1009,10 +979,7 @@ const ReceptionistBookGroupClasses = () => {
           style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}
           onClick={closeCancelModal}
         >
-          <div
-            className="modal-dialog modal-dialog-centered"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
             <div className="modal-content">
               <div className="modal-header border-0 pb-0">
                 <h5 className="modal-title fw-bold">Confirm Cancellation</h5>

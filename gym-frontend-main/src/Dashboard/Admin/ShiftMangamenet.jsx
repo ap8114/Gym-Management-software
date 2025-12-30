@@ -37,7 +37,7 @@ const ShiftManagement = () => {
         const branchesData = await branchesResponse.json();
 
         // Fetch shifts data
-        const shiftsResponse = await fetch(`${BaseUrl}shift/all`);
+        const shiftsResponse = await fetch(`${BaseUrl}shift/all/${adminId}`);
         const shiftsData = await shiftsResponse.json();
 
         if (staffData.success) {
@@ -434,14 +434,10 @@ const ShiftManagement = () => {
     return <div className="container-fluid py-4">Loading...</div>;
   }
 
-  if (error) {
-    return <div className="container-fluid py-4">Error: {error}</div>;
-  }
-
   return (
     <div className="container-fluid py-4">
       <h2 className="mb-4">Shift Management</h2>
-      
+
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3>Duty Roster</h3>
         <button

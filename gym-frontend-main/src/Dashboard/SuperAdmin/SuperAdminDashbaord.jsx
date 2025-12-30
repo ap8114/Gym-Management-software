@@ -247,7 +247,7 @@ export default function DashboardHomePage() {
       </div> */}
     </div>
   );
-}
+} 
 
 // -------- Helpers --------
 function fmtINR(n) {
