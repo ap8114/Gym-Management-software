@@ -28,7 +28,7 @@ const GeneralClassesSchedule = () => {
   };
 
   const user = getUserFromStorage();
-  const memberId = user?.id || null;
+  const trainerId = user?.id || null;
   const branchId = user?.branchId || null;
   const name = user?.fullName || null;
   const staffId = user?.staffId || null;
@@ -54,11 +54,23 @@ const GeneralClassesSchedule = () => {
       }
 
       // 🔥 FILTER: Keep only classes where trainer is exactly "General"
-      const pGeneralClasses = allClasses.filter(
-        (cls) => cls.trainer === "General"
+      const generalClasses = allClasses.filter(
+        (cls) => cls.trainer && cls.trainer.toLowerCase() === "general"
       );
 
-      setClasses(pGeneralClasses);
+      // Transform data to match the new API response structure
+      const transformedClasses = generalClasses.map(classItem => ({
+        id: classItem.id,
+        className: classItem.className,
+        trainer: classItem.trainer,
+        date: classItem.date,
+        time: classItem.time,
+        day: classItem.day || '', // Handle empty day field
+        status: classItem.status,
+        membersCount: classItem.membersCount || 0
+      }));
+
+      setClasses(transformedClasses);
       
       // Fetch trainers - Add this API call
       try {
@@ -132,16 +144,6 @@ const GeneralClassesSchedule = () => {
       const [start, end] = timeString.split(" - ");
       startTime = start.trim();
       endTime = end.trim();
-    }
-
-    // Find branch ID from name
-    // const branch = branches.find(b => b.name === gymClass.branch); // Commented out branch field
-
-    // Find trainer ID from name
-    let trainerId = "";
-    if (gymClass.trainer) {
-      const trainer = trainers.find((t) => t.fullName === gymClass.trainer);
-      trainerId = trainer ? trainer.id : "";
     }
 
     setSelectedClass({
@@ -303,7 +305,9 @@ const GeneralClassesSchedule = () => {
             <p className="mb-1">
               <strong>Trainer:</strong> {gymClass.trainer}
             </p>
-            {/* <p className="mb-1"><strong>Branch:</strong> {gymClass.branch}</p> Commented out branch field */}
+            <p className="mb-1">
+              <strong>Members:</strong> <span className="badge bg-info">{gymClass.membersCount || 0}</span>
+            </p>
           </div>
           <div className="col-6">
             <p className="mb-1">
@@ -313,6 +317,11 @@ const GeneralClassesSchedule = () => {
             <p className="mb-1">
               <strong>Time:</strong> {gymClass.time}
             </p>
+            {gymClass.day && (
+              <p className="mb-1">
+                <strong>Day:</strong> {gymClass.day}
+              </p>
+            )}
           </div>
         </div>
         <div className="d-flex justify-content-between align-items-center">
@@ -346,10 +355,20 @@ const GeneralClassesSchedule = () => {
     <div className="container-fluid py-4">
       <div className="row mb-4 align-items-center">
         <div className="col-12 col-lg-8">
-          <h2 className="fw-bold">All Class Scheduled</h2>
+          <h2 className="fw-bold">General Trainer Classes Schedule</h2>
           <p className="text-muted mb-0">
-            Manage all gym classes, trainers, and member assignments.
+            View and manage general trainer classes and member assignments.
           </p>
+          {!loading && (
+            <div className="mt-2">
+              <span className="badge bg-success text-white me-2">
+                {classes.length} General Trainer Classes
+              </span>
+              <span className="badge bg-light text-dark">
+                Total Members Enrolled: {classes.reduce((sum, cls) => sum + (cls.membersCount || 0), 0)}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -370,10 +389,10 @@ const GeneralClassesSchedule = () => {
                     <tr>
                       <th>CLASS NAME</th>
                       <th>TRAINER</th>
-                      {/* <th>BRANCH</th> Commented out branch field */}
                       <th>DATE</th>
                       <th>TIME</th>
                       <th>DAY</th>
+                      <th>MEMBERS</th>
                       <th>STATUS</th>
                       <th className="text-center">ACTIONS</th>
                     </tr>
@@ -381,12 +400,26 @@ const GeneralClassesSchedule = () => {
                   <tbody>
                     {classes.map((c) => (
                       <tr key={c.id}>
-                        <td>{c.className}</td>
-                        <td>{c.trainer}</td>
-                        {/* <td><span className="badge bg-primary-subtle text-primary-emphasis px-3 py-1">{c.branch}</span></td> Commented out branch field */}
+                        <td>
+                          <div className="fw-semibold">{c.className}</div>
+                        </td>
+                        <td>
+                          <span className="badge bg-success-subtle text-success-emphasis px-3 py-1">
+                            {c.trainer}
+                          </span>
+                        </td>
                         <td>{c.date ? c.date.split("T")[0] : ""}</td>
-                        <td>{c.time}</td>
-                        <td>{c.day}</td>
+                        <td>
+                          <span className="badge bg-light text-dark">{c.time}</span>
+                        </td>
+                        <td>
+                          {c.day && <span className="badge bg-secondary-subtle text-secondary-emphasis">{c.day}</span>}
+                        </td>
+                        <td>
+                          <span className="badge bg-info text-white">
+                            {c.membersCount || 0} members
+                          </span>
+                        </td>
                         <td>{getStatusBadge(c.status)}</td>
                         <td className="text-center">
                           <div className="d-flex justify-content-center gap-1">
