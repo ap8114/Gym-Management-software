@@ -88,6 +88,8 @@ const AdminMember = () => {
     dateOfBirth: "",
     interestedIn: "",
     status: "Active",
+    paymentMode: "cash",
+    amountPaid: "",
     profileImage: null, // Store file object directly
     profileImagePreview: "", // For preview
     existingProfileImage: "", // Store existing image URL
@@ -158,6 +160,9 @@ const AdminMember = () => {
           status: member.status,
           interestedIn: member.interestedIn,
           profileImage: member.profileImage || "",
+          paymentMode: member.paymentMode,
+          amountPaid: member.amountPaid,
+          joinDate: member.joinDate,
           // Use API's remainingDays if provided, otherwise compute from expiry
           remainingDays:
             typeof member.remainingDays === "number"
@@ -206,6 +211,9 @@ const AdminMember = () => {
           status: member.status,
           interestedIn: member.interestedIn,
           profileImage: member.profileImage || "",
+          paymentMode: member.paymentMode,
+          amountPaid: member.amountPaid,
+          joinDate: member.joinDate,
         };
       }
       return null;
@@ -360,6 +368,12 @@ const AdminMember = () => {
       formData.append("interestedIn", editMember.interestedIn);
       formData.append("status", editMember.status);
       formData.append("planId", editMember.planId);
+      formData.append(
+        "paymentMode",
+        editMember.paymentMode.charAt(0).toUpperCase() +
+        editMember.paymentMode.slice(1)
+      );
+      formData.append("amountPaid", editMember.amountPaid);
 
       // Append image if selected
       if (editMember.profileImage) {
@@ -441,6 +455,8 @@ const AdminMember = () => {
         interestedIn: member.interestedIn,
         status: member.status,
         planId: member.planId,
+        paymentMode: member.paymentMode || "cash",
+        amountPaid: member.amountPaid || "",
         profileImage: null,
         profileImagePreview: member.profileImage || "",
         existingProfileImage: member.profileImage || "",
@@ -1574,6 +1590,24 @@ const AdminMember = () => {
                       </select>
                     </div>
 
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">
+                        Amount Paid <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={newMember.amountPaid}
+                        onChange={(e) =>
+                          setNewMember({
+                            ...newMember,
+                            amountPaid: e.target.value,
+                          })
+                        }
+                        required
+                      />
+                    </div>
+
                   </div>
                   <div className="modal-footer mt-3">
                     <button
@@ -1733,15 +1767,15 @@ const AdminMember = () => {
                           <input
                             className="form-check-input"
                             type="radio"
-                            name="interestedIn"
-                            id="personalTraining"
+                            name="editInterestedIn"
+                            id="editPersonalTraining"
                             value="Personal Training"
                             checked={
-                              newMember.interestedIn === "Personal Training"
+                              editMember.interestedIn === "Personal Training"
                             }
                             onChange={(e) => {
-                              setNewMember({
-                                ...newMember,
+                              setEditMember({
+                                ...editMember,
                                 interestedIn: e.target.value,
                                 planId: "", // Reset plan selection when interested in changes
                               });
@@ -1750,55 +1784,29 @@ const AdminMember = () => {
                           />
                           <label
                             className="form-check-label"
-                            htmlFor="personalTraining"
+                            htmlFor="editPersonalTraining"
                           >
                             Personal Training
                           </label>
                         </div>
-                        {/* <div className="form-check">
-                          <input
-                            className="form-check-input"
-                            type="radio"
-                            name="interestedIn"
-                            id="personalTrainer"
-                            value="Personal Trainer"
-                            checked={
-                              newMember.interestedIn === "Personal Trainer"
-                            }
-                            onChange={(e) => {
-                              setNewMember({
-                                ...newMember,
-                                interestedIn: e.target.value,
-                                planId: "", // Reset plan selection when interested in changes
-                              });
-                            }}
-                            required
-                          />
-                          <label
-                            className="form-check-label"
-                            htmlFor="personalTrainer"
-                          >
-                            Personal Trainer
-                          </label>
-                        </div> */}
                         <div className="form-check">
                           <input
                             className="form-check-input"
                             type="radio"
-                            name="interestedIn"
-                            id="general"
-                            value="General"
-                            checked={newMember.interestedIn === "General"}
+                            name="editInterestedIn"
+                            id="editGeneral"
+                            value="General Trainer"
+                            checked={editMember.interestedIn === "General Trainer"}
                             onChange={(e) => {
-                              setNewMember({
-                                ...newMember,
+                              setEditMember({
+                                ...editMember,
                                 interestedIn: e.target.value,
                                 planId: "", // Reset plan selection when interested in changes
                               });
                             }}
                             required
                           />
-                          <label className="form-check-label" htmlFor="general">
+                          <label className="form-check-label" htmlFor="editGeneral">
                             General Trainer
                           </label>
                         </div>
@@ -1806,13 +1814,13 @@ const AdminMember = () => {
                           <input
                             className="form-check-input"
                             type="radio"
-                            name="interestedIn"
-                            id="groupClasses"
+                            name="editInterestedIn"
+                            id="editGroupClasses"
                             value="Group Classes"
-                            checked={newMember.interestedIn === "Group Classes"}
+                            checked={editMember.interestedIn === "Group Classes"}
                             onChange={(e) => {
-                              setNewMember({
-                                ...newMember,
+                              setEditMember({
+                                ...editMember,
                                 interestedIn: e.target.value,
                                 planId: "", // Reset plan selection when interested in changes
                               });
@@ -1821,111 +1829,143 @@ const AdminMember = () => {
                           />
                           <label
                             className="form-check-label"
-                            htmlFor="groupClasses"
+                            htmlFor="editGroupClasses"
                           >
                             Group Classes
                           </label>
                         </div>
                       </div>
-                    </div>
-                    <div className="col-12 col-md-6">
-                      <label className="form-label">Membership Plan</label>
-                      <select
-                        className="form-select"
-                        value={editMember.planId}
-                        onChange={(e) =>
-                          setEditMember({
-                            ...editMember,
-                            planId: e.target.value,
-                          })
-                        }
-                        required
-                        disabled={!editMember.interestedIn}
-                      >
-                        <option value="">
-                          {editMember.interestedIn
-                            ? "Select Plan"
-                            : "Please select 'Interested In' first"}
+              </div>
+              <div className="col-12 col-md-6">
+                <label className="form-label">Membership Plan</label>
+                <select
+                  className="form-select"
+                  value={editMember.planId}
+                  onChange={(e) =>
+                    setEditMember({
+                      ...editMember,
+                      planId: e.target.value,
+                    })
+                  }
+                  required
+                  disabled={!editMember.interestedIn}
+                >
+                  <option value="">
+                    {editMember.interestedIn
+                      ? "Select Plan"
+                      : "Please select 'Interested In' first"}
+                  </option>
+                  {plansLoaded &&
+                    getFilteredPlans(editMember.interestedIn).map(
+                      (plan) => (
+                        <option key={plan.id} value={plan.id}>
+                          {plan.name} - {plan.price} ({plan.validity}{" "}
+                          days)
                         </option>
-                        {plansLoaded &&
-                          getFilteredPlans(editMember.interestedIn).map(
-                            (plan) => (
-                              <option key={plan.id} value={plan.id}>
-                                {plan.name} - {plan.price} ({plan.validity}{" "}
-                                days)
-                              </option>
-                            )
-                          )}
-                      </select>
-                    </div>
-                    <div className="col-12 col-md-6">
-                      <label className="form-label">Gender</label>
-                      <select
-                        className="form-select"
-                        value={editMember.gender}
-                        onChange={(e) =>
-                          setEditMember({
-                            ...editMember,
-                            gender: e.target.value,
-                          })
-                        }
-                      >
-                        <option value="">Select Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div className="col-12 col-md-6">
-                      <label className="form-label">Date of Birth</label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        value={editMember.dateOfBirth}
-                        onChange={(e) =>
-                          setEditMember({
-                            ...editMember,
-                            dateOfBirth: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="col-12">
-                      <label className="form-label">Address</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={editMember.address}
-                        onChange={(e) =>
-                          setEditMember({
-                            ...editMember,
-                            address: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="modal-footer mt-3">
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() => setShowEditForm(false)}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="btn text-white"
-                      style={{ backgroundColor: "#6EB2CC" }}
-                      disabled={editLoading}
-                    >
-                      {editLoading ? "Updating..." : "Save Changes"}
-                    </button>
-                  </div>
-                </form>
+                      )
+                    )}
+                </select>
+              </div>
+              <div className="col-12 col-md-6">
+                <label className="form-label">Gender</label>
+                <select
+                  className="form-select"
+                  value={editMember.gender}
+                  onChange={(e) =>
+                    setEditMember({
+                      ...editMember,
+                      gender: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">Select Gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="col-12 col-md-6">
+                <label className="form-label">Date of Birth</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  value={editMember.dateOfBirth}
+                  onChange={(e) =>
+                    setEditMember({
+                      ...editMember,
+                      dateOfBirth: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="col-12 col-md-6">
+                <label className="form-label">Payment Mode</label>
+                <select
+                  className="form-select"
+                  value={editMember.paymentMode}
+                  onChange={(e) =>
+                    setEditMember({
+                      ...editMember,
+                      paymentMode: e.target.value,
+                    })
+                  }
+                >
+                  <option value="cash">Cash</option>
+                  <option value="upi">UPI</option>
+                  <option value="card">Card</option>
+                  <option value="bank">Bank Transfer</option>
+                </select>
+              </div>
+              <div className="col-12 col-md-6">
+                <label className="form-label">Amount Paid</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={editMember.amountPaid}
+                  onChange={(e) =>
+                    setEditMember({
+                      ...editMember,
+                      amountPaid: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="col-12">
+                <label className="form-label">Address</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={editMember.address}
+                  onChange={(e) =>
+                    setEditMember({
+                      ...editMember,
+                      address: e.target.value,
+                    })
+                  }
+                />
               </div>
             </div>
-          </div>
+            <div className="modal-footer mt-3">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowEditForm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn text-white"
+                style={{ backgroundColor: "#6EB2CC" }}
+                disabled={editLoading}
+              >
+                {editLoading ? "Updating..." : "Save Changes"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
         </div>
       )}
 
@@ -1933,215 +1973,215 @@ const AdminMember = () => {
       {showRenewForm && (
         <div
           className="modal fade show d-block"
-          tabIndex="-1"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Renew Membership Plan</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowRenewForm(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <form onSubmit={handleRenewPlan}>
-                  <div className="mb-3">
-                    <label className="form-label">Membership Plan</label>
-                    <select
-                      className="form-select"
-                      value={renewPlan.plan}
-                      onChange={(e) =>
-                        setRenewPlan({ ...renewPlan, plan: e.target.value })
-                      }
-                      required
-                    >
-                      <option value="">Select Plan</option>
-                      {plansLoaded &&
-                        apiPlans.map((plan) => (
-                          <option key={plan.id} value={plan.id}>
-                            {plan.name} - {plan.price} ({plan.validity} days)
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Payment Mode</label>
-                    <select
-                      className="form-select"
-                      value={renewPlan.paymentMode}
-                      onChange={(e) =>
-                        setRenewPlan({
-                          ...renewPlan,
-                          paymentMode: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="cash">Cash</option>
-                      <option value="card">Card</option>
-                      <option value="upi">UPI</option>
-                      <option value="bank">Bank Transfer</option>
-                    </select>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Amount Paid</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={renewPlan.amountPaid}
-                      onChange={(e) =>
-                        setRenewPlan({
-                          ...renewPlan,
-                          amountPaid: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="modal-footer">
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() => setShowRenewForm(false)}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="btn text-white"
-                      style={{ backgroundColor: "#6EB2CC" }}
-                    >
-                      Renew Plan
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
+      tabIndex="-1"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+    >
+      <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title">Renew Membership Plan</h5>
+            <button
+              type="button"
+              className="btn-close"
+              onClick={() => setShowRenewForm(false)}
+            ></button>
           </div>
-        </div>
-      )}
-
-      {/* View Member Modal */}
-      {showViewModal && selectedMember && (
-        <div
-          className="modal fade show d-block"
-          tabIndex="-1"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
-          <div className="modal-dialog modal-lg modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Member Details</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowViewModal(false)}
-                ></button>
+          <div className="modal-body">
+            <form onSubmit={handleRenewPlan}>
+              <div className="mb-3">
+                <label className="form-label">Membership Plan</label>
+                <select
+                  className="form-select"
+                  value={renewPlan.plan}
+                  onChange={(e) =>
+                    setRenewPlan({ ...renewPlan, plan: e.target.value })
+                  }
+                  required
+                >
+                  <option value="">Select Plan</option>
+                  {plansLoaded &&
+                    apiPlans.map((plan) => (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.name} - {plan.price} ({plan.validity} days)
+                      </option>
+                    ))}
+                </select>
               </div>
-              <div
-                className="modal-body"
-                style={{ maxHeight: "70vh", overflowY: "auto" }}
-              >
-                <div className="row">
-                  <div className="col-12 col-lg-4 text-center mb-4 mb-lg-0">
-                    {selectedMember.profileImage ? (
-                      <img
-                        src={selectedMember.profileImage}
-                        alt="Profile"
-                        className="rounded-circle mb-3"
-                        style={{
-                          width: "120px",
-                          height: "120px",
-                          objectFit: "cover",
-                        }}
-                      />
-                    ) : (
-                      <div
-                        className="d-flex justify-content-center align-items-center rounded-circle bg-primary text-white mx-auto mb-3"
-                        style={{ width: "120px", height: "120px" }}
-                      >
-                        <span className="fs-1 fw-bold">
-                          {selectedMember.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </span>
-                      </div>
-                    )}
-                    <h5 className="mb-2">{selectedMember.name}</h5>
-                    <span
-                      className={`badge ${getStatusClass(
-                        selectedMember.status
-                      )}`}
-                    >
-                      {selectedMember.status}
-                    </span>
-                  </div>
-                  <div className="col-12 col-lg-8">
-                    <div className="row g-3">
-                      <div className="col-12 col-sm-6">
-                        <strong>Phone:</strong>
-                        <div>{selectedMember.phone}</div>
-                      </div>
-                      <div className="col-12 col-sm-6">
-                        <strong>Email:</strong>
-                        <div>{selectedMember.email}</div>
-                      </div>
-                      <div className="col-12 col-sm-6">
-                        <strong>Gender:</strong>
-                        <div>{selectedMember.gender}</div>
-                      </div>
-                      <div className="col-12 col-sm-6">
-                        <strong>Plan:</strong>
-                        <div>{getPlanNameById(selectedMember.planId)}</div>
-                      </div>
-                      <div className="col-12 col-sm-6">
-                        <strong>Plan Start:</strong>
-                        <div>
-                          {new Date(
-                            selectedMember.planStart
-                          ).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <div className="col-12 col-sm-6">
-                        <strong>Expiry:</strong>
-                        <div>
-                          {new Date(selectedMember.expiry).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <div className="col-12 col-sm-6">
-                        <strong>Date of Birth:</strong>
-                        <div>
-                          {new Date(selectedMember.dob).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <div className="col-12 col-sm-6">
-                        <strong>Interested In:</strong>
-                        <div>{selectedMember.interestedIn}</div>
-                      </div>
-                      <div className="col-12">
-                        <strong>Address:</strong>
-                        <div>{selectedMember.address}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              <div className="mb-3">
+                <label className="form-label">Payment Mode</label>
+                <select
+                  className="form-select"
+                  value={renewPlan.paymentMode}
+                  onChange={(e) =>
+                    setRenewPlan({
+                      ...renewPlan,
+                      paymentMode: e.target.value,
+                    })
+                  }
+                >
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                  <option value="upi">UPI</option>
+                  <option value="bank">Bank Transfer</option>
+                </select>
+              </div>
+              <div className="mb-3">
+                <label className="form-label">Amount Paid</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={renewPlan.amountPaid}
+                  onChange={(e) =>
+                    setRenewPlan({
+                      ...renewPlan,
+                      amountPaid: e.target.value,
+                    })
+                  }
+                  required
+                />
               </div>
               <div className="modal-footer">
                 <button
                   type="button"
-                  className="btn btn-secondary w-100 w-md-auto"
-                  onClick={() => setShowViewModal(false)}
+                  className="btn btn-secondary"
+                  onClick={() => setShowRenewForm(false)}
                 >
-                  Close
+                  Cancel
                 </button>
+                <button
+                  type="submit"
+                  className="btn text-white"
+                  style={{ backgroundColor: "#6EB2CC" }}
+                >
+                  Renew Plan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
+
+      {/* View Member Modal */}
+      {showViewModal && selectedMember && (
+    <div
+      className="modal fade show d-block"
+      tabIndex="-1"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+    >
+      <div className="modal-dialog modal-lg modal-dialog-centered">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title">Member Details</h5>
+            <button
+              type="button"
+              className="btn-close"
+              onClick={() => setShowViewModal(false)}
+            ></button>
+          </div>
+          <div
+            className="modal-body"
+            style={{ maxHeight: "70vh", overflowY: "auto" }}
+          >
+            <div className="row">
+              <div className="col-12 col-lg-4 text-center mb-4 mb-lg-0">
+                {selectedMember.profileImage ? (
+                  <img
+                    src={selectedMember.profileImage}
+                    alt="Profile"
+                    className="rounded-circle mb-3"
+                    style={{
+                      width: "120px",
+                      height: "120px",
+                      objectFit: "cover",
+                    }}
+                  />
+                ) : (
+                  <div
+                    className="d-flex justify-content-center align-items-center rounded-circle bg-primary text-white mx-auto mb-3"
+                    style={{ width: "120px", height: "120px" }}
+                  >
+                    <span className="fs-1 fw-bold">
+                      {selectedMember.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </span>
+                  </div>
+                )}
+                <h5 className="mb-2">{selectedMember.name}</h5>
+                <span
+                  className={`badge ${getStatusClass(
+                    selectedMember.status
+                  )}`}
+                >
+                  {selectedMember.status}
+                </span>
+              </div>
+              <div className="col-12 col-lg-8">
+                <div className="row g-3">
+                  <div className="col-12 col-sm-6">
+                    <strong>Phone:</strong>
+                    <div>{selectedMember.phone}</div>
+                  </div>
+                  <div className="col-12 col-sm-6">
+                    <strong>Email:</strong>
+                    <div>{selectedMember.email}</div>
+                  </div>
+                  <div className="col-12 col-sm-6">
+                    <strong>Gender:</strong>
+                    <div>{selectedMember.gender}</div>
+                  </div>
+                  <div className="col-12 col-sm-6">
+                    <strong>Plan:</strong>
+                    <div>{getPlanNameById(selectedMember.planId)}</div>
+                  </div>
+                  <div className="col-12 col-sm-6">
+                    <strong>Plan Start:</strong>
+                    <div>
+                      {new Date(
+                        selectedMember.planStart
+                      ).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className="col-12 col-sm-6">
+                    <strong>Expiry:</strong>
+                    <div>
+                      {new Date(selectedMember.expiry).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className="col-12 col-sm-6">
+                    <strong>Date of Birth:</strong>
+                    <div>
+                      {new Date(selectedMember.dob).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className="col-12 col-sm-6">
+                    <strong>Interested In:</strong>
+                    <div>{selectedMember.interestedIn}</div>
+                  </div>
+                  <div className="col-12">
+                    <strong>Address:</strong>
+                    <div>{selectedMember.address}</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+          <div className="modal-footer">
+            <button
+              type="button"
+              className="btn btn-secondary w-100 w-md-auto"
+              onClick={() => setShowViewModal(false)}
+            >
+              Close
+            </button>
+          </div>
         </div>
-      )}
+      </div>
+    </div>
+  )}
     </div>
   );
 };

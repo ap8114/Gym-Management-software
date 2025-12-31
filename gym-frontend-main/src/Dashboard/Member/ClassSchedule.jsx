@@ -23,7 +23,7 @@ const ClassSchedule = () => {
   };
 
   const user = getUserFromStorage();
-  const id = user?.id || null;
+  const id = user?.memberId || null;
   const adminId = user?.adminId || null;
 
   // Fetch classes (includes isBooked)
