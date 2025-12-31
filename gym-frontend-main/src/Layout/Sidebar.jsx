@@ -182,7 +182,9 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       { name: "Attendance", icon: faClipboardCheck, path: "/member/memberattendance" },
       { name: "My Plan", icon: faBookAtlas, path: "/member/viewplan" },
       { name: "Class Schedule", icon: faClapperboard, path: "/member/classSchedule" },
-      { name: "My Account", icon: faIdCard, path: "/member/account" }
+      { name: "My Account", icon: faIdCard, path: "/member/account" },
+
+      { name: "All Plans", icon: faIdCard, path: "/member/allplans" }
     ],
   };
 

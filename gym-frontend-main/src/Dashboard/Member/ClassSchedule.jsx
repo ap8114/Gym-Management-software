@@ -15,7 +15,9 @@ const ClassSchedule = () => {
   const getUserFromStorage = () => {
     try {
       const userStr = localStorage.getItem('user');
-      return userStr ? JSON.parse(userStr) : null;
+      const userData = userStr ? JSON.parse(userStr) : null;
+      console.log('User data from localStorage:', userData); // Debug log
+      return userData;
     } catch (err) {
       console.error('Error parsing user from localStorage:', err);
       return null;
@@ -23,13 +25,14 @@ const ClassSchedule = () => {
   };
 
   const user = getUserFromStorage();
-  const id = user?.memberId || null;
+  const memberId = user?.memberId || user?.id || null;
   const adminId = user?.adminId || null;
+  const id = user?.id || null;
 
   // Fetch classes (includes isBooked)
   useEffect(() => {
     const fetchClasses = async () => {
-      if (!id) {
+      if (!memberId) {
         setError('User not logged in.');
         setLoading(false);
         return;
@@ -37,29 +40,29 @@ const ClassSchedule = () => {
 
       try {
         setLoading(true);
-        const response = await axiosInstance.get(`class/classes/member/${id}/${adminId}`);
+        const response = await axiosInstance.get(`class/classes/member/${memberId}?adminId=${adminId}`);
 
-        if (response.data.success && Array.isArray(response.data.bookings)) {
-          const transformedClasses = response.data.bookings.map(booking => {
-            // Use real capacity if available, else fallback
-            const capacity = booking.capacity || Math.floor(Math.random() * 15) + 10;
-            const bookedSeats = booking.membersCount || 0;
+        if (response.data.success && Array.isArray(response.data.data)) {
+          const transformedClasses = response.data.data.map(classItem => {
+            // Parse time range from "13:23 - 15:23" format
+            const [startTime, endTime] = classItem.time ? classItem.time.split(' - ') : ['', ''];
 
             return {
-              id: booking.scheduleId,
-              bookingId: booking.id,
-              name: booking.className,
-              trainer_name: booking.trainerName,
-              date: booking.date.split('T')[0], // Extract date part
-              start_time: booking.startTime,
-              end_time: booking.endTime,
-              day: booking.day,
-              branch: booking.branch || 'Main Branch',
-              status: 'Active', // Assuming all fetched bookings are active
-              capacity,
-              booked_seats: bookedSeats,
-              isBooked: true, // Since these are bookings, they are already booked
-              id: booking.id
+              id: classItem.id,
+              bookingId: classItem.bookingId,
+              name: classItem.className,
+              trainer_name: classItem.trainer,
+              date: classItem.date.split('T')[0], // Extract date part
+              start_time: startTime,
+              end_time: endTime,
+              day: classItem.day,
+              branch: 'Main Branch', // Default branch
+              status: classItem.status,
+              capacity: classItem.capacity,
+              booked_seats: classItem.membersCount,
+              isBooked: classItem.isBooked,
+              scheduleId: classItem.id,
+              bookedMember: classItem.bookedMember
             };
           });
 
@@ -77,7 +80,7 @@ const ClassSchedule = () => {
     };
 
     fetchClasses();
-  }, [id]);
+  }, [memberId]);
 
   const formatTime = (timeString) => {
     if (!timeString) return '';
@@ -87,15 +90,6 @@ const ClassSchedule = () => {
     const formattedHour = hour % 12 || 12;
     return `${formattedHour}:${minutes} ${ampm}`;
   };
-
-  // const formatPrice = (price) => {
-  //   return new Intl.NumberFormat('en-IN', {
-  //     style: 'currency',
-  //     currency: 'INR',
-  //     minimumFractionDigits: 0,
-  //     maximumFractionDigits: 0,
-  //   }).format(price);
-  // };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -136,19 +130,37 @@ const ClassSchedule = () => {
 
     try {
       const payload = {
-        id: id,
-        scheduleId: selectedClass.id
+        memberId: id,
+        scheduleId: selectedClass.scheduleId || selectedClass.id
       };
+
+      // Only add adminId if it exists
+      if (adminId) {
+        payload.adminId = adminId;
+      }
+
+      console.log('Booking payload:', payload); // Debug log
 
       const response = await axiosInstance.post('class/book', payload);
 
       if (response.data.success) {
         alert(`✅ Successfully booked ${selectedClass.name}!`);
 
-        // ✅ Update UI: mark as booked without refetching
+        // ✅ Update UI: mark as booked and increment booked seats
         setGroupClasses(prev =>
           prev.map(cls =>
-            cls.id === selectedClass.id ? { ...cls, isBooked: true } : cls
+            cls.id === selectedClass.id ? {
+              ...cls,
+              isBooked: true,
+              booked_seats: cls.booked_seats + 1,
+              bookingId: response.data.bookingId || cls.bookingId,
+              bookedMember: {
+                id: id,
+                name: user?.fullName || 'Current User',
+                email: user?.email || '',
+                phone: user?.phone || ''
+              }
+            } : cls
           )
         );
 
@@ -157,10 +169,7 @@ const ClassSchedule = () => {
         throw new Error(response.data.message || 'Booking failed');
       }
     } catch (err) {
-      console.error('Booking error:', err);
-      const errorMsg = err.response?.data?.message || 'Failed to book class. Please try again.';
-      setBookingError(errorMsg);
-      alert(`❌ ${errorMsg}`);
+
     } finally {
       setBookingLoading(false);
     }
@@ -171,15 +180,15 @@ const ClassSchedule = () => {
       <div className="p-2">
         <div className="row mb-3">
           <div className="col-12 text-center text-md-start">
-            <h1 className="fw-bold">My Booked Classes</h1>
-            <p className="text-muted mb-0">View your upcoming class bookings</p>
+            <h1 className="fw-bold">Class Schedule</h1>
+            <p className="text-muted mb-0">View and book available classes</p>
           </div>
         </div>
         <div className="text-center py-5">
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
-          <p className="mt-3">Loading bookings...</p>
+          <p className="mt-3">Loading classes...</p>
         </div>
       </div>
     );
@@ -189,8 +198,8 @@ const ClassSchedule = () => {
     <div className="p-2">
       <div className="row mb-3">
         <div className="col-12 text-center text-md-start">
-          <h1 className="fw-bold">My Booked Classes</h1>
-          <p className="text-muted mb-0">View your upcoming class bookings</p>
+          <h1 className="fw-bold">Class Schedule</h1>
+          <p className="text-muted mb-0">View and book available classes</p>
         </div>
       </div>
 
@@ -198,15 +207,32 @@ const ClassSchedule = () => {
         {groupClasses.map(cls => {
           const isFull = cls.booked_seats >= cls.capacity;
           const isActive = cls.status === 'Active';
-          const isBooked = cls.isBooked; // These are all booked since they come from bookings API
+          const isBooked = cls.isBooked;
 
-          let buttonText = 'View Details';
+          let buttonText = 'Book Now';
           let buttonDisabled = false;
           let buttonStyle = '#2f6a87';
+          let badgeText = 'Available';
+          let badgeStyle = 'bg-success';
 
-          // Since these are booked classes, we always show as booked
-          buttonText = 'View Booking';
-          buttonStyle = '#2f6e34ff';
+          if (isBooked) {
+            buttonText = 'View Booking';
+            buttonStyle = '#2f6e34ff';
+            badgeText = 'Booked';
+            badgeStyle = 'bg-primary';
+          } else if (isFull) {
+            buttonText = 'Class Full';
+            buttonDisabled = true;
+            buttonStyle = '#6c757d';
+            badgeText = 'Full';
+            badgeStyle = 'bg-danger';
+          } else if (!isActive) {
+            buttonText = 'Inactive';
+            buttonDisabled = true;
+            buttonStyle = '#6c757d';
+            badgeText = 'Inactive';
+            badgeStyle = 'bg-secondary';
+          }
 
           return (
             <div key={`${cls.id}-${cls.bookingId}`} className="col-12 col-md-6 col-lg-4">
@@ -221,7 +247,8 @@ const ClassSchedule = () => {
                   <h5 className="mb-0 fw-bold">{cls.name}</h5>
                   <small className="text-muted">{cls.branch}</small>
                   <div className="mt-2">
-                    <span className="badge bg-success">Booked</span>
+                    <span className={`badge ${badgeStyle}`}>{badgeText}</span>
+                    <span className="badge bg-light text-dark ms-2">{cls.booked_seats}/{cls.capacity}</span>
                   </div>
                 </div>
                 <div className="card-body p-4">
@@ -309,12 +336,16 @@ const ClassSchedule = () => {
                         </div>
                       </div>
                       <div className="text-end">
-                        <span className="badge bg-light text-success fw-bold">✓ BOOKED</span>
+                        {selectedClass.isBooked ? (
+                          <span className="badge bg-light text-success fw-bold">✓ BOOKED</span>
+                        ) : (
+                          <span className="badge bg-light text-primary fw-bold">AVAILABLE</span>
+                        )}
                       </div>
                     </div>
                   </div>
                   <div className="card-body p-4">
-                    <h5 className="fw-bold mb-3">Booking Information</h5>
+                    <h5 className="fw-bold mb-3">{selectedClass.isBooked ? 'Booking Information' : 'Class Information'}</h5>
                     <div className="row g-4 mb-4">
                       <div className="col-md-6">
                         <div className="d-flex align-items-center">
@@ -327,17 +358,19 @@ const ClassSchedule = () => {
                           </div>
                         </div>
                       </div>
-                      <div className="col-md-6">
-                        <div className="d-flex align-items-center">
-                          <div className="bg-light rounded-circle p-2 me-3">
-                            <span className="text-primary">🆔</span>
-                          </div>
-                          <div>
-                            <div className="fw-medium">Booking ID</div>
-                            <div>#{selectedClass.bookingId}</div>
+                      {selectedClass.isBooked && selectedClass.bookingId && (
+                        <div className="col-md-6">
+                          <div className="d-flex align-items-center">
+                            <div className="bg-light rounded-circle p-2 me-3">
+                              <span className="text-primary">🆔</span>
+                            </div>
+                            <div>
+                              <div className="fw-medium">Booking ID</div>
+                              <div>#{selectedClass.bookingId}</div>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      )}
                       <div className="col-md-6">
                         <div className="d-flex align-items-center">
                           <div className="bg-light rounded-circle p-2 me-3">
@@ -364,22 +397,64 @@ const ClassSchedule = () => {
                           </div>
                         </div>
                       </div>
+                      {!selectedClass.isBooked && (
+                        <div className="col-md-6">
+                          <div className="d-flex align-items-center">
+                            <div className="bg-light rounded-circle p-2 me-3">
+                              <span className="text-primary">👥</span>
+                            </div>
+                            <div>
+                              <div className="fw-medium">Availability</div>
+                              <div>{selectedClass.booked_seats}/{selectedClass.capacity} seats filled</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="text-center">
-                      <button
-                        className="btn btn-lg px-5 py-3 fw-bold"
-                        style={{
-                          backgroundColor: '#6c757d',
-                          color: 'white',
-                          borderRadius: '8px',
-                          border: 'none',
-                          fontSize: '1.1rem'
-                        }}
-                        onClick={closeBookingModal}
-                      >
-                        Close
-                      </button>
+                      {selectedClass.isBooked ? (
+                        <button
+                          className="btn btn-lg px-5 py-3 fw-bold"
+                          style={{
+                            backgroundColor: '#6c757d',
+                            color: 'white',
+                            borderRadius: '8px',
+                            border: 'none',
+                            fontSize: '1.1rem'
+                          }}
+                          onClick={closeBookingModal}
+                        >
+                          Close
+                        </button>
+                      ) : (
+                        <div className="d-flex gap-3 justify-content-center">
+                          <button
+                            className="btn btn-outline-secondary btn-lg px-4 py-3 fw-bold"
+                            style={{
+                              borderRadius: '8px',
+                              fontSize: '1.1rem'
+                            }}
+                            onClick={closeBookingModal}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            className="btn btn-lg px-5 py-3 fw-bold"
+                            style={{
+                              backgroundColor: '#2f6a87',
+                              color: 'white',
+                              borderRadius: '8px',
+                              border: 'none',
+                              fontSize: '1.1rem'
+                            }}
+                            onClick={handleConfirmBooking}
+                            disabled={bookingLoading || selectedClass.booked_seats >= selectedClass.capacity}
+                          >
+                            {bookingLoading ? 'Booking...' : 'Confirm Booking'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

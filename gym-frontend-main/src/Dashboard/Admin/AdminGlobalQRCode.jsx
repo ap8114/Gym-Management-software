@@ -30,19 +30,22 @@ const AdminGlobalQRCode = () => {
   const userData = JSON.parse(localStorage.getItem('user') || '{}');
   const branchId = userData.branchId || userData.id || 1;
   const branchName = userData.branchName || userData.fullName || 'Gym Branch';
+  const adminId = userData.id; // Admin's own ID
   
-  // Generate global QR code value
+  // Generate global QR code value - Admin's QR code for their staff to scan
   const qrValue = useMemo(() => {
     const qrData = {
       purpose: "gym_checkin_global",
-      branchId: branchId,
+      adminId: adminId, // Admin ID - required for staff validation
+      adminName: userData.fullName || 'Admin',
+      branchId: branchId, // Keep for reference but validation is based on adminId
       branchName: branchName,
       issued_at: issuedAt.toISOString(),
       nonce: qrNonce,
       expires_at: new Date(issuedAt.getTime() + CODE_TTL * 1000).toISOString()
     };
     return JSON.stringify(qrData);
-  }, [qrNonce, branchId, branchName, issuedAt]);
+  }, [qrNonce, adminId, branchId, branchName, issuedAt, userData.fullName]);
 
   // Format dates for display
   const formattedIssueDate = format(issuedAt, "MMM dd, yyyy HH:mm:ss");
@@ -256,21 +259,27 @@ const AdminGlobalQRCode = () => {
                   </p>
                 </div>
                 <div className="list-group-item">
-                  <h6 className="mb-1">2. Member Scanning</h6>
+                  <h6 className="mb-1">2. Staff Scanning</h6>
                   <p className="mb-0 text-muted small">
-                    Members will scan this QR code using their mobile app to check in
+                    Your staff (Members, Receptionists, General Trainers, Personal Trainers) will scan this QR code using their mobile app to check in
                   </p>
                 </div>
                 <div className="list-group-item">
-                  <h6 className="mb-1">3. Auto Refresh</h6>
+                  <h6 className="mb-1">3. Admin Cannot Check-in</h6>
+                  <p className="mb-0 text-muted small">
+                    <strong>Note:</strong> Admin cannot check-in themselves. Only staff members assigned to you can scan and check-in.
+                  </p>
+                </div>
+                <div className="list-group-item">
+                  <h6 className="mb-1">4. Auto Refresh</h6>
                   <p className="mb-0 text-muted small">
                     QR code automatically refreshes every hour for security. You can also manually generate a new code.
                   </p>
                 </div>
                 <div className="list-group-item">
-                  <h6 className="mb-1">4. Security</h6>
+                  <h6 className="mb-1">5. Security</h6>
                   <p className="mb-0 text-muted small">
-                    Each QR code has a unique nonce and expires after 1 hour to prevent unauthorized access
+                    Each QR code contains your Admin ID. Only staff assigned to you can successfully check-in using this QR code.
                   </p>
                 </div>
               </div>
@@ -311,4 +320,3 @@ const AdminGlobalQRCode = () => {
 };
 
 export default AdminGlobalQRCode;
-

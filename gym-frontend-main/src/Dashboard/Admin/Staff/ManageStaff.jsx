@@ -3,6 +3,7 @@ import { FaEye, FaEdit, FaTrashAlt, FaPlus, FaSearch, FaFilter, FaCaretDown } fr
 import 'bootstrap/dist/css/bootstrap.min.css';
 import GetAdminId from '../../../Api/GetAdminId';
 import axiosInstance from "../../../Api/axiosInstance";
+import ImageCropper from '../../../Components/ImageCropper';
 
 const ManageStaff = () => {
   const adminId = GetAdminId();
@@ -32,6 +33,11 @@ const ManageStaff = () => {
   const [staffStatus, setStaffStatus] = useState('Active');
   const [profilePreview, setProfilePreview] = useState(null);
   const [profileFile, setProfileFile] = useState(null);
+
+  // Image cropping states
+  const [showCropper, setShowCropper] = useState(false);
+  const [cropperImage, setCropperImage] = useState(null);
+  const [cropperMode, setCropperMode] = useState(null); // 'add' or 'edit'
 
   const customColor = '#6EB2CC';
   const [branches, setBranches] = useState([]);
@@ -332,9 +338,42 @@ const ManageStaff = () => {
         alert('Please upload an image file.');
         return;
       }
-      setProfileFile(file);
-      setProfilePreview(URL.createObjectURL(file));
+      
+      // Create a preview URL and show cropper
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCropperImage(reader.result);
+        setCropperMode(modalType === 'add' ? 'add' : 'edit');
+        setShowCropper(true);
+      };
+      reader.readAsDataURL(file);
     }
+  };
+
+  // Handle cropped image
+  const handleCropComplete = (croppedImageBlob) => {
+    // Convert blob to file
+    const croppedFile = new File([croppedImageBlob], 'profile-image.jpg', {
+      type: 'image/jpeg',
+      lastModified: Date.now(),
+    });
+
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(croppedImageBlob);
+    
+    setProfileFile(croppedFile);
+    setProfilePreview(previewUrl);
+    
+    setShowCropper(false);
+    setCropperImage(null);
+    setCropperMode(null);
+  };
+
+  // Handle cropper cancel
+  const handleCropperCancel = () => {
+    setShowCropper(false);
+    setCropperImage(null);
+    setCropperMode(null);
   };
 
   const handleFormSubmit = async () => {
@@ -865,6 +904,15 @@ const ManageStaff = () => {
           color: white !important;
         }
       `}</style>
+      
+      {/* Image Cropper Modal */}
+      {showCropper && cropperImage && (
+        <ImageCropper
+          image={cropperImage}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropperCancel}
+        />
+      )}
     </div>
   );
 };

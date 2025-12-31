@@ -136,6 +136,7 @@ import ReportsAttendance from "./Dashboard/Receptionist/ReportsAttendance";
 import ReportsClasses from "./Dashboard/Receptionist/ReportsClasses";
 import PersonsalReportsClasses from "./Dashboard/PersonalTrainer/PersonsalReportsClasses";
 import ReceptionistHouseKeepingAttendanceCheckOut from "./Dashboard/Receptionist/ReceptionistHouseKeepingAttendanceCheckOut";
+import MemberAllPlans from "./Dashboard/Member/MemberAllPlans";
 
 
 
@@ -280,7 +281,7 @@ function App() {
                   <Route path="/member/memberattendance" element={<ProtectedRoute allowedRoles={["MEMBER", "ADMIN"]}><MemberAttendance /></ProtectedRoute>} />
                   <Route path="/member/viewplan" element={<ProtectedRoute allowedRoles={["MEMBER", "ADMIN"]}><ViewPlan /></ProtectedRoute>} />
                   <Route path="/member/requestplan" element={<ProtectedRoute allowedRoles={["MEMBER", "ADMIN"]}><RequestPlan /></ProtectedRoute>} />
-
+                  <Route path="/member/allplans" element={<ProtectedRoute allowedRoles={["MEMBER", "ADMIN"]}><MemberAllPlans /></ProtectedRoute>} />
                   {/* <Route path="/member/memberbooking" element={<MemberBooking />} /> */}
                   <Route path="/receptionist/dashboard" element={<ProtectedRoute allowedRoles={["RECEPTIONIST", "ADMIN", "SUPERADMIN"]}><ReceptionistDashboard /></ProtectedRoute>} />
                   <Route path="/receptionist/walk-in-registration" element={<ProtectedRoute allowedRoles={["RECEPTIONIST", "ADMIN", "SUPERADMIN"]}><ReceptionistWalkinMember /></ProtectedRoute>} />

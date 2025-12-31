@@ -21,6 +21,7 @@ import {
 import GetAdminId from "../../Api/GetAdminId";
 import html2canvas from "html2canvas";
 import GymLogo from "../../assets/Logo/Logo1.png";
+import ImageCropper from "../../Components/ImageCropper";
 
 const AdminMember = () => {
   const [members, setMembers] = useState([]);
@@ -35,6 +36,11 @@ const AdminMember = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [membersLoading, setMembersLoading] = useState(false);
+
+  // Image cropping states
+  const [showCropper, setShowCropper] = useState(false);
+  const [cropperImage, setCropperImage] = useState(null);
+  const [cropperMode, setCropperMode] = useState(null); // 'add' or 'edit'
 
   // Plans state
   const [apiPlans, setApiPlans] = useState([]);
@@ -106,25 +112,58 @@ const AdminMember = () => {
   const handleProfileImageChange = (e, isEdit = false) => {
     const file = e.target.files[0];
     if (file) {
-      // Create a preview URL for immediate display
+      // Check if file is an image
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file.');
+        return;
+      }
+      
+      // Create a preview URL and show cropper
       const reader = new FileReader();
       reader.onloadend = () => {
-        if (isEdit) {
-          setEditMember({
-            ...editMember,
-            profileImage: file, // Store the actual file
-            profileImagePreview: reader.result, // For preview
-          });
-        } else {
-          setNewMember({
-            ...newMember,
-            profileImage: file, // Store the actual file
-            profileImagePreview: reader.result, // For preview
-          });
-        }
+        setCropperImage(reader.result);
+        setCropperMode(isEdit ? 'edit' : 'add');
+        setShowCropper(true);
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  // Handle cropped image
+  const handleCropComplete = (croppedImageBlob) => {
+    // Convert blob to file
+    const croppedFile = new File([croppedImageBlob], 'profile-image.jpg', {
+      type: 'image/jpeg',
+      lastModified: Date.now(),
+    });
+
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(croppedImageBlob);
+
+    if (cropperMode === 'edit') {
+      setEditMember({
+        ...editMember,
+        profileImage: croppedFile,
+        profileImagePreview: previewUrl,
+      });
+    } else {
+      setNewMember({
+        ...newMember,
+        profileImage: croppedFile,
+        profileImagePreview: previewUrl,
+      });
+    }
+
+    setShowCropper(false);
+    setCropperImage(null);
+    setCropperMode(null);
+  };
+
+  // Handle cropper cancel
+  const handleCropperCancel = () => {
+    setShowCropper(false);
+    setCropperImage(null);
+    setCropperMode(null);
   };
 
   // Filter members based on search term and status
@@ -2182,6 +2221,14 @@ const AdminMember = () => {
       </div>
     </div>
   )}
+      {/* Image Cropper Modal */}
+      {showCropper && cropperImage && (
+        <ImageCropper
+          image={cropperImage}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropperCancel}
+        />
+      )}
     </div>
   );
 };

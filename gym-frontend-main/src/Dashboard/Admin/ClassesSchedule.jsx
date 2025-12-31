@@ -141,7 +141,7 @@ const ClassesSchedule = () => {
     setSelectedClass({
       className: '',
       trainerId: trainers.length > 0 ? trainers[0].trainerId : '', // Default to first trainer
-      // branchId: branches.length > 0 ? branches[0].id : '', // Commented out branch field
+      branchId: branches.length > 0 ? branches[0].id : '',
       date: '',
       day: '',
       startTime: '',
@@ -168,7 +168,7 @@ const ClassesSchedule = () => {
     }
     
     // Find branch ID from name
-    // const branch = branches.find(b => b.name === gymClass.branch); // Commented out branch field
+    const branch = branches.find(b => b.name === gymClass.branch);
     
     // Find trainer ID from name
     let trainerId = '';
@@ -181,7 +181,7 @@ const ClassesSchedule = () => {
       ...gymClass, 
       members: [], // API doesn't return members, so leave empty
       trainerId,
-      // branchId: branch?.id || '', // Commented out branch field
+      branchId: branch?.id || '',
       startTime,
       endTime
     });
@@ -203,7 +203,7 @@ const ClassesSchedule = () => {
     }
     
     // Find branch ID from name
-    // const branch = branches.find(b => b.name === gymClass.branch); // Commented out branch field
+    const branch = branches.find(b => b.name === gymClass.branch);
     
     // Find trainer ID from name
     let trainerId = '';
@@ -216,7 +216,7 @@ const ClassesSchedule = () => {
       ...gymClass, 
       members: [], // No member editing from list
       trainerId,
-      // branchId: branch?.id || '', // Commented out branch field
+      branchId: branch?.id || '',
       startTime,
       endTime
     });
@@ -284,7 +284,7 @@ const ClassesSchedule = () => {
     const {
       className,
       trainerId,
-      // branchId, // Commented out branch field
+      branchId,
       date,
       day,
       startTime,
@@ -293,7 +293,7 @@ const ClassesSchedule = () => {
       status
     } = selectedClass;
 
-    if (!className || !trainerId || !date || !startTime || !endTime) { // Removed branchId from validation
+    if (!className || !trainerId || !date || !startTime || !endTime) {
       alert("Please fill all required fields.");
       return;
     }
@@ -301,10 +301,10 @@ const ClassesSchedule = () => {
     setLoading(true);
     try {
       const payload = {
-        adminId: Number(adminId), // Add adminId to payload
+        adminId: Number(adminId),
         className,
-        trainerId: Number(trainerId), // Convert to number since API returns numeric IDs
-        // branchId: Number(branchId), // Commented out branch field
+        trainerId: Number(trainerId),
+        branchId: branchId ? Number(branchId) : null,
         date,
         day,
         startTime,
@@ -312,6 +312,8 @@ const ClassesSchedule = () => {
         capacity: Number(capacity),
         status
       };
+
+      console.log('Sending payload:', payload); // Debug log
 
       if (modalType === 'add') {
         const res = await axiosInstance.post(`class/schedule/create`, payload);
