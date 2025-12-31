@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { FaEye, FaEdit, FaTrashAlt, FaUserPlus, FaTimes } from "react-icons/fa";
 import "bootstrap/dist/css/bootstrap.min.css";
-import GetAdminId from "../../Api/GetAdminId";
 import axiosInstance from "../../Api/axiosInstance";
 
 const PersonalTrainerClassesSchedule = () => {
-  const adminId = GetAdminId();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [modalType, setModalType] = useState("add");
@@ -19,6 +17,19 @@ const PersonalTrainerClassesSchedule = () => {
   const [members, setMembers] = useState([]); // For member dropdown
   const [trainers, setTrainers] = useState([]); // For trainers from API
 
+
+  const getUserFromStorage = () => {
+    try {
+      const userStr = localStorage.getItem("user");
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (err) {
+      console.error("Error parsing user from localStorage:", err);
+      return null;
+    }
+  };
+  const user = getUserFromStorage();
+  const adminId = user?.adminId || null;
+
   useEffect(() => {
     if (!adminId) {
       setError("Admin ID not found. Please log in.");
@@ -31,18 +42,30 @@ const PersonalTrainerClassesSchedule = () => {
     setLoading(true);
     try {
       // Fetch classes
-      const classesRes = await axiosInstance.get(`class/scheduled/all`);
+      const classesRes = await axiosInstance.get(`class/scheduled/all/${adminId}`);
       let allClasses = [];
       if (classesRes.data.success) {
         allClasses = classesRes.data.data || [];
       }
 
-      // 🔥 FILTER: Keep only classes where trainer is exactly "Personal"
+      // 🔥 FILTER: Keep only classes where trainer is NOT "General" (Personal Trainers only)
       const personalClasses = allClasses.filter(
-        (cls) => cls.trainer === "Personal"
+        (cls) => cls.trainer && cls.trainer.toLowerCase() !== "general"
       );
 
-      setClasses(personalClasses);
+      // Transform data to match the new API response structure
+      const transformedClasses = personalClasses.map(classItem => ({
+        id: classItem.id,
+        className: classItem.className,
+        trainer: classItem.trainer,
+        date: classItem.date,
+        time: classItem.time,
+        day: classItem.day || '', // Handle empty day field
+        status: classItem.status,
+        membersCount: classItem.membersCount || 0
+      }));
+
+      setClasses(transformedClasses);
 
       // Fetch trainers data
       try {
@@ -121,7 +144,7 @@ const PersonalTrainerClassesSchedule = () => {
     // Find trainer ID from name if trainers data is available
     let trainerId = "";
     let trainerName = gymClass.trainer || "";
-    
+
     if (gymClass.trainer && trainers.length > 0) {
       const trainer = trainers.find((t) => t.fullName === gymClass.trainer);
       trainerId = trainer ? trainer.id : "";
@@ -180,9 +203,8 @@ const PersonalTrainerClassesSchedule = () => {
     };
     return (
       <span
-        className={`badge rounded-pill ${
-          badgeClasses[status] || "bg-secondary"
-        } px-3 py-1`}
+        className={`badge rounded-pill ${badgeClasses[status] || "bg-secondary"
+          } px-3 py-1`}
       >
         {status}
       </span>
@@ -199,7 +221,7 @@ const PersonalTrainerClassesSchedule = () => {
     if (selectedClass?.trainerName) {
       return selectedClass.trainerName;
     }
-    
+
     // Otherwise try to find by ID
     const trainer = trainers.find((t) => t.id === trainerId);
     return trainer?.fullName || "—";
@@ -293,7 +315,9 @@ const PersonalTrainerClassesSchedule = () => {
             <p className="mb-1">
               <strong>Trainer:</strong> {gymClass.trainer}
             </p>
-            {/* <p className="mb-1"><strong>Branch:</strong> {gymClass.branch}</p> Commented out branch field */}
+            <p className="mb-1">
+              <strong>Members:</strong> <span className="badge bg-info">{gymClass.membersCount || 0}</span>
+            </p>
           </div>
           <div className="col-6">
             <p className="mb-1">
@@ -303,6 +327,11 @@ const PersonalTrainerClassesSchedule = () => {
             <p className="mb-1">
               <strong>Time:</strong> {gymClass.time}
             </p>
+            {gymClass.day && (
+              <p className="mb-1">
+                <strong>Day:</strong> {gymClass.day}
+              </p>
+            )}
           </div>
         </div>
         <div className="d-flex justify-content-between align-items-center">
@@ -316,7 +345,7 @@ const PersonalTrainerClassesSchedule = () => {
           </div>
           <div>
             {gymClass.membersCount !== undefined &&
-            gymClass.membersCount > 0 ? (
+              gymClass.membersCount > 0 ? (
               <span className="badge bg-light text-dark">
                 {gymClass.membersCount}{" "}
                 {gymClass.membersCount === 1 ? "Member" : "Members"}
@@ -336,10 +365,20 @@ const PersonalTrainerClassesSchedule = () => {
     <div className="container-fluid py-4">
       <div className="row mb-4 align-items-center">
         <div className="col-12 col-lg-8">
-          <h2 className="fw-bold">All Class Scheduled</h2>
+          <h2 className="fw-bold">Personal Trainer Classes Schedule</h2>
           <p className="text-muted mb-0">
-            Manage all gym classes, trainers, and member assignments.
+            View and manage personal trainer classes (excluding general trainer classes).
           </p>
+          {!loading && (
+            <div className="mt-2">
+              <span className="badge bg-info text-white me-2">
+                {classes.length} Personal Trainer Classes
+              </span>
+              <span className="badge bg-light text-dark">
+                Total Members Enrolled: {classes.reduce((sum, cls) => sum + (cls.membersCount || 0), 0)}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -360,10 +399,10 @@ const PersonalTrainerClassesSchedule = () => {
                     <tr>
                       <th>CLASS NAME</th>
                       <th>TRAINER</th>
-                      {/* <th>BRANCH</th> Commented out branch field */}
                       <th>DATE</th>
                       <th>TIME</th>
                       <th>DAY</th>
+                      <th>MEMBERS</th>
                       <th>STATUS</th>
                       <th className="text-center">ACTIONS</th>
                     </tr>
@@ -371,12 +410,26 @@ const PersonalTrainerClassesSchedule = () => {
                   <tbody>
                     {classes.map((c) => (
                       <tr key={c.id}>
-                        <td>{c.className}</td>
-                        <td>{c.trainer}</td>
-                        {/* <td><span className="badge bg-primary-subtle text-primary-emphasis px-3 py-1">{c.branch}</span></td> Commented out branch field */}
+                        <td>
+                          <div className="fw-semibold">{c.className}</div>
+                        </td>
+                        <td>
+                          <span className="badge bg-primary-subtle text-primary-emphasis px-3 py-1">
+                            {c.trainer}
+                          </span>
+                        </td>
                         <td>{c.date ? c.date.split("T")[0] : ""}</td>
-                        <td>{c.time}</td>
-                        <td>{c.day}</td>
+                        <td>
+                          <span className="badge bg-light text-dark">{c.time}</span>
+                        </td>
+                        <td>
+                          {c.day && <span className="badge bg-secondary-subtle text-secondary-emphasis">{c.day}</span>}
+                        </td>
+                        <td>
+                          <span className="badge bg-info text-white">
+                            {c.membersCount || 0} members
+                          </span>
+                        </td>
                         <td>{getStatusBadge(c.status)}</td>
                         <td className="text-center">
                           <div className="d-flex justify-content-center gap-1">
@@ -437,8 +490,8 @@ const PersonalTrainerClassesSchedule = () => {
                   {modalType === "add"
                     ? "Add New Class"
                     : modalType === "view"
-                    ? "Class Details"
-                    : "Edit Class"}
+                      ? "Class Details"
+                      : "Edit Class"}
                 </h5>
                 <button
                   type="button"
@@ -492,7 +545,7 @@ const PersonalTrainerClassesSchedule = () => {
                         />
                       </div>
                     </div>
-                    
+
                     <div className="row mb-3">
                       <div className="col-md-6 mb-3">
                         <label className="form-label fw-semibold">Day</label>
@@ -509,7 +562,7 @@ const PersonalTrainerClassesSchedule = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="row mb-3">
                       <div className="col-md-6 mb-3">
                         <label className="form-label fw-semibold">Capacity</label>
@@ -777,8 +830,8 @@ const PersonalTrainerClassesSchedule = () => {
                         {loading
                           ? "Saving..."
                           : modalType === "add"
-                          ? "Add Class"
-                          : "Update Class"}
+                            ? "Add Class"
+                            : "Update Class"}
                       </button>
                     </div>
                   </div>
