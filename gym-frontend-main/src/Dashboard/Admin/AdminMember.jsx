@@ -20,7 +20,9 @@ import {
 } from "lucide-react";
 import GetAdminId from "../../Api/GetAdminId";
 import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import GymLogo from "../../assets/Logo/Logo1.png";
+import { numberToWords } from "../../utils/numberToWords";
 import ImageCropper from "../../Components/ImageCropper";
 
 const AdminMember = () => {
@@ -569,42 +571,38 @@ const AdminMember = () => {
     return plan ? plan.name : "Unknown Plan";
   };
 
-// Get filtered plans based on API response structure
-const getFilteredPlans = (interestedIn) => {
-  if (!plansLoaded || apiPlans.length === 0) {
-    console.log("Plans not loaded or empty.");
-    return [];
-  }
+  // Get filtered plans based on API response structure
+  const getFilteredPlans = (interestedIn) => {
+    if (!plansLoaded || apiPlans.length === 0) {
+      console.log("Plans not loaded or empty.");
+      return [];
+    }
 
-  let filtered = [];
-  switch (interestedIn) {
-    case "Personal Training":
-      // Filter for plans where type is "PERSONAL" OR type is "MEMBER" with trainerType "personal"
-      filtered = apiPlans.filter(
-        (plan) => 
-          plan.type === "PERSONAL" || 
-          (plan.type === "MEMBER" && plan.trainerType === "personal")
-      );
-      break;
-    case "Personal Trainer":
-      // Filter for plans where trainerType is "personal"
-      filtered = apiPlans.filter((plan) => plan.trainerType === "personal");
-      break;
-    case "General Trainer":
-      // Filter for plans where trainerType is "general"
-      filtered = apiPlans.filter((plan) => plan.trainerType === "general");
-      break;
-    case "Group Classes":
-      // Filter for plans where type is "GROUP"
-      filtered = apiPlans.filter((plan) => plan.type === "GROUP");
-      break;
-    default:
-      filtered = [];
-      break;
-  }
-  console.log(`Filtering for "${interestedIn}":`, filtered);
-  return filtered;
-};
+    let filtered = [];
+    switch (interestedIn) {
+      case "Personal Training":
+        // Filter for plans where type is "PERSONAL"
+        filtered = apiPlans.filter((plan) => plan.type === "PERSONAL");
+        break;
+      case "Personal Trainer":
+        // Filter for plans where trainerType is "personal"
+        filtered = apiPlans.filter((plan) => plan.trainerType === "personal");
+        break;
+      case "General Trainer":
+        // Filter for plans where trainerType is "general"
+        filtered = apiPlans.filter((plan) => plan.trainerType === "general");
+        break;
+      case "Group Classes":
+        // Filter for plans where type is "GROUP"
+        filtered = apiPlans.filter((plan) => plan.type === "GROUP");
+        break;
+      default:
+        filtered = [];
+        break;
+    }
+    console.log(`Filtering for "${interestedIn}":`, filtered);
+    return filtered;
+  };
 
   // Function to generate and download receipt as image using html2canvas
   const handleDownloadReceipt = async (member) => {
@@ -612,17 +610,28 @@ const getFilteredPlans = (interestedIn) => {
       // Fetch full member details to get payment information
       let memberDetails = null;
       let paymentData = null;
+      let adminDetails = null;
 
+      // Get adminId from member API response
+      let memberAdminId = null;
+      
       try {
         const memberResponse = await axiosInstance.get(
           `${BaseUrl}members/detail/${member.id}`
         );
         if (memberResponse.data?.success) {
-          memberDetails = memberResponse.data.data;
+          // API returns { success: true, member: {...} } or { success: true, data: {...} }
+          memberDetails = memberResponse.data.member || memberResponse.data.data;
+          // Get adminId from member response
+          memberAdminId = memberDetails?.adminId || member?.adminId || adminId;
         }
       } catch (err) {
         console.log("Member details not available");
+        memberAdminId = member?.adminId || adminId; // Fallback to member object or current adminId
       }
+
+      // Use memberAdminId for fetching admin details
+      const finalAdminId = memberAdminId || adminId;
 
       // Fetch payment history for the member
       try {
@@ -636,6 +645,48 @@ const getFilteredPlans = (interestedIn) => {
         console.log("Payment history not available");
       }
 
+      // Fetch admin profile for gymAddress (from member's adminId)
+      try {
+        const adminResponse = await axiosInstance.get(
+          `${BaseUrl}auth/user/${finalAdminId}`
+        );
+        if (adminResponse.data) {
+          adminDetails = adminResponse.data;
+        }
+      } catch (err) {
+        console.log("Admin details not available, using localStorage data");
+        // Fallback to localStorage user data
+        const userData = getUserFromStorage();
+        adminDetails = {
+          fullName: userData?.fullName || "Gym Name",
+          gymName: userData?.gymName || userData?.fullName || "Gym Name",
+          gymAddress: userData?.gymAddress || userData?.address || "Gym Address",
+          gstNumber: userData?.gstNumber || "",
+          tax: userData?.tax || "5",
+          phone: userData?.phone || "",
+          email: userData?.email || ""
+        };
+      }
+
+      // Fetch from app-settings to get gymName (from member's adminId)
+      try {
+        const settingsResponse = await axiosInstance.get(
+          `adminSettings/app-settings/admin/${finalAdminId}`
+        );
+        if (settingsResponse.data?.data) {
+          // Merge settings data with adminDetails, prioritizing settings for gymName
+          const settingsData = settingsResponse.data.data;
+          if (settingsData.gym_name || settingsData.gymName) {
+            adminDetails = { 
+              ...adminDetails, 
+              gymName: settingsData.gym_name || settingsData.gymName 
+            };
+          }
+        }
+      } catch (err) {
+        console.log("Settings not available, using admin profile data only");
+      }
+
       // Get plan details
       const plan = apiPlans.find((p) => p.id === parseInt(member.planId));
       const planName = plan ? plan.name : "Membership Plan";
@@ -644,7 +695,7 @@ const getFilteredPlans = (interestedIn) => {
       const planSessions = plan ? plan.sessions : "N/A";
 
       // Use payment data if available, otherwise use member details or plan price
-      const totalAmount = paymentData?.amount || memberDetails?.amountPaid || planPrice || 0;
+      const baseAmount = paymentData?.amount || memberDetails?.amountPaid || planPrice || 0;
       const paymentMode = paymentData?.paymentMode || memberDetails?.paymentMode || "Cash";
       const cashPaid = paymentData?.amount || memberDetails?.amountPaid || planPrice || 0;
       const change = 0; // Assuming exact payment, no change
@@ -652,6 +703,14 @@ const getFilteredPlans = (interestedIn) => {
       const paymentDate = paymentData?.paymentDate
         ? new Date(paymentData.paymentDate).toLocaleDateString()
         : new Date().toLocaleDateString();
+
+      // Calculate tax (CGST and SGST - split 50-50)
+      const taxRate = parseFloat(adminDetails?.tax || "5"); // Tax rate from admin profile
+      const taxAmount = (baseAmount * taxRate) / 100;
+      const cgstAmount = taxAmount / 2; // 50% of tax
+      const sgstAmount = taxAmount / 2; // 50% of tax
+      const subtotal = baseAmount;
+      const totalAmount = subtotal + taxAmount;
 
       // Member details
       const memberName = memberDetails?.fullName || member.name || "N/A";
@@ -670,8 +729,18 @@ const getFilteredPlans = (interestedIn) => {
         : (member.expiry ? new Date(member.expiry).toLocaleDateString() : "N/A");
       const memberStatus = memberDetails?.status || member.status || "N/A";
 
+      // Fetch logo from adminSettings API (from member's adminId)
+      let logoDataUrl = GymLogo; // Default fallback
+      try {
+        const logoResponse = await axiosInstance.get(`adminSettings/app-settings/admin/${finalAdminId}`);
+        if (logoResponse.data?.data?.logo) {
+          logoDataUrl = logoResponse.data.data.logo;
+        }
+      } catch (err) {
+        console.log("Failed to fetch logo, using default");
+      }
+
       // Convert logo to data URL for html2canvas
-      let logoDataUrl = "";
       try {
         const img = new Image();
         img.crossOrigin = "anonymous";
@@ -685,128 +754,198 @@ const getFilteredPlans = (interestedIn) => {
               ctx.drawImage(img, 0, 0);
               resolve(canvas.toDataURL("image/png"));
             } catch (err) {
-              resolve(GymLogo); // Fallback to original path
+              resolve(logoDataUrl); // Fallback to original
             }
           };
-          img.onerror = () => resolve(GymLogo); // Fallback to original path
-          img.src = GymLogo;
+          img.onerror = () => resolve(logoDataUrl); // Fallback to original
+          img.src = logoDataUrl;
         });
       } catch (err) {
-        logoDataUrl = GymLogo; // Use original path if conversion fails
+        // Keep original logoDataUrl if conversion fails
       }
 
-      // Create receipt HTML with all details matching the image format
+      // Company details from admin profile API and settings API
+      // Priority: settings gym_name/gymName > admin profile gymName > fullName
+      const companyName = adminDetails?.gymName || adminDetails?.fullName || "Gym Name";
+      // Priority: admin profile gymAddress > address (from admin profile, not member)
+      const companyAddress = adminDetails?.gymAddress || adminDetails?.address || "Gym Address";
+      const companyGST = adminDetails?.gstNumber || "";
+      const companyPhone = adminDetails?.phone || "";
+      const companyEmail = adminDetails?.email || "";
+      
+      // Extract state from address for Place of Supply
+      const addressParts = companyAddress.split(',');
+      const placeOfSupply = addressParts[addressParts.length - 2]?.trim() || addressParts[addressParts.length - 1]?.trim() || "Telangana";
+      
+      // Convert amount to words
+      const amountInWords = numberToWords(Math.floor(totalAmount));
+      const balance = totalAmount - cashPaid;
+
+      // Create receipt HTML with A4 size matching image design (210mm x 297mm = 794px x 1123px at 96dpi)
       const receiptHTML = `
         <div id="receipt-container" style="
-          width: 400px;
-          background: white;
-          padding: 30px 20px;
-          font-family: 'Courier New', monospace;
-          color: black;
+          width: 794px;
+          min-height: 1123px;
+          background: linear-gradient(to bottom, #f0f8ff 0%, #ffffff 20%);
+          padding: 35px 45px;
+          font-family: Arial, sans-serif;
+          color: #1a1a1a;
           margin: 0 auto;
           box-sizing: border-box;
+          border: 3px solid #d4af37;
+          position: relative;
+          overflow: hidden;
         ">
-          <div style="border-top: 2px dashed #000; margin-bottom: 15px;"></div>
-          <h1 style="text-align: center; font-weight: bold; font-size: 28px; margin: 15px 0; text-transform: uppercase; letter-spacing: 2px;">RECEIPT</h1>
-          <div style="border-top: 2px dashed #000; margin: 15px 0 25px 0;"></div>
-          
-          <!-- Invoice and Date -->
-          <div style="margin-bottom: 15px; font-size: 11px;">
-            <div style="margin-bottom: 5px;"><strong>Invoice No:</strong> ${invoiceNo}</div>
-            <div><strong>Date:</strong> ${paymentDate}</div>
+          <!-- Decorative Background Elements -->
+          <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.05; pointer-events: none; z-index: 0;">
+            <div style="position: absolute; top: 20px; left: 20px; font-size: 40px;">❄</div>
+            <div style="position: absolute; top: 50px; right: 30px; font-size: 35px;">❄</div>
+            <div style="position: absolute; bottom: 100px; left: 40px; font-size: 30px;">❄</div>
+            <div style="position: absolute; bottom: 200px; right: 50px; font-size: 35px;">❄</div>
           </div>
-          
-          <div style="border-top: 1px dashed #000; margin: 15px 0;"></div>
-          
-          <!-- Member Details Section -->
-          <div style="margin-bottom: 15px;">
-            <div style="font-weight: bold; font-size: 12px; margin-bottom: 8px;">Member Details:</div>
-            <div style="font-size: 11px; line-height: 1.6;">
-              <div><strong>Name:</strong> ${memberName}</div>
-              <div><strong>Phone:</strong> ${memberPhone}</div>
-              <div><strong>Email:</strong> ${memberEmail}</div>
-              <div><strong>Address:</strong> ${memberAddress}</div>
-              <div><strong>Gender:</strong> ${memberGender}</div>
-              <div><strong>Date of Birth:</strong> ${memberDOB}</div>
+
+          <!-- Content Container -->
+          <div style="position: relative; z-index: 1;">
+          <!-- Header Section: Logo + Company Details + Invoice Title -->
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #d4af37;">
+            <!-- Left Side: Logo + Company Details -->
+            <div style="flex: 1; display: flex; gap: 15px;">
+              <!-- Logo -->
+              <div style="width: 80px; height: 80px; border: 1px solid #d4af37; display: flex; align-items: center; justify-content: center; padding: 5px; box-sizing: border-box; background: white; flex-shrink: 0;">
+                <img src="${logoDataUrl}" alt="Company Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+              </div>
+              
+              <!-- Company Details -->
+              <div style="flex: 1;">
+                <div style="font-weight: bold; font-size: 22px; margin-bottom: 6px; color: #1e3a8a; line-height: 1.2;">${companyName}</div>
+                ${companyGST ? `<div style="font-size: 11px; margin-bottom: 4px; color: #4b5563;">GSTIN ${companyGST}</div>` : ''}
+                ${companyPhone ? `<div style="font-size: 11px; margin-bottom: 4px; color: #4b5563; display: flex; align-items: center; gap: 5px;">
+                  <span style="color: #d4af37; font-size: 12px;">📞</span> ${companyPhone}
+                </div>` : ''}
+                ${companyEmail ? `<div style="font-size: 11px; margin-bottom: 4px; color: #4b5563; display: flex; align-items: center; gap: 5px;">
+                  <span style="color: #d4af37; font-size: 12px;">✉</span> ${companyEmail}
+                </div>` : ''}
+                <div style="font-size: 11px; line-height: 1.5; color: #4b5563; display: flex; align-items: flex-start; gap: 5px;">
+                  <span style="color: #d4af37; font-size: 12px; margin-top: 2px;">📍</span>
+                  <span>${companyAddress}</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Right Side: Invoice Title -->
+            <div style="text-align: right; flex-shrink: 0; margin-left: 20px;">
+              <h1 style="font-size: 26px; font-weight: bold; margin: 0; text-transform: uppercase; color: #1e3a8a; letter-spacing: 3px;">TAX INVOICE</h1>
             </div>
           </div>
-          
-          <div style="border-top: 1px dashed #000; margin: 15px 0;"></div>
-          
-          <!-- Membership Details Section -->
-          <div style="margin-bottom: 15px;">
-            <div style="font-weight: bold; font-size: 12px; margin-bottom: 8px;">Membership Details:</div>
-            <div style="font-size: 11px; line-height: 1.6;">
-              <div><strong>Plan:</strong> ${planName}</div>
-              <div><strong>Validity:</strong> ${planValidity} days</div>
-              <div><strong>Sessions:</strong> ${planSessions}</div>
-              <div><strong>From:</strong> ${membershipFrom}</div>
-              <div><strong>To:</strong> ${membershipTo}</div>
-              <div><strong>Status:</strong> ${memberStatus}</div>
+
+          <!-- Invoice Number and Date -->
+          <div style="display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 11px;">
+            <div>
+              <strong>Invoice No.</strong> ${invoiceNo}
+            </div>
+            <div>
+              <strong>Invoice Date</strong> ${paymentDate}
             </div>
           </div>
-          
-          <div style="border-top: 2px dashed #000; margin: 20px 0;"></div>
-          
-          <!-- Payment Items -->
+
+          <!-- Bill To Section -->
           <div style="margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
-              <span style="text-align: left;">1x ${planName}</span>
-              <span style="text-align: right; margin-left: 20px;">₹ ${totalAmount.toFixed(2)}</span>
+            <div style="font-weight: bold; font-size: 12px; margin-bottom: 8px; text-transform: uppercase;">Bill To</div>
+            <div style="font-size: 11px; line-height: 1.6;">
+              <div style="margin-bottom: 3px;">${memberName}</div>
+              <div style="margin-bottom: 3px;">${memberAddress}</div>
+              <div style="margin-bottom: 5px;">Mobile ${memberPhone}</div>
+              <div style="margin-top: 8px;">
+                <strong>Place of Supply</strong> ${placeOfSupply}
+              </div>
             </div>
           </div>
-          
-          <div style="border-top: 2px dashed #000; margin: 20px 0;"></div>
-          
+
+          <!-- Items Table -->
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; border: 1px solid #d0d0d0;">
+            <thead>
+              <tr style="background: #f0f0f0;">
+                <th style="padding: 8px; text-align: left; border: 1px solid #d0d0d0; font-size: 10px; font-weight: bold;">No</th>
+                <th style="padding: 8px; text-align: left; border: 1px solid #d0d0d0; font-size: 10px; font-weight: bold;">SERVICES</th>
+                <th style="padding: 8px; text-align: center; border: 1px solid #d0d0d0; font-size: 10px; font-weight: bold;">Qty.</th>
+                <th style="padding: 8px; text-align: right; border: 1px solid #d0d0d0; font-size: 10px; font-weight: bold;">Rate</th>
+                <th style="padding: 8px; text-align: right; border: 1px solid #d0d0d0; font-size: 10px; font-weight: bold;">Tax</th>
+                <th style="padding: 8px; text-align: right; border: 1px solid #d0d0d0; font-size: 10px; font-weight: bold;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #d0d0d0; font-size: 10px; text-align: center;">1</td>
+                <td style="padding: 8px; border: 1px solid #d0d0d0; font-size: 10px;">
+                  ${planName}
+                  <br/><small style="color: #666; font-size: 8px;">Gym annual subscription</small>
+                </td>
+                <td style="padding: 8px; border: 1px solid #d0d0d0; font-size: 10px; text-align: center;">1 PCS</td>
+                <td style="padding: 8px; border: 1px solid #d0d0d0; font-size: 10px; text-align: right;">${subtotal.toLocaleString('en-IN')}</td>
+                <td style="padding: 8px; border: 1px solid #d0d0d0; font-size: 10px; text-align: right;">${taxAmount.toFixed(0)}<br/><small>(${taxRate}%)</small></td>
+                <td style="padding: 8px; border: 1px solid #d0d0d0; font-size: 10px; text-align: right;">${totalAmount.toLocaleString('en-IN')}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Tax Breakdown and Total -->
+          <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+            <div style="width: 300px; border: 1px solid #d4af37; padding: 10px; background: #fffef7;">
+              <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 10px; border-bottom: 1px solid #e5e7eb;">
+                <span><strong>SUBTOTAL</strong></span>
+                <span>₹ ${subtotal.toLocaleString('en-IN')}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 10px; border-bottom: 1px solid #e5e7eb;">
+                <span><strong>Taxable Amount</strong></span>
+                <span>₹ ${subtotal.toLocaleString('en-IN')}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 10px; border-bottom: 1px solid #e5e7eb;">
+                <span>CGST @${(taxRate/2).toFixed(1)}%</span>
+                <span>₹ ${cgstAmount.toFixed(0)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 10px; border-bottom: 1px solid #e5e7eb;">
+                <span>SGST @${(taxRate/2).toFixed(1)}%</span>
+                <span>₹ ${sgstAmount.toFixed(0)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 10px 0; font-size: 13px; font-weight: bold; border-top: 2px solid #d4af37; background: #fef3c7; margin: 5px -10px -10px -10px; padding: 10px;">
+                <span>Total Amount</span>
+                <span>₹ ${totalAmount.toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Terms & Conditions -->
+          <div style="margin-bottom: 20px; padding: 12px; border: 1px solid #d4af37; background: #fffef7;">
+            <div style="font-weight: bold; font-size: 11px; margin-bottom: 8px; color: #1e3a8a;">Terms & Conditions</div>
+            <div style="font-size: 9px; line-height: 1.6; color: #4b5563;">
+              <div style="margin-bottom: 4px;">1. Goods once sold will not be taken back or exchanged</div>
+              <div>2. All disputes are subject to ${placeOfSupply} jurisdiction only</div>
+            </div>
+          </div>
+
           <!-- Payment Summary -->
-          <div style="margin-bottom: 15px;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
-              <span style="font-weight: bold; text-align: left;">TOTAL AMOUNT</span>
-              <span style="font-weight: bold; text-align: right;">₹ ${totalAmount.toFixed(2)}</span>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 25px; gap: 15px;">
+            <div style="flex: 1; padding: 8px; border: 1px solid #d4af37; background: #fffef7;">
+              <div style="font-size: 10px; margin-bottom: 5px; color: #4b5563;"><strong>Received Amount</strong></div>
+              <div style="font-size: 12px; font-weight: bold; color: #1e3a8a;">₹${cashPaid.toLocaleString('en-IN')}</div>
+            </div>
+            <div style="flex: 1; padding: 8px; border: 1px solid #d4af37; background: #fffef7;">
+              <div style="font-size: 10px; margin-bottom: 5px; color: #4b5563;"><strong>Balance</strong></div>
+              <div style="font-size: 12px; font-weight: bold; color: #1e3a8a;">₹${balance.toFixed(0)}</div>
+            </div>
+            <div style="flex: 1.5; padding: 8px; border: 1px solid #d4af37; background: #fffef7;">
+              <div style="font-size: 10px; margin-bottom: 5px; color: #4b5563;"><strong>Total Amount (in words)</strong></div>
+              <div style="font-size: 10px; font-weight: bold; line-height: 1.4; color: #1e3a8a;">${amountInWords}</div>
             </div>
           </div>
-          
-          <div style="border-top: 2px dashed #000; margin: 20px 0;"></div>
-          
-          <!-- Payment Details -->
-          <div style="margin-bottom: 15px;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
-              <span style="font-weight: bold; text-align: left;">${paymentMode.toUpperCase()}</span>
-              <span style="font-weight: bold; text-align: right;">₹ ${cashPaid.toFixed(2)}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
-              <span style="font-weight: bold; text-align: left;">CHANGE</span>
-              <span style="font-weight: bold; text-align: right;">₹ ${change.toFixed(2)}</span>
+
+          <!-- Signature Section -->
+          <div style="margin-top: 50px; text-align: right; padding-top: 20px;">
+            <div style="border-top: 2px solid #d4af37; width: 200px; margin-left: auto; padding-top: 8px;">
+              <div style="font-size: 11px; font-weight: bold; color: #1e3a8a; margin-bottom: 5px;">Signature</div>
+              <div style="font-size: 12px; font-weight: bold; color: #1e3a8a;">${companyName}</div>
             </div>
           </div>
-          
-          <div style="border-top: 2px dashed #000; margin: 20px 0;"></div>
-          
-          <!-- Thank You -->
-          <h2 style="text-align: center; font-weight: bold; font-size: 22px; margin: 20px 0; text-transform: uppercase; letter-spacing: 1px;">THANK YOU</h2>
-          <div style="border-top: 2px dashed #000; margin: 15px 0 20px 0;"></div>
-          
-          <!-- Gym Logo in Blank Rectangle Box -->
-          <div style="margin-top: 25px; text-align: center;">
-            <div style="
-              border: 1px solid #000;
-              margin: 15px auto;
-              width: 320px;
-              min-height: 100px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              padding: 20px;
-              box-sizing: border-box;
-            ">
-              <img src="${logoDataUrl}" alt="Gym Logo" style="max-width: 100%; max-height: 100px; height: auto; object-fit: contain; display: block;" />
-            </div>
-          </div>
-        
-          
-          <!-- Watermark -->
-          <div style="margin-top: 15px; text-align: left; font-size: 10px; color: #999; opacity: 0.5;">
-            modif.ai
           </div>
         </div>
       `;
@@ -838,20 +977,51 @@ const getFilteredPlans = (interestedIn) => {
         )
       );
 
-      // Convert to canvas and download
+      // Convert to canvas with high quality (A4 size: 794px x 1123px at 96dpi)
+      // Using scale 2 for better quality when zooming
       const canvas = await html2canvas(receiptElement, {
         backgroundColor: "#ffffff",
-        scale: 2,
+        scale: 2, // Higher scale for better quality
+        width: 794,
+        height: receiptElement.scrollHeight,
         logging: false,
         useCORS: true,
         allowTaint: true,
+        windowWidth: 794,
+        windowHeight: receiptElement.scrollHeight,
+        onclone: (clonedDoc) => {
+          // Ensure all images are loaded in cloned document
+          const clonedElement = clonedDoc.querySelector("#receipt-container");
+          if (clonedElement) {
+            const images = clonedElement.querySelectorAll("img");
+            images.forEach((img) => {
+              if (img.src && !img.complete) {
+                img.style.display = "none";
+              }
+            });
+          }
+        }
       });
 
-      // Create download link
-      const link = document.createElement("a");
-      link.download = `Receipt_${memberName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
+      // A4 dimensions in mm
+      const pdfWidth = 210; // A4 width in mm
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width; // Maintain aspect ratio
+      
+      // Create PDF with A4 size
+      const pdf = new jsPDF({
+        orientation: pdfHeight > pdfWidth ? "portrait" : "portrait",
+        unit: "mm",
+        format: [pdfWidth, pdfHeight]
+      });
+
+      // Convert canvas to image data
+      const imgData = canvas.toDataURL("image/png", 1.0);
+      
+      // Add image to PDF (full page)
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST");
+
+      // Download PDF
+      pdf.save(`Invoice_${invoiceNo}_${memberName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`);
 
       // Clean up
       document.body.removeChild(tempDiv);

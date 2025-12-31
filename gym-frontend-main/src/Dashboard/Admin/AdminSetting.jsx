@@ -35,11 +35,13 @@ const AdminSetting = () => {
   const [adminId, setAdminId] = useState(null);
   const [copied, setCopied] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [adminDetails, setAdminDetails] = useState(null);
 
   const [formData, setFormData] = useState({
     companyLogo: null,
     companyDescription: "",
     companyWebsite: "",
+    gymName: "",
   });
 
   const [previewImages, setPreviewImages] = useState({
@@ -61,7 +63,7 @@ const AdminSetting = () => {
     }
   }, [formData.companyWebsite, adminId]);
 
-  // 🔹 Fetch settings
+  // 🔹 Fetch admin details and settings
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -71,6 +73,21 @@ const AdminSetting = () => {
         setAdminId(user.id);
         setFetching(true);
 
+        // Fetch admin details to get gym name
+        try {
+          const adminRes = await axiosInstance.get(`auth/user/${user.id}`);
+          if (adminRes.data) {
+            setAdminDetails(adminRes.data);
+            setFormData(prev => ({
+              ...prev,
+              gymName: adminRes.data.gymName || ""
+            }));
+          }
+        } catch (err) {
+          console.log("Failed to fetch admin details");
+        }
+
+        // Fetch app settings
         const res = await axiosInstance.get(
           `adminSettings/app-settings/admin/${user.id}`
         );
@@ -115,6 +132,18 @@ const AdminSetting = () => {
     setSuccess("");
 
     try {
+      // Update admin profile with gym name
+      if (formData.gymName && adminId) {
+        try {
+          await axiosInstance.put(`auth/user/${adminId}`, {
+            gymName: formData.gymName
+          });
+        } catch (err) {
+          console.log("Failed to update gym name");
+        }
+      }
+
+      // Update app settings
       const data = new FormData();
       data.append("description", formData.companyDescription);
       data.append("url", formData.companyWebsite);
@@ -137,6 +166,14 @@ const AdminSetting = () => {
         );
         setSettingsId(res.data?.data?.id);
         setSuccess("Settings created successfully!");
+      }
+
+      // Refresh admin details
+      if (adminId) {
+        const adminRes = await axiosInstance.get(`auth/user/${adminId}`);
+        if (adminRes.data) {
+          setAdminDetails(adminRes.data);
+        }
       }
     } catch (err) {
       setError("Failed to save settings");
@@ -211,6 +248,22 @@ const AdminSetting = () => {
                   </div>
                 ) : (
                   <Form onSubmit={saveCompanyData}>
+                    {/* GYM NAME EDIT FIELD */}
+                    <Form.Group className="mb-4">
+                      <Form.Label className="fw-bold">Gym Name *</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="gymName"
+                        value={formData.gymName}
+                        onChange={handleChange}
+                        placeholder="Enter gym name"
+                        required
+                      />
+                      <Form.Text className="text-muted">
+                        This name will appear on invoices and receipts.
+                      </Form.Text>
+                    </Form.Group>
+                    
                     {/* LOGO */}
                     <Form.Group className="mb-4">
                       <Form.Label className="fw-bold">Company Logo</Form.Label>

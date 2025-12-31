@@ -43,6 +43,7 @@ const Account = () => {
   });
 
   const [gymInfo, setGymInfo] = useState({
+    gymName: "",
     gstNumber: "",
     gymAddress: "",
     tax: "5",
@@ -111,6 +112,7 @@ const Account = () => {
         });
 
         setGymInfo({
+          gymName: profile.gymName || "",
           gstNumber: profile.gstNumber || "",
           gymAddress: profile.gymAddress || "",
           tax: profile.tax?.toString() || "5",
@@ -504,6 +506,17 @@ const Account = () => {
                       <div className="col-12">
                         <hr className="my-3" />
                         <h6 className="fw-bold text-primary mb-3">Gym Information</h6>
+                      </div>
+                      <div className="col-12">
+                        <label className="form-label">Gym Name</label>
+                        <input
+                          name="gymName"
+                          className="form-control"
+                          value={gymInfo.gymName}
+                          onChange={handleGymInfoChange}
+                          readOnly={!isEditMode}
+                          placeholder="Enter gym name"
+                        />
                       </div>
                       <div className="col-12">
                         <label className="form-label">Gym Address</label>
