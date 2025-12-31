@@ -109,33 +109,33 @@ const Report = () => {
                     const data = response.data.data;
                     console.log('API Response:', data); // Debug log
                     console.log('Current trainer ID:', trainerId); // Debug log
-                    
+
                     // Filter studentAttendanceByClass to show only current trainer's classes by trainerId
                     const filteredClasses = data.studentAttendanceByClass.filter(
                         (cls) => cls.trainerId === parseInt(trainerId)
                     );
-                    
+
                     console.log('Filtered classes for trainer ID:', filteredClasses); // Debug log
-                    
+
                     // Recalculate summary for filtered trainer data only
                     const totalCapacity = filteredClasses.reduce((sum, cls) => {
                         const [, total] = (cls.attendance || '0/0').split('/').map(Number);
                         return sum + total;
                     }, 0);
-                    
+
                     const totalPresent = filteredClasses.reduce((sum, cls) => {
                         const [present] = (cls.attendance || '0/0').split('/').map(Number);
                         return sum + present;
                     }, 0);
-                    
+
                     const filteredSummary = {
                         totalStudents: data.summary.totalStudents, // Keep original total students from admin
                         presentStudents: totalPresent,
-                        avgAttendance: filteredClasses.length > 0 
+                        avgAttendance: filteredClasses.length > 0
                             ? Math.round(filteredClasses.reduce((sum, cls) => sum + cls.attendancePercentage, 0) / filteredClasses.length) + '%'
                             : '0%'
                     };
-                    
+
                     setClassPerformanceData({
                         summary: filteredSummary,
                         studentAttendanceByClass: filteredClasses
@@ -172,14 +172,16 @@ const Report = () => {
     return (
         <div className="trainer-dashboard">
             <div className="dashboard-header">
-                <h1 className="text-center fw-bold mb-2">General Trainer Class Report</h1>
-                <p className="text-center text-muted">
-                    Overview of general trainer class attendance and performance data
-                </p>
+                <div>
+                    <h1 className="text-start fw-bold mb-2">General Trainer Class Report</h1>
+                    <p className="text-start text-muted">
+                        Overview of general trainer class attendance and performance data
+                    </p>
+                </div>
                 {trainerId && (
                     <div className="text-center mb-3">
-                        <span className="badge bg-success text-white me-2">Trainer ID: {trainerId}</span>
-                        <span className="badge bg-info text-white">General Trainer Dashboard</span>
+                        {/* <span className="badge bg-success text-white me-2">Trainer ID: {trainerId}</span> */}
+                        <span className="badge bg-info text-white">General Trainer</span>
                     </div>
                 )}
             </div>

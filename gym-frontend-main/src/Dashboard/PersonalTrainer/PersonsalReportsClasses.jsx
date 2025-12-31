@@ -44,7 +44,7 @@ const PersonsalReportsClasses = () => {
           const data = response.data.data;
           console.log('API Response:', data); // Debug log
           console.log('Current trainer ID:', trainerId); // Debug log
-          
+
           // Filter studentAttendanceByClass to show only current trainer's classes
           const filteredClasses = data.studentAttendanceByClass.filter(
             (cls) => {
@@ -53,33 +53,33 @@ const PersonsalReportsClasses = () => {
                 return cls.trainerId === parseInt(trainerId);
               }
               // Fall back to role-based filtering
-              return cls.trainerRole === 'personaltrainer' || 
-                     cls.trainerName?.toLowerCase().includes('personal');
+              return cls.trainerRole === 'personaltrainer' ||
+                cls.trainerName?.toLowerCase().includes('personal');
             }
           );
-          
+
           console.log('Filtered classes:', filteredClasses); // Debug log
           console.log('Filtered classes count:', filteredClasses.length); // Debug log
-          
+
           // Recalculate summary for filtered data
           const totalCapacity = filteredClasses.reduce((sum, cls) => {
             const [, total] = (cls.attendance || '0/0').split('/').map(Number);
             return sum + total;
           }, 0);
-          
+
           const totalPresent = filteredClasses.reduce((sum, cls) => {
             const [present] = (cls.attendance || '0/0').split('/').map(Number);
             return sum + present;
           }, 0);
-          
+
           const filteredSummary = {
             totalStudents: data.summary.totalStudents, // Keep original total students from admin
             presentStudents: totalPresent,
-            avgAttendance: filteredClasses.length > 0 
+            avgAttendance: filteredClasses.length > 0
               ? Math.round(filteredClasses.reduce((sum, cls) => sum + cls.attendancePercentage, 0) / filteredClasses.length) + '%'
               : '0%'
           };
-          
+
           setClassPerformanceData({
             summary: filteredSummary,
             studentAttendanceByClass: filteredClasses
@@ -116,14 +116,16 @@ const PersonsalReportsClasses = () => {
   return (
     <div className="trainer-dashboard">
       <div className="dashboard-header">
-        <h1 className="text-center fw-bold mb-2">Personal Trainer Class Report</h1>
-        <p className="text-center text-muted">
-          Overview of your class attendance and performance data
-        </p>
+        <div>
+          <h1 className="text-center fw-bold mb-2">Personal Trainer Class Report</h1>
+          <p className="text-start text-muted">
+            Overview of your class attendance and performance data
+          </p>
+        </div>
         {trainerId && (
           <div className="text-center mb-3">
-            <span className="badge bg-primary text-white me-2">Trainer ID: {trainerId}</span>
-            <span className="badge bg-info text-white">Personal Trainer Dashboard</span>
+            {/* <span className="badge bg-primary text-white me-2">Trainer ID: {trainerId}</span> */}
+            <span className="badge bg-info text-white">Personal Trainer</span>
           </div>
         )}
       </div>
