@@ -68,16 +68,6 @@ const Report = () => {
         );
     }
 
-    if (error) {
-        return (
-            <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
-                <div className="alert alert-danger" role="alert">
-                    Error loading report data: {error}
-                </div>
-            </div>
-        );
-    }
-
     const { summary, studentAttendanceByClass } = classPerformanceData;
 
     return (

@@ -47,6 +47,34 @@ const UniversalQRAttendance = () => {
   const branchId = userData.branchId || 1;
   const userRole = localStorage.getItem('userRole')?.toUpperCase() || 'MEMBER';
   const userName = userData.fullName || userData.name || userData.email || 'User';
+  
+  // State for member's adminId (will be fetched if user is a member)
+  const [memberAdminId, setMemberAdminId] = useState(userData.adminId || (userRole === 'ADMIN' || userRole === 'SUPERADMIN' ? userId : null));
+
+  // Fetch member details to get adminId if user is a member
+  useEffect(() => {
+    const fetchMemberAdminId = async () => {
+      if (userId && (userRole === 'MEMBER' || !userRole)) {
+        try {
+          const response = await axiosInstance.get(`members/detail/${userId}`);
+          if (response.data?.success && response.data?.member?.adminId) {
+            setMemberAdminId(response.data.member.adminId);
+          }
+        } catch (err) {
+          // If member not found or error, use default
+          console.log('Could not fetch member adminId:', err);
+        }
+      } else if (userRole === 'ADMIN' || userRole === 'SUPERADMIN') {
+        // For admins, use their own ID
+        setMemberAdminId(userId);
+      }
+    };
+    
+    fetchMemberAdminId();
+  }, [userId, userRole]);
+
+  // Use memberAdminId for adminId
+  const adminId = memberAdminId || (userRole === 'ADMIN' || userRole === 'SUPERADMIN' ? userId : null);
 
   // Fetch check-in history on mount
   useEffect(() => {
@@ -104,7 +132,7 @@ const UniversalQRAttendance = () => {
   /**
    * Handle check-in (works for all user types)
    */
-  const handleCheckIn = async (mode = 'Manual', notes = 'Manual Check-in') => {
+  const handleCheckIn = async (mode = 'Manual', notes = 'Manual Check-in', qrAdminId = null) => {
     try {
       setLoading(true);
       setError(null);
@@ -114,7 +142,9 @@ const UniversalQRAttendance = () => {
         memberId: userId, // Works for all user types
         branchId: branchId,
         mode: mode,
-        notes: notes
+        notes: notes,
+        userRole: userRole, // Send user role to backend
+        qrAdminId: qrAdminId || adminId // Send adminId from QR code for validation
       });
       
       const data = response.data;
@@ -178,8 +208,8 @@ const UniversalQRAttendance = () => {
   };
 
   /**
-   * Process scanned global QR code
-   * Validates that it's the admin's global QR code
+   * Process scanned QR code
+   * Handles both global gym QR codes and personal QR codes (member/admin)
    */
   const processScannedQR = async (decodedText) => {
     // Prevent duplicate scans
@@ -201,40 +231,78 @@ const UniversalQRAttendance = () => {
     try {
       const qrData = JSON.parse(decodedText);
       
-      // Validate QR code is the global gym check-in QR code
-      if (qrData.purpose !== 'gym_checkin_global') {
-        setScannerError('Invalid QR code. Please scan the gym check-in QR code displayed at the entrance.');
-        isProcessingQRRef.current = false;
-        return;
-      }
-
-      // Validate branch ID matches (optional - for multi-branch gyms)
-      if (qrData.branchId && qrData.branchId !== branchId) {
-        setScannerError('This QR code is for a different branch.');
-        isProcessingQRRef.current = false;
-        return;
-      }
-
-      // Check if QR code is expired
-      if (qrData.expires_at) {
-        const expiresAt = new Date(qrData.expires_at);
-        const now = new Date();
-        if (now > expiresAt) {
-          setScannerError('QR code has expired. Please ask staff for a new QR code.');
+      // Handle global gym check-in QR code (for staff scanning admin's QR)
+      if (qrData.purpose === 'gym_checkin_global') {
+        // Admin ID is required in QR code
+        if (!qrData.adminId) {
+          setScannerError('Invalid QR code. Admin ID not found in QR code.');
           isProcessingQRRef.current = false;
           return;
         }
+        
+        // Validate admin ID matches - QR code's adminId must match user's adminId
+        // For members: check member's adminId
+        // For staff: check staff's adminId
+        const qrAdminId = parseInt(qrData.adminId);
+        const userAdminId = parseInt(adminId);
+        
+        if (!userAdminId) {
+          setScannerError('Your admin ID not found. Please contact your admin.');
+          isProcessingQRRef.current = false;
+          return;
+        }
+        
+        if (qrAdminId !== userAdminId) {
+          setScannerError('This QR code belongs to a different admin. You can only scan your admin\'s QR code.');
+          isProcessingQRRef.current = false;
+          return;
+        }
+
+        // Check if QR code is expired
+        if (qrData.expires_at) {
+          const expiresAt = new Date(qrData.expires_at);
+          const now = new Date();
+          if (now > expiresAt) {
+            setScannerError('QR code has expired. Please ask staff for a new QR code.');
+            isProcessingQRRef.current = false;
+            return;
+          }
+        }
+
+        // Clear scanner error
+        setScannerError(null);
+        
+        // Auto-trigger check-in with QR mode, pass adminId from QR
+        await handleCheckIn('QR Code', `Scanned Global QR Code - Admin: ${qrData.adminName || qrData.adminId || 'N/A'}`, qrData.adminId);
+        return;
       }
 
-      // Clear scanner error
-      setScannerError(null);
-      
-      // Auto-trigger check-in with QR mode
-      await handleCheckIn('QR Code', `Scanned Global QR Code - Branch: ${qrData.branchName || branchId}`);
+      // Admin personal QR code - REMOVED: Admin cannot check-in themselves
+      // Only staff (members, receptionists, trainers) can check-in using admin's global QR code
+
+      // Handle personal member QR code
+      if (qrData.purpose === 'member_checkin_personal' && qrData.member_id) {
+        // For members, they scan their own QR code
+        if (qrData.member_id !== userId) {
+          setScannerError('This QR code belongs to a different member.');
+          isProcessingQRRef.current = false;
+          return;
+        }
+
+        // Clear scanner error
+        setScannerError(null);
+        
+        // Auto-trigger check-in with QR mode, pass adminId if available
+        await handleCheckIn('QR Code', `Scanned Member Personal QR Code`, qrData.adminId || qrData.admin_id);
+        return;
+      }
+
+      // Invalid QR code purpose
+      setScannerError('Invalid QR code. Please scan a valid check-in QR code.');
+      isProcessingQRRef.current = false;
       
     } catch (err) {
       setScannerError('Invalid QR code format. Please try again.');
-    } finally {
       isProcessingQRRef.current = false;
     }
   };
@@ -243,6 +311,45 @@ const UniversalQRAttendance = () => {
   const isHttps = window.location.protocol === 'https:';
   const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const canAccessCamera = isHttps || isDevelopment;
+
+  /**
+   * Request camera permission explicitly (for mobile browsers)
+   */
+  const requestCameraPermission = async () => {
+    try {
+      // Request camera permission using getUserMedia
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      // Stop the stream immediately - we just needed permission
+      stream.getTracks().forEach(track => track.stop());
+      return true;
+    } catch (err) {
+      console.log("Camera permission request:", err);
+      return false;
+    }
+  };
+
+  /**
+   * Wait for DOM element to be ready
+   */
+  const waitForElement = (elementId, maxAttempts = 20) => {
+    return new Promise((resolve, reject) => {
+      let attempts = 0;
+      const checkElement = () => {
+        const element = document.getElementById(elementId);
+        if (element) {
+          resolve(element);
+        } else if (attempts < maxAttempts) {
+          attempts++;
+          setTimeout(checkElement, 100);
+        } else {
+          reject(new Error(`Element ${elementId} not found after ${maxAttempts} attempts`));
+        }
+      };
+      checkElement();
+    });
+  };
 
   /**
    * Start QR scanner with improved camera access
@@ -257,6 +364,12 @@ const UniversalQRAttendance = () => {
       setScannerError(null);
       setIsScanning(true);
       
+      // Wait for React to render the container div
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Wait for the DOM element to be ready
+      await waitForElement("qr-reader-universal");
+      
       // Clear any existing scanner
       if (html5QrCodeRef.current) {
         try {
@@ -267,24 +380,41 @@ const UniversalQRAttendance = () => {
         }
       }
 
+      // Request camera permission explicitly (important for mobile)
+      const hasPermission = await requestCameraPermission();
+      if (!hasPermission) {
+        console.log("Camera permission not granted, but continuing...");
+      }
+
       const html5QrCode = new Html5Qrcode("qr-reader-universal");
       html5QrCodeRef.current = html5QrCode;
 
-      // First, check if we have camera permission
+      // First, check if we have camera permission and get devices
       let devices = [];
       try {
         devices = await Html5Qrcode.getCameras();
+        console.log("Found cameras:", devices.length);
       } catch (e) {
-        console.log("Camera enumeration not available, using facingMode");
+        console.log("Camera enumeration not available, using facingMode:", e);
       }
 
       let startSuccess = false;
 
       // Try with back camera if devices available
       if (devices && devices.length > 0) {
-        for (let i = 0; i < devices.length; i++) {
+        // Prefer back camera (usually last device on mobile)
+        const backCamera = devices.find(device => 
+          device.label.toLowerCase().includes('back') || 
+          device.label.toLowerCase().includes('rear') ||
+          device.label.toLowerCase().includes('environment')
+        ) || devices[devices.length - 1]; // Fallback to last device
+
+        // Try back camera first, then others
+        const camerasToTry = backCamera ? [backCamera, ...devices.filter(d => d.id !== backCamera.id)] : devices;
+        
+        for (let i = 0; i < camerasToTry.length; i++) {
           try {
-            const device = devices[i];
+            const device = camerasToTry[i];
             console.log("Trying camera:", device.label);
             
             await html5QrCode.start(
@@ -306,7 +436,7 @@ const UniversalQRAttendance = () => {
             console.log("Camera started successfully with device:", device.label);
             break;
           } catch (deviceErr) {
-            console.log("Camera failed, trying next...");
+            console.log("Camera failed, trying next...", deviceErr);
             continue;
           }
         }
@@ -334,7 +464,7 @@ const UniversalQRAttendance = () => {
           startSuccess = true;
           console.log("Rear camera started with facingMode");
         } catch (envErr) {
-          console.log("Environment camera failed");
+          console.log("Environment camera failed:", envErr);
         }
       }
 
@@ -360,7 +490,7 @@ const UniversalQRAttendance = () => {
           startSuccess = true;
           console.log("Front camera started with facingMode");
         } catch (userErr) {
-          console.log("User camera failed");
+          console.log("User camera failed:", userErr);
         }
       }
 
@@ -376,15 +506,16 @@ const UniversalQRAttendance = () => {
           err.message?.includes('permission') ||
           err.message?.includes('Permission') ||
           err.message?.includes('denied')) {
-        errorMsg = '📱 Camera permission denied. Please enable camera access in your device settings and try again.';
+        errorMsg = '📱 Camera permission denied. Please:\n1. Click "Allow" when browser asks for camera permission\n2. Or enable camera access in your device settings\n3. Then try again';
       } else if (err.name === 'NotFoundError' || 
                  err.message?.includes('camera') ||
-                 err.message?.includes('No camera')) {
-        errorMsg = '📸 No camera found on your device. Please check your device has a camera.';
-      } else if (err.name === 'NotReadableError') {
-        errorMsg = '📷 Camera is in use by another app. Please close other apps and try again.';
-      } else if (err.message?.includes('Could not access camera')) {
-        errorMsg = '🔒 Could not access camera. Please check:\n1. Camera permissions are enabled\n2. No other app is using the camera\n3. Your device has a working camera';
+                 err.message?.includes('No camera') ||
+                 err.message?.includes('not found')) {
+        errorMsg = '📸 No camera found on your device. Please check your device has a working camera.';
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        errorMsg = '📷 Camera is in use by another app. Please:\n1. Close other apps using the camera\n2. Refresh the page\n3. Try again';
+      } else if (err.message?.includes('Could not access camera') || err.message?.includes('Element')) {
+        errorMsg = '🔒 Could not access camera. Please:\n1. Make sure camera permissions are enabled\n2. Refresh the page and try again\n3. Check if another app is using the camera';
       } else {
         errorMsg += err.message || 'Please check camera permissions and try again.';
       }
