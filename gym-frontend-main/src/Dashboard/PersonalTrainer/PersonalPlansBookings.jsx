@@ -13,7 +13,7 @@ const PersonalPlansBookings = () => {
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [error, setError] = useState(null);
 
-  // ✅ Extract adminId once from localStorage
+  // Extract adminId once from localStorage
   const getUserFromStorage = () => {
     try {
       const userStr = localStorage.getItem('user');
@@ -58,7 +58,7 @@ const PersonalPlansBookings = () => {
     fetchPlans();
   }, [adminId]);
 
-  // ✅ Filter ONLY PERSONAL trainer plans
+  // Filter ONLY PERSONAL trainer plans
   const personalPlans = useMemo(() => {
     return allPlans.filter(plan => plan.trainerType === 'personal');
   }, [allPlans]);
@@ -75,7 +75,7 @@ const PersonalPlansBookings = () => {
         );
         
         if (response.data.success && response.data.data && Array.isArray(response.data.data.members)) {
-          // ✅ Fixed mapping to match API response structure
+          // Fixed mapping to match API response structure
           const mappedCustomers = response.data.data.members.map((cust) => ({
             id: cust.id,
             name: cust.fullName,
@@ -85,11 +85,13 @@ const PersonalPlansBookings = () => {
             expiryDate: cust.membershipTo
               ? new Date(cust.membershipTo).toISOString().split('T')[0]
               : 'N/A',
-            sessionsBooked: cust.sessions - (cust.sessionsRemaining || 0), // Calculate booked sessions
-            sessionsRemaining: cust.sessionsRemaining || 0,
+            // Use sessionInfo from API response
+            totalSessions: cust.sessionInfo?.totalSessions || 0,
+            sessionsBooked: cust.sessionInfo?.usedSessions || 0,
+            sessionsRemaining: cust.sessionInfo?.remainingSessions || 0,
             contact: cust.phone || 'N/A',
             email: cust.email || 'N/A',
-            status: cust.status || 'Unknown', // Use the actual status from API
+            status: cust.status || 'Unknown',
             gender: cust.gender || 'N/A',
             address: cust.address || 'N/A',
             joinDate: cust.joinDate ? new Date(cust.joinDate).toISOString().split('T')[0] : 'N/A',
@@ -424,7 +426,7 @@ const PersonalPlansBookings = () => {
                                     fontSize: '0.75rem',
                                   }}
                                 >
-                                  Booked: {customer.sessionsBooked}
+                                  Used: {customer.sessionsBooked}
                                 </span>
                                 <span className="badge bg-success" style={{ fontSize: '0.75rem' }}>
                                   Left: {customer.sessionsRemaining}
@@ -615,7 +617,7 @@ const PersonalPlansBookings = () => {
                         <div className="fw-bold" style={{ fontSize: '1.3rem', color: '#2f6a87' }}>
                           {selectedCustomer.sessionsBooked}
                         </div>
-                        <div className="text-muted" style={{ fontSize: '0.8rem' }}>Completed</div>
+                        <div className="text-muted" style={{ fontSize: '0.8rem' }}>Used</div>
                       </div>
                     </div>
                     <div className="col-4">
@@ -629,7 +631,7 @@ const PersonalPlansBookings = () => {
                     <div className="col-4">
                       <div className="text-center p-2 p-md-3 bg-light rounded">
                         <div className="fw-bold" style={{ fontSize: '1.3rem', color: '#2f6a87' }}>
-                          {selectedCustomer.sessionsBooked + selectedCustomer.sessionsRemaining}
+                          {selectedCustomer.totalSessions}
                         </div>
                         <div className="text-muted" style={{ fontSize: '0.8rem' }}>Total</div>
                       </div>

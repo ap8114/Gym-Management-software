@@ -13,50 +13,34 @@ import {
     Table,
 } from "react-bootstrap";
 import {
-    FaEye,
-    FaEdit,
-    FaTrash,
-    FaToggleOn,
-    FaToggleOff,
-    FaPlus,
+    FaBook,
 } from "react-icons/fa";
 import axiosInstance from "../../Api/axiosInstance";
 import BaseUrl from "../../Api/BaseUrl";
 
 const MemberAllPlans = () => {
     const [activeTab, setActiveTab] = useState("group");
-    const [showCreateModal, setShowCreateModal] = useState(false);
-    const [showEditModal, setShowEditModal] = useState(false);
-    const [showViewModal, setShowViewModal] = useState(false);
+    const [showBookingModal, setShowBookingModal] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState(null);
     const [membershipPlans, setMembershipPlans] = useState([]);
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [planToDelete, setPlanToDelete] = useState({ id: null, type: null });
-    const [showStatusModal, setShowStatusModal] = useState(false);
-    const [requestToProcess, setRequestToProcess] = useState(null);
-    const [newPlan, setNewPlan] = useState({
-        name: "",
-        sessions: "",
-        validity: "",
-        price: "",
-        type: "group",
-        trainerType: "",
-        trainerId: "",
-    });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [createPlanError, setCreatePlanError] = useState(null);
     const [apiPlans, setApiPlans] = useState([]);
     const [plansLoaded, setPlansLoaded] = useState(false);
-    const [viewLoading, setViewLoading] = useState(false);
     const [renewalRequests, setRenewalRequests] = useState([]);
-    const [membershipRequests, setMembershipRequests] = useState([]); // 👈 New state
+    const [membershipRequests, setMembershipRequests] = useState([]);
     const [activeRequestTab, setActiveRequestTab] = useState("renewal");
     const [trainers, setTrainers] = useState([]);
     const [trainersLoading, setTrainersLoading] = useState(false);
     const customColor = "#6EB2CC";
     const [groupPlans, setGroupPlans] = useState([]);
     const [personalPlans, setPersonalPlans] = useState([]);
+    const [bookingForm, setBookingForm] = useState({
+        memberId: "",
+        planId: "",
+        paymentMethod: "upi",
+        upiId: "",
+    });
 
     const getUserFromStorage = () => {
         try {
@@ -79,15 +63,15 @@ const MemberAllPlans = () => {
     useEffect(() => {
         fetchPlansFromAPI();
         fetchRenewalRequests();
-        fetchMembershipRequests(); // 👈 New
+        fetchMembershipRequests();
     }, []);
 
     // Fetch trainers when trainer type changes
     useEffect(() => {
-        if (newPlan.type === "member" && newPlan.trainerType) {
-            fetchTrainers(newPlan.trainerType);
+        if (selectedPlan && selectedPlan.type === "member" && selectedPlan.trainerType) {
+            fetchTrainers(selectedPlan.trainerType);
         }
-    }, [newPlan.trainerType, newPlan.type]);
+    }, [selectedPlan]);
 
     const fetchTrainers = async (trainerType) => {
         setTrainersLoading(true);
@@ -116,7 +100,7 @@ const MemberAllPlans = () => {
         }
     };
 
-    // 👇 NEW: Fetch Membership Booking Requests
+    // Fetch Membership Booking Requests
     const fetchMembershipRequests = async () => {
         try {
             const response = await axiosInstance.get(
@@ -127,14 +111,12 @@ const MemberAllPlans = () => {
                     id: req.bookingRequestId,
                     bookingRequestId: req.bookingRequestId,
                     memberId: req.memberId,
-                    // 👇 Use userName if available, else memberName
                     memberName: req.userName || req.memberName || "Unknown",
-                    // 👇 Email is NOT in response → mark as not provided
-                    memberEmail: req.userEmail, // or omit entirely
+                    memberEmail: req.userEmail,
                     memberPhone: req.userPhone || req.memberPhone || "N/A",
                     memberStatus: req.memberStatus || "Inactive",
-                    requestedPlan: req.planName, // since it's a membership request
-                    price: "N/A", // not in response
+                    requestedPlan: req.planName,
+                    price: "N/A",
                     validity: "N/A",
                     upiId: "N/A",
                     requestedAt: req.createdAt || "N/A",
@@ -156,7 +138,12 @@ const MemberAllPlans = () => {
                 `${BaseUrl}MemberPlan?adminId=${adminId}`
             );
             if (response.data.success) {
-                const formattedPlans = response.data.plans.map((plan) => ({
+                // Only keep active plans
+                const activePlans = response.data.plans.filter(plan => 
+                    plan.status === "Active" || plan.status === true
+                );
+                
+                const formattedPlans = activePlans.map((plan) => ({
                     id: plan.id,
                     name: plan.name,
                     sessions: plan.sessions,
@@ -278,39 +265,6 @@ const MemberAllPlans = () => {
         }
     };
 
-    const fetchPlanById = async (planId) => {
-        setViewLoading(true);
-        setError(null);
-        try {
-            const response = await axiosInstance.get(
-                `${BaseUrl}MemberPlan/${planId}`
-            );
-            if (response.data.success) {
-                const plan = response.data.plan;
-                const formattedPlan = {
-                    id: plan.id,
-                    name: plan.name,
-                    sessions: plan.sessions,
-                    validity: plan.validityDays,
-                    price: `₹${plan.price.toLocaleString()}`,
-                    active: plan.status !== undefined ? (plan.status === "Active" || plan.status === true) : true,
-                    type: plan.type.toLowerCase(),
-                    createdAt: plan.createdAt,
-                    updatedAt: plan.updatedAt,
-                };
-                setSelectedPlan(formattedPlan);
-                setShowViewModal(true);
-            } else {
-                setError("Failed to fetch plan details.");
-            }
-        } catch (err) {
-            console.error("Error fetching plan:", err);
-            setError(err.response?.data?.message || "Failed to fetch plan.");
-        } finally {
-            setViewLoading(false);
-        }
-    };
-
     const getPlansByType = (type) => {
         if (type === "group") return groupPlans;
         if (type === "personal") return personalPlans;
@@ -318,342 +272,59 @@ const MemberAllPlans = () => {
         return [];
     };
 
-    const updatePlansByType = (type, updatedPlans) => {
-        if (type === "group") setGroupPlans(updatedPlans);
-        else if (type === "personal") setPersonalPlans(updatedPlans);
-        else if (type === "member") setMembershipPlans(updatedPlans);
-    };
-
-    const handleCreatePlan = async () => {
-        if (
-            !newPlan.name ||
-            !newPlan.sessions ||
-            !newPlan.validity ||
-            !newPlan.price
-        ) {
-            setCreatePlanError("Please fill all fields");
-            return;
-        }
-        if (
-            newPlan.type === "member" &&
-            (!newPlan.trainerType || !newPlan.trainerId)
-        ) {
-            setCreatePlanError(
-                "Please select trainer type and trainer for membership plans"
-            );
-            return;
-        }
-        setLoading(true);
-        setCreatePlanError(null);
-        try {
-            const adminId = localStorage.getItem("userId") || "4";
-            const payload = {
-                planName: newPlan.name,
-                sessions: parseInt(newPlan.sessions),
-                validity: parseInt(newPlan.validity),
-                price: parseInt(newPlan.price),
-                adminId: parseInt(adminId),
-                type: newPlan.type.toUpperCase(),
-            };
-            if (newPlan.type === "member") {
-                payload.trainerType = newPlan.trainerType;
-                payload.trainerId = parseInt(newPlan.trainerId);
-            }
-            const response = await axiosInstance.post(
-                `${BaseUrl}MemberPlan`,
-                payload
-            );
-            if (response.data.success) {
-                const plan = {
-                    id: response.data.plan.id,
-                    name: response.data.plan.name,
-                    sessions: response.data.plan.sessions,
-                    validity: response.data.plan.validityDays,
-                    price: `₹${response.data.plan.price.toLocaleString()}`,
-                    active: true,
-                    type: response.data.plan.type.toLowerCase(),
-                };
-                const currentPlans =
-                    newPlan.type === "group"
-                        ? groupPlans
-                        : newPlan.type === "personal"
-                            ? personalPlans
-                            : membershipPlans;
-                updatePlansByType(newPlan.type, [...currentPlans, plan]);
-                setApiPlans([...apiPlans, plan]);
-                setNewPlan({
-                    name: "",
-                    sessions: "",
-                    validity: "",
-                    price: "",
-                    type: activeTab === "personal" ? "personal" : "group",
-                    trainerType: "",
-                    trainerId: "",
-                });
-                setShowCreateModal(false);
-                alert(
-                    `✅ ${newPlan.type === "group"
-                        ? "Group"
-                        : newPlan.type === "personal"
-                            ? "Personal"
-                            : "Membership"
-                    } Plan Created: ${plan.name}`
-                );
-            } else {
-                setCreatePlanError("Failed to create plan.");
-            }
-        } catch (err) {
-            console.error("Error creating plan:", err);
-            setCreatePlanError(
-                err.response?.data?.message || "Failed to create plan."
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleEditPlan = (plan, planType) => {
-        setSelectedPlan({ ...plan, type: planType });
-        setNewPlan({
-            name: plan.name,
-            sessions: plan.sessions.toString(),
-            validity: plan.validity.toString(),
-            price: plan.price.replace("₹", "").replace(",", ""),
-            type: planType,
+    // Handle booking a plan
+    const handleBookPlan = (plan) => {
+        setSelectedPlan(plan);
+        setBookingForm({
+            memberId: memberId,
+            planId: plan.id,
+            paymentMethod: "upi",
+            upiId: "",
         });
-        setShowEditModal(true);
+        setShowBookingModal(true);
     };
 
-    const handleUpdatePlan = async () => {
-        if (
-            !newPlan.name ||
-            !newPlan.sessions ||
-            !newPlan.validity ||
-            !newPlan.price
-        ) {
-            setError("Please fill all fields");
+    const handleBookingSubmit = async (e) => {
+        e.preventDefault();
+        if (!bookingForm.upiId && bookingForm.paymentMethod === "upi") {
+            setError("Please provide UPI ID");
             return;
         }
+
         setLoading(true);
         setError(null);
         try {
-            const adminId = localStorage.getItem("userId") || "4";
             const payload = {
-                planName: newPlan.name,
-                sessions: parseInt(newPlan.sessions),
-                validity: parseInt(newPlan.validity),
-                price: parseInt(newPlan.price),
+                memberId: parseInt(bookingForm.memberId),
+                planId: parseInt(bookingForm.planId),
+                paymentMethod: bookingForm.paymentMethod,
+                upiId: bookingForm.upiId,
                 adminId: parseInt(adminId),
-                type: newPlan.type.toUpperCase(),
             };
-            const response = await axiosInstance.put(
-                `${BaseUrl}MemberPlan/${adminId}/${selectedPlan.id}`,
+
+            const response = await axiosInstance.post(
+                `${BaseUrl}booking/create`,
                 payload
             );
+
             if (response.data.success) {
-                const updatedPlan = {
-                    ...selectedPlan,
-                    id: response.data.plan.id,
-                    name: response.data.plan.name,
-                    sessions: response.data.plan.sessions,
-                    validity: response.data.plan.validityDays,
-                    price: `₹${response.data.plan.price.toLocaleString()}`,
-                    type: response.data.plan.type.toLowerCase(),
-                    active: selectedPlan.active,
-                };
-                const currentPlans = getPlansByType(selectedPlan.type);
-                updatePlansByType(
-                    selectedPlan.type,
-                    currentPlans.map((p) => (p.id === selectedPlan.id ? updatedPlan : p))
-                );
-                setApiPlans(
-                    apiPlans.map((p) => (p.id === selectedPlan.id ? updatedPlan : p))
-                );
-                setNewPlan({
-                    name: "",
-                    sessions: "",
-                    validity: "",
-                    price: "",
-                    type: "group",
-                });
-                setShowEditModal(false);
+                alert("✅ Booking request submitted successfully!");
+                setShowBookingModal(false);
                 setSelectedPlan(null);
-                alert(`✅ Plan Updated: ${updatedPlan.name}`);
+                setBookingForm({
+                    memberId: "",
+                    planId: "",
+                    paymentMethod: "upi",
+                    upiId: "",
+                });
             } else {
-                setError("Failed to update plan.");
+                setError("Failed to submit booking request.");
             }
         } catch (err) {
-            console.error("Error updating plan:", err);
-            setError(err.response?.data?.message || "Failed to update plan.");
+            console.error("Error submitting booking:", err);
+            setError(err.response?.data?.message || "Failed to submit booking request.");
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleDeletePlan = (planId, planType) => {
-        setPlanToDelete({ id: planId, type: planType });
-        setShowDeleteModal(true);
-    };
-
-    const handleConfirmDelete = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const response = await axiosInstance.delete(
-                `${BaseUrl}MemberPlan/${planToDelete.id}`
-            );
-            if (response.data.success) {
-                const { id, type } = planToDelete;
-                const currentPlans = getPlansByType(type);
-                updatePlansByType(
-                    type,
-                    currentPlans.filter((p) => p.id !== id)
-                );
-                setApiPlans(apiPlans.filter((p) => p.id !== id));
-                setShowDeleteModal(false);
-                alert("✅ Plan Deleted!");
-            } else {
-                setError("Failed to delete plan.");
-            }
-        } catch (err) {
-            console.error("Error deleting plan:", err);
-            setError(err.response?.data?.message || "Failed to delete plan.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleCancelDelete = () => {
-        setShowDeleteModal(false);
-        setPlanToDelete({ id: null, type: null });
-    };
-
-    const handleTogglePlan = async (planId, planType) => {
-        setLoading(true);
-        setError(null);
-        try {
-            const currentPlans = getPlansByType(planType);
-            const plan = currentPlans.find((p) => p.id === planId);
-            if (!plan) {
-                setError("Plan not found");
-                return;
-            }
-            const newStatus = !plan.active ? "Active" : "Inactive";
-            const response = await axiosInstance.put(
-                `${BaseUrl}MemberPlan/${adminId}/${planId}`,
-                {
-                    status: newStatus,
-                }
-            );
-            if (response.data.success) {
-                const updatedActiveStatus = response.data.plan.status === "Active" || response.data.plan.status === true;
-                updatePlansByType(
-                    planType,
-                    currentPlans.map((p) =>
-                        p.id === planId ? { ...p, active: updatedActiveStatus } : p
-                    )
-                );
-                setApiPlans(
-                    apiPlans.map((p) =>
-                        p.id === planId ? { ...p, active: updatedActiveStatus } : p
-                    )
-                );
-                if (selectedPlan && selectedPlan.id === planId) {
-                    setSelectedPlan({ ...selectedPlan, active: updatedActiveStatus });
-                }
-                alert(`✅ Plan status updated to ${newStatus}!`);
-            } else {
-                setError("Failed to update plan status.");
-            }
-        } catch (err) {
-            console.error("Error toggling plan:", err);
-            setError(err.response?.data?.message || "Failed to update plan status.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // 👇 Handle Membership Request Approval/Rejection
-    const handleProcessMembershipStatus = async (status) => {
-        if (!requestToProcess || requestToProcess.requestType !== "membership") return;
-        try {
-            const endpoint = `booking/approve/${requestToProcess.bookingRequestId}`;
-            const payload = {
-                status: status === "approved" ? "approved" : "rejected",
-            };
-            const response = await axiosInstance.post(endpoint, payload);
-            if (response.data.success) {
-                setMembershipRequests((prev) =>
-                    prev.map((req) =>
-                        req.id === requestToProcess.id ? { ...req, status } : req
-                    )
-                );
-                const msg =
-                    status === "approved"
-                        ? "✅ Membership Request Approved!"
-                        : "❌ Membership Request Rejected.";
-                alert(msg);
-                setShowStatusModal(false);
-                setRequestToProcess(null);
-            } else {
-                setError("Failed to update membership request status.");
-            }
-        } catch (err) {
-            console.error("Error updating membership request:", err);
-            setError(
-                err.response?.data?.message ||
-                "Failed to update request status. Please try again."
-            );
-        }
-    };
-
-    const handleOpenStatusModal = (request) => {
-        setRequestToProcess(request);
-        setShowStatusModal(true);
-    };
-
-    const handleProcessStatus = async (status) => {
-        if (!requestToProcess) return;
-        if (requestToProcess.requestType === "renewal") {
-            // Existing renewal logic
-            try {
-                const { memberId, previewPlanId } = requestToProcess;
-                if (!memberId) {
-                    setError("Member ID is missing in the request.");
-                    return;
-                }
-                const endpoint = `/members/admin/renewal/${memberId}/status`;
-                const payload = {
-                    adminId: parseInt(adminId),
-                    ...(previewPlanId && { planId: parseInt(previewPlanId) }),
-                    status: status === "approved" ? "Active" : "Reject",
-                };
-                const response = await axiosInstance.put(endpoint, payload);
-                if (response.data.success) {
-                    setRenewalRequests((prev) =>
-                        prev.map((req) =>
-                            req.id === requestToProcess.id ? { ...req, status } : req
-                        )
-                    );
-                    const msg =
-                        status === "approved"
-                            ? "✅ Renewal Approved! Member will be notified."
-                            : "❌ Renewal Rejected. Member will be notified.";
-                    alert(msg);
-                    setShowStatusModal(false);
-                    setRequestToProcess(null);
-                } else {
-                    setError("Failed to update renewal status.");
-                }
-            } catch (err) {
-                console.error("Error updating renewal status:", err);
-                setError(
-                    err.response?.data?.message ||
-                    "Failed to update renewal status. Please try again."
-                );
-            }
-        } else if (requestToProcess.requestType === "membership") {
-            await handleProcessMembershipStatus(status);
         }
     };
 
@@ -724,7 +395,7 @@ const MemberAllPlans = () => {
                 <div
                     style={{
                         height: "6px",
-                        backgroundColor: plan.active ? customColor : "#ccc",
+                        backgroundColor: customColor,
                         width: "100%",
                     }}
                 ></div>
@@ -754,47 +425,6 @@ const MemberAllPlans = () => {
                             >
                                 {plan.name}
                             </h5>
-                        </div>
-                        <div className="d-flex gap-1">
-                            <Button
-                                variant="link"
-                                size="sm"
-                                className="p-1 rounded-circle"
-                                style={{
-                                    color: "#6EB2CC",
-                                    backgroundColor: "#f8f9fa",
-                                    border: "1px solid #e9ecef",
-                                }}
-                                onClick={() => fetchPlanById(plan.id)}
-                            >
-                                <FaEye size={14} />
-                            </Button>
-                            <Button
-                                variant="link"
-                                size="sm"
-                                className="p-1 rounded-circle"
-                                style={{
-                                    color: "#6EB2CC",
-                                    backgroundColor: "#f8f9fa",
-                                    border: "1px solid #e9ecef",
-                                }}
-                                onClick={() => handleEditPlan(plan, planType)}
-                            >
-                                <FaEdit size={14} />
-                            </Button>
-                            <Button
-                                variant="link"
-                                size="sm"
-                                className="p-1 rounded-circle"
-                                style={{
-                                    color: "#dc3545",
-                                    backgroundColor: "#f8f9fa",
-                                    border: "1px solid #e9ecef",
-                                }}
-                                onClick={() => handleDeletePlan(plan.id, planType)}
-                            >
-                                <FaTrash size={14} />
-                            </Button>
                         </div>
                     </div>
                     <ul className="list-unstyled mb-3 flex-grow-1">
@@ -837,264 +467,24 @@ const MemberAllPlans = () => {
                         )}
                     </ul>
                     <div className="d-flex gap-2 mt-auto">
-                        {plan.active ? (
-                            <Button
-                                size="sm"
-                                className="flex-grow-1 d-flex align-items-center justify-content-center gap-2 fw-medium"
-                                onClick={() => handleTogglePlan(plan.id, planType)}
-                                style={{
-                                    backgroundColor: customColor,
-                                    borderColor: customColor,
-                                    color: "white",
-                                    fontSize: "0.8rem",
-                                    padding: "0.3rem 0.5rem",
-                                }}
-                            >
-                                <FaToggleOn size={12} /> Active
-                            </Button>
-                        ) : (
-                            <Button
-                                size="sm"
-                                className="flex-grow-1 d-flex align-items-center justify-content-center gap-2 fw-medium"
-                                onClick={() => handleTogglePlan(plan.id, planType)}
-                                style={{
-                                    backgroundColor: "#6c757d",
-                                    borderColor: "#6c757d",
-                                    color: "white",
-                                    fontSize: "0.8rem",
-                                    padding: "0.3rem 0.5rem",
-                                }}
-                            >
-                                <FaToggleOff size={12} /> Inactive
-                            </Button>
-                        )}
+                        <Button
+                            size="sm"
+                            className="flex-grow-1 d-flex align-items-center justify-content-center gap-2 fw-medium"
+                            onClick={() => handleBookPlan(plan)}
+                            style={{
+                                backgroundColor: customColor,
+                                borderColor: customColor,
+                                color: "white",
+                                fontSize: "0.8rem",
+                                padding: "0.3rem 0.5rem",
+                            }}
+                        >
+                            <FaBook size={12} /> Book Plan
+                        </Button>
                     </div>
                 </Card.Body>
             </Card>
         </Col>
-    );
-
-    const renderRequestRow = (req, index, type) => (
-        <tr key={req.id}>
-            <td>{index + 1}</td>
-            <td>
-                <strong>{req.memberName}</strong>
-                <div className="text-muted small">{req.memberEmail}</div>
-            </td>
-            <td>
-                <div>{req.requestedPlan}</div>
-                <div className="text-muted small">Requested Plan</div>
-            </td>
-            <td>
-                <span
-                    className="badge px-3 py-2"
-                    style={{
-                        backgroundColor: customColor,
-                        color: "white",
-                        borderRadius: "20px",
-                    }}
-                >
-                    {type === "renewal" ? req.requestedPlanType : "Membership"}
-                </span>
-            </td>
-            <td>{req.requestedAt}</td>
-            <td>
-                {req.status === "pending" && (
-                    <span
-                        className="badge bg-warning text-dark px-3 py-2"
-                        style={{ borderRadius: "20px" }}
-                    >
-                        Pending
-                    </span>
-                )}
-                {req.status === "approved" && (
-                    <span
-                        className="badge px-3 py-2"
-                        style={{
-                            backgroundColor: customColor,
-                            color: "white",
-                            borderRadius: "20px",
-                        }}
-                    >
-                        Approved
-                    </span>
-                )}
-                {req.status === "rejected" && (
-                    <span
-                        className="badge bg-danger px-3 py-2"
-                        style={{ borderRadius: "20px" }}
-                    >
-                        Rejected
-                    </span>
-                )}
-            </td>
-            <td>
-                <div className="d-flex gap-2 align-items-center">
-                    {req.status === "pending" ? (
-                        <Button
-                            size="sm"
-                            className="d-flex align-items-center gap-1 fw-medium"
-                            onClick={() => handleOpenStatusModal(req)}
-                            style={{
-                                backgroundColor: "#ffc107",
-                                borderColor: "#ffc107",
-                                color: "#212529",
-                            }}
-                        >
-                            <FaToggleOn size={14} /> Process
-                        </Button>
-                    ) : req.status === "approved" ? (
-                        <Button
-                            size="sm"
-                            className="d-flex align-items-center gap-1 fw-medium"
-                            style={{
-                                backgroundColor: customColor,
-                                borderColor: customColor,
-                                color: "white",
-                            }}
-                            disabled
-                        >
-                            <FaToggleOn size={14} /> Active
-                        </Button>
-                    ) : (
-                        <Button
-                            size="sm"
-                            className="d-flex align-items-center gap-1 fw-medium"
-                            style={{
-                                backgroundColor: "#6c757d",
-                                borderColor: "#6c757d",
-                                color: "white",
-                            }}
-                            disabled
-                        >
-                            <FaToggleOff size={14} /> Inactive
-                        </Button>
-                    )}
-                </div>
-            </td>
-        </tr>
-    );
-
-    const renderRequestCard = (req, index, type) => (
-        <Card
-            key={req.id}
-            className="mb-3 border shadow-sm"
-            style={{ borderRadius: "10px" }}
-        >
-            <Card.Body className="p-3">
-                <div className="d-flex justify-content-between align-items-start mb-2">
-                    <h6 className="mb-0 fw-bold">{req.memberName}</h6>
-                    <span className="badge bg-secondary rounded-pill">{index + 1}</span>
-                </div>
-                <div className="mb-2">
-                    <span className="text-muted small">Email: </span>
-                    {req.memberEmail}
-                </div>
-                <div className="mb-2">
-                    <span className="text-muted small">Requested Plan: </span>
-                    {req.requestedPlan}
-                </div>
-                <div className="mb-2">
-                    <span className="text-muted small">Type: </span>
-                    <span
-                        className="badge px-2 py-1"
-                        style={{
-                            backgroundColor: customColor,
-                            color: "white",
-                            borderRadius: "20px",
-                        }}
-                    >
-                        {type === "renewal" ? req.requestedPlanType : "Membership"}
-                    </span>
-                </div>
-                <div className="row mb-2">
-                    <div className="col-6">
-                        <span className="text-muted small">Price: </span>
-                        {req.price}
-                    </div>
-                    <div className="col-6">
-                        <span className="text-muted small">Validity: </span>
-                        {req.validity} days
-                    </div>
-                </div>
-                <div className="mb-3">
-                    <span className="text-muted small">Requested: </span>
-                    {req.requestedAt}
-                </div>
-                <div className="d-flex justify-content-between align-items-center">
-                    <div>
-                        {req.status === "pending" && (
-                            <span
-                                className="badge bg-warning text-dark px-3 py-2"
-                                style={{ borderRadius: "20px" }}
-                            >
-                                Pending
-                            </span>
-                        )}
-                        {req.status === "approved" && (
-                            <span
-                                className="badge px-3 py-2"
-                                style={{
-                                    backgroundColor: customColor,
-                                    color: "white",
-                                    borderRadius: "20px",
-                                }}
-                            >
-                                Approved
-                            </span>
-                        )}
-                        {req.status === "rejected" && (
-                            <span
-                                className="badge bg-danger px-3 py-2"
-                                style={{ borderRadius: "20px" }}
-                            >
-                                Rejected
-                            </span>
-                        )}
-                    </div>
-                    {req.status === "pending" ? (
-                        <Button
-                            size="sm"
-                            className="d-flex align-items-center gap-1 fw-medium"
-                            onClick={() => handleOpenStatusModal(req)}
-                            style={{
-                                backgroundColor: "#ffc107",
-                                borderColor: "#ffc107",
-                                color: "#212529",
-                            }}
-                        >
-                            <FaToggleOn size={14} /> Process
-                        </Button>
-                    ) : req.status === "approved" ? (
-                        <Button
-                            size="sm"
-                            className="d-flex align-items-center gap-1 fw-medium"
-                            style={{
-                                backgroundColor: customColor,
-                                borderColor: customColor,
-                                color: "white",
-                            }}
-                            disabled
-                        >
-                            <FaToggleOn size={14} /> Active
-                        </Button>
-                    ) : (
-                        <Button
-                            size="sm"
-                            className="d-flex align-items-center gap-1 fw-medium"
-                            style={{
-                                backgroundColor: "#6c757d",
-                                borderColor: "#6c757d",
-                                color: "white",
-                            }}
-                            disabled
-                        >
-                            <FaToggleOff size={14} /> Inactive
-                        </Button>
-                    )}
-                </div>
-            </Card.Body>
-        </Card>
     );
 
     return (
@@ -1239,6 +629,66 @@ const MemberAllPlans = () => {
                         </Col>
                     </Row>
                 </Tab.Container>
+
+                {/* Booking Modal */}
+                <Modal show={showBookingModal} onHide={() => setShowBookingModal(false)}>
+                    <Modal.Header closeButton>
+                        <Modal.Title>Book Plan</Modal.Title>
+                    </Modal.Header>
+                    <Form onSubmit={handleBookingSubmit}>
+                        <Modal.Body>
+                            {error && <Alert variant="danger">{error}</Alert>}
+                            {selectedPlan && (
+                                <div className="mb-3">
+                                    <h5>{selectedPlan.name}</h5>
+                                    <p>
+                                        {selectedPlan.sessions} Sessions, Validity: {selectedPlan.validity} Days
+                                    </p>
+                                    <p>Price: {selectedPlan.price}</p>
+                                </div>
+                            )}
+                            <Form.Group className="mb-3">
+                                <Form.Label>Payment Method</Form.Label>
+                                <Form.Select
+                                    value={bookingForm.paymentMethod}
+                                    onChange={(e) =>
+                                        setBookingForm({ ...bookingForm, paymentMethod: e.target.value })
+                                    }
+                                >
+                                    <option value="upi">UPI</option>
+                                    <option value="cash">Cash</option>
+                                    <option value="card">Card</option>
+                                </Form.Select>
+                            </Form.Group>
+                            {bookingForm.paymentMethod === "upi" && (
+                                <Form.Group className="mb-3">
+                                    <Form.Label>UPI ID</Form.Label>
+                                    <Form.Control
+                                        type="text"
+                                        placeholder="Enter UPI ID"
+                                        value={bookingForm.upiId}
+                                        onChange={(e) =>
+                                            setBookingForm({ ...bookingForm, upiId: e.target.value })
+                                        }
+                                        required
+                                    />
+                                </Form.Group>
+                            )}
+                        </Modal.Body>
+                        <Modal.Footer>
+                            <Button variant="secondary" onClick={() => setShowBookingModal(false)}>
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                style={{ backgroundColor: customColor, borderColor: customColor }}
+                                disabled={loading}
+                            >
+                                {loading ? "Submitting..." : "Submit Booking"}
+                            </Button>
+                        </Modal.Footer>
+                    </Form>
+                </Modal>
             </Container>
         </div>
     );
