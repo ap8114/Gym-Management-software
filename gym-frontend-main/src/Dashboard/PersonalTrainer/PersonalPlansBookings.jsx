@@ -89,7 +89,7 @@ const PersonalPlansBookings = () => {
             sessionsRemaining: cust.sessionsRemaining || 0,
             contact: cust.phone || 'N/A',
             email: cust.email || 'N/A',
-            status: cust.status || 'Unknown',
+            status: cust.status || 'Unknown', // Use the actual status from API
             gender: cust.gender || 'N/A',
             address: cust.address || 'N/A',
             joinDate: cust.joinDate ? new Date(cust.joinDate).toISOString().split('T')[0] : 'N/A',
@@ -124,7 +124,21 @@ const PersonalPlansBookings = () => {
     setShowCustomerModal(true);
   };
 
-  const getStatusIndicator = (sessionsRemaining, expiryDate) => {
+  const getStatusIndicator = (status, sessionsRemaining, expiryDate) => {
+    // Use the actual status from API first, then fall back to calculated status
+    if (status && status !== 'Unknown') {
+      if (status.toLowerCase() === 'active') {
+        return <span className="badge bg-success">Active</span>;
+      } else if (status.toLowerCase() === 'expired') {
+        return <span className="badge bg-danger">Expired</span>;
+      } else if (status.toLowerCase() === 'completed') {
+        return <span className="badge bg-secondary">Completed</span>;
+      } else {
+        return <span className="badge bg-info">{status}</span>;
+      }
+    }
+    
+    // Fallback to calculated status if API status is not available
     if (sessionsRemaining === 0) {
       return <span className="badge bg-secondary">Sessions Completed</span>;
     }
@@ -137,6 +151,35 @@ const PersonalPlansBookings = () => {
       return <span className="badge bg-danger">Expired</span>;
     }
     return <span className="badge bg-success">Active</span>;
+  };
+
+  const getStatusColor = (status, sessionsRemaining, expiryDate) => {
+    // Use the actual status from API first, then fall back to calculated status
+    if (status && status !== 'Unknown') {
+      if (status.toLowerCase() === 'active') {
+        return { bg: '#d4edda', color: '#155724', border: '#c3e6cb' };
+      } else if (status.toLowerCase() === 'expired') {
+        return { bg: '#f8d7da', color: '#721c24', border: '#f5c6cb' };
+      } else if (status.toLowerCase() === 'completed') {
+        return { bg: '#e2e3e5', color: '#383d41', border: '#d6d8db' };
+      } else {
+        return { bg: '#d1ecf1', color: '#0c5460', border: '#bee5eb' };
+      }
+    }
+    
+    // Fallback to calculated status if API status is not available
+    if (sessionsRemaining === 0) {
+      return { bg: '#e2e3e5', color: '#383d41', border: '#d6d8db' };
+    }
+    if (expiryDate === 'N/A') {
+      return { bg: '#fff3cd', color: '#856404', border: '#ffeeba' };
+    }
+    const today = new Date();
+    const expiry = new Date(expiryDate);
+    if (expiry < today) {
+      return { bg: '#f8d7da', color: '#721c24', border: '#f5c6cb' };
+    }
+    return { bg: '#d4edda', color: '#155724', border: '#c3e6cb' };
   };
 
   if (loadingPlans) {
@@ -389,7 +432,7 @@ const PersonalPlansBookings = () => {
                               </div>
                             </td>
                             <td className="py-2">
-                              {getStatusIndicator(customer.sessionsRemaining, customer.expiryDate)}
+                              {getStatusIndicator(customer.status, customer.sessionsRemaining, customer.expiryDate)}
                             </td>
                             <td className="py-2">
                               <Button
@@ -499,13 +542,13 @@ const PersonalPlansBookings = () => {
                     <div
                       className="p-3 p-md-4 rounded"
                       style={{
-                        backgroundColor: selectedCustomer.sessionsRemaining > 0 ? '#d4edda' : '#f8d7da',
-                        color: selectedCustomer.sessionsRemaining > 0 ? '#155724' : '#721c24',
-                        border: `2px solid ${selectedCustomer.sessionsRemaining > 0 ? '#c3e6cb' : '#f5c6cb'}`,
+                        backgroundColor: getStatusColor(selectedCustomer.status, selectedCustomer.sessionsRemaining, selectedCustomer.expiryDate).bg,
+                        color: getStatusColor(selectedCustomer.status, selectedCustomer.sessionsRemaining, selectedCustomer.expiryDate).color,
+                        border: `2px solid ${getStatusColor(selectedCustomer.status, selectedCustomer.sessionsRemaining, selectedCustomer.expiryDate).border}`,
                       }}
                     >
                       <div className="fw-bold text-uppercase" style={{ fontSize: '0.9rem' }}>
-                        {selectedCustomer.sessionsRemaining > 0 ? 'Active' : 'Expired'}
+                        {selectedCustomer.status || 'Unknown'}
                       </div>
                       <div className="small">Status</div>
                     </div>

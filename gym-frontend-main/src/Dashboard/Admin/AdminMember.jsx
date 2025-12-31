@@ -569,38 +569,42 @@ const AdminMember = () => {
     return plan ? plan.name : "Unknown Plan";
   };
 
-  // Get filtered plans based on API response structure
-  const getFilteredPlans = (interestedIn) => {
-    if (!plansLoaded || apiPlans.length === 0) {
-      console.log("Plans not loaded or empty.");
-      return [];
-    }
+// Get filtered plans based on API response structure
+const getFilteredPlans = (interestedIn) => {
+  if (!plansLoaded || apiPlans.length === 0) {
+    console.log("Plans not loaded or empty.");
+    return [];
+  }
 
-    let filtered = [];
-    switch (interestedIn) {
-      case "Personal Training":
-        // Filter for plans where type is "PERSONAL"
-        filtered = apiPlans.filter((plan) => plan.type === "PERSONAL");
-        break;
-      case "Personal Trainer":
-        // Filter for plans where trainerType is "personal"
-        filtered = apiPlans.filter((plan) => plan.trainerType === "personal");
-        break;
-      case "General Trainer":
-        // Filter for plans where trainerType is "general"
-        filtered = apiPlans.filter((plan) => plan.trainerType === "general");
-        break;
-      case "Group Classes":
-        // Filter for plans where type is "GROUP"
-        filtered = apiPlans.filter((plan) => plan.type === "GROUP");
-        break;
-      default:
-        filtered = [];
-        break;
-    }
-    console.log(`Filtering for "${interestedIn}":`, filtered);
-    return filtered;
-  };
+  let filtered = [];
+  switch (interestedIn) {
+    case "Personal Training":
+      // Filter for plans where type is "PERSONAL" OR type is "MEMBER" with trainerType "personal"
+      filtered = apiPlans.filter(
+        (plan) => 
+          plan.type === "PERSONAL" || 
+          (plan.type === "MEMBER" && plan.trainerType === "personal")
+      );
+      break;
+    case "Personal Trainer":
+      // Filter for plans where trainerType is "personal"
+      filtered = apiPlans.filter((plan) => plan.trainerType === "personal");
+      break;
+    case "General Trainer":
+      // Filter for plans where trainerType is "general"
+      filtered = apiPlans.filter((plan) => plan.trainerType === "general");
+      break;
+    case "Group Classes":
+      // Filter for plans where type is "GROUP"
+      filtered = apiPlans.filter((plan) => plan.type === "GROUP");
+      break;
+    default:
+      filtered = [];
+      break;
+  }
+  console.log(`Filtering for "${interestedIn}":`, filtered);
+  return filtered;
+};
 
   // Function to generate and download receipt as image using html2canvas
   const handleDownloadReceipt = async (member) => {

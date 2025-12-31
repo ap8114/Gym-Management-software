@@ -97,7 +97,7 @@ const SalaryCalculator = () => {
   const getRoleName = (roleId) => {
     const roles = {
       1: "Admin",
-      2: "Manager",
+      // 2: "Manager",
       3: "Trainer",
       4: "Receptionist",
       5: "Personal Trainer",
@@ -837,7 +837,7 @@ const SalaryCalculator = () => {
         <div className="col-6 col-md-3 col-lg-2">
           <select className="form-select form-select-sm">
             <option>All Roles</option>
-            <option>Manager</option>
+            {/* <option>Manager</option> */}
             <option>Trainer</option>
             <option>Receptionist</option>
           </select>
