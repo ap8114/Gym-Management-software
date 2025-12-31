@@ -34,6 +34,9 @@ const Report = () => {
 
     const user = getUserFromStorage();
     const adminId = user?.adminId || null;
+    const trainerId = user?.id || null;
+
+    console.log('General Trainer Report - Admin ID:', adminId, 'Trainer ID:', trainerId);
 
     // Filter function
     const applyFilters = (data) => {
@@ -93,8 +96,8 @@ const Report = () => {
 
     useEffect(() => {
         const fetchClassPerformanceData = async () => {
-            if (!adminId) {
-                setError('Admin ID not found. Please log in again.');
+            if (!adminId || !trainerId) {
+                setError('Admin ID or Trainer ID not found. Please log in again.');
                 setLoading(false);
                 return;
             }
@@ -103,7 +106,40 @@ const Report = () => {
                 const response = await axiosInstance.get(`/generaltrainer/${adminId}/class-performance`);
 
                 if (response.data?.success && response.data.data) {
-                    setClassPerformanceData(response.data.data);
+                    const data = response.data.data;
+                    console.log('API Response:', data); // Debug log
+                    console.log('Current trainer ID:', trainerId); // Debug log
+                    
+                    // Filter studentAttendanceByClass to show only current trainer's classes by trainerId
+                    const filteredClasses = data.studentAttendanceByClass.filter(
+                        (cls) => cls.trainerId === parseInt(trainerId)
+                    );
+                    
+                    console.log('Filtered classes for trainer ID:', filteredClasses); // Debug log
+                    
+                    // Recalculate summary for filtered trainer data only
+                    const totalCapacity = filteredClasses.reduce((sum, cls) => {
+                        const [, total] = (cls.attendance || '0/0').split('/').map(Number);
+                        return sum + total;
+                    }, 0);
+                    
+                    const totalPresent = filteredClasses.reduce((sum, cls) => {
+                        const [present] = (cls.attendance || '0/0').split('/').map(Number);
+                        return sum + present;
+                    }, 0);
+                    
+                    const filteredSummary = {
+                        totalStudents: data.summary.totalStudents, // Keep original total students from admin
+                        presentStudents: totalPresent,
+                        avgAttendance: filteredClasses.length > 0 
+                            ? Math.round(filteredClasses.reduce((sum, cls) => sum + cls.attendancePercentage, 0) / filteredClasses.length) + '%'
+                            : '0%'
+                    };
+                    
+                    setClassPerformanceData({
+                        summary: filteredSummary,
+                        studentAttendanceByClass: filteredClasses
+                    });
                 } else {
                     throw new Error('Invalid or empty response from server');
                 }
@@ -119,7 +155,7 @@ const Report = () => {
         };
 
         fetchClassPerformanceData();
-    }, [adminId]);
+    }, [adminId, trainerId]);
 
     if (loading) {
         return (
@@ -136,10 +172,16 @@ const Report = () => {
     return (
         <div className="trainer-dashboard">
             <div className="dashboard-header">
-                <h1 className="text-center fw-bold mb-2">Class Attendance Report</h1>
+                <h1 className="text-center fw-bold mb-2">General Trainer Class Report</h1>
                 <p className="text-center text-muted">
-                    Overview of student attendance across all classes
+                    Overview of general trainer class attendance and performance data
                 </p>
+                {trainerId && (
+                    <div className="text-center mb-3">
+                        <span className="badge bg-success text-white me-2">Trainer ID: {trainerId}</span>
+                        <span className="badge bg-info text-white">General Trainer Dashboard</span>
+                    </div>
+                )}
             </div>
 
             {/* Summary Cards */}
@@ -266,7 +308,13 @@ const Report = () => {
                 <Card.Body className="p-3 p-md-4">
                     <Row className="mb-3">
                         <Col>
-                            <h5>Student Attendance by Class (General Trainer Data)</h5>
+                            <h5>My Training Classes (Trainer ID: {trainerId})</h5>
+                            <p className="text-muted mb-0">Classes conducted by trainer ID {trainerId} only</p>
+                            {filteredData.length > 0 && (
+                                <small className="text-success">
+                                    Found {filteredData.length} class(es) for this trainer
+                                </small>
+                            )}
                         </Col>
                     </Row>
 
@@ -283,7 +331,21 @@ const Report = () => {
                                             <Col xs={12} md={4} className="mb-2 mb-md-0">
                                                 <h6 className="fw-bold">{cls.className || 'Unnamed Class'}</h6>
                                                 <small className="text-muted d-block">{cls.date || 'No date'}</small>
-                                             
+                                                <div className="d-flex flex-wrap gap-1 mt-2">
+                                                    <span className="badge bg-success-subtle text-success-emphasis">
+                                                        {cls.trainerName || 'General Trainer'}
+                                                    </span>
+                                                    {cls.trainerRole && (
+                                                        <span className="badge bg-info-subtle text-info-emphasis">
+                                                            {cls.trainerRole.replace('generaltrainer', 'General Trainer')}
+                                                        </span>
+                                                    )}
+                                                    {cls.trainerId && (
+                                                        <span className="badge bg-secondary-subtle text-secondary-emphasis">
+                                                            ID: {cls.trainerId}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </Col>
                                             <Col xs={12} md={8}>
                                                 <div className="d-flex align-items-center flex-column flex-md-row">
@@ -314,10 +376,8 @@ const Report = () => {
                     ) : (
                         <div className="text-center text-muted py-4">
                             <FaChartBar className="mb-3 fs-1 opacity-50" />
-                            <p className="mb-0">No general trainer class attendance data matches your filters</p>
-                            <Button variant="link" onClick={resetFilters} className="p-0 mt-2">
-                                Clear filters to see all data
-                            </Button>
+                            <p className="mb-0">No classes found for trainer ID {trainerId}</p>
+                            <small>Only classes conducted by this specific trainer will appear here</small>
                         </div>
                     )}
                 </Card.Body>
