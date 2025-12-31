@@ -28,6 +28,10 @@ const PersonalTrainerClassesSchedule = () => {
     }
   };
   const user = getUserFromStorage();
+  const trainerId = user?.id || null;
+  const branchId = user?.branchId || null;
+  const name = user?.fullName || null;
+  const staffId = user?.staffId || null;
   const adminId = user?.adminId || null;
 
   useEffect(() => {
@@ -48,13 +52,13 @@ const PersonalTrainerClassesSchedule = () => {
         allClasses = classesRes.data.data || [];
       }
 
-      // 🔥 FILTER: Keep only classes where trainer is NOT "General" (Personal Trainers only)
-      const personalClasses = allClasses.filter(
-        (cls) => cls.trainer && cls.trainer.toLowerCase() !== "general"
+      // 🔥 FILTER: Keep only classes that match current trainer's ID
+      const trainerClasses = allClasses.filter(
+        (cls) => cls.trainerId === parseInt(trainerId)
       );
 
       // Transform data to match the new API response structure
-      const transformedClasses = personalClasses.map(classItem => ({
+      const transformedClasses = trainerClasses.map(classItem => ({
         id: classItem.id,
         className: classItem.className,
         trainer: classItem.trainer,

@@ -53,13 +53,13 @@ const GeneralClassesSchedule = () => {
         allClasses = classesRes.data.data || [];
       }
 
-      // 🔥 FILTER: Keep only classes where trainer is exactly "General"
-      const generalClasses = allClasses.filter(
-        (cls) => cls.trainer && cls.trainer.toLowerCase() === "general"
+      // 🔥 FILTER: Keep only classes that match current trainer's ID
+      const trainerClasses = allClasses.filter(
+        (cls) => cls.trainerId === parseInt(trainerId)
       );
 
       // Transform data to match the new API response structure
-      const transformedClasses = generalClasses.map(classItem => ({
+      const transformedClasses = trainerClasses.map(classItem => ({
         id: classItem.id,
         className: classItem.className,
         trainer: classItem.trainer,

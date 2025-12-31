@@ -100,7 +100,7 @@ const AdminMember = () => {
     amountPaid: "",
     profileImage: null, // Store file object directly
     profileImagePreview: "", // For preview
-    existingProfileImage: "", // Store existing image URL
+    existingProfileImage: "", // Store existing image URL 
   });
 
   const [renewPlan, setRenewPlan] = useState({
