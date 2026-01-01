@@ -15,6 +15,15 @@ const PersonalTrainerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // State for dashboard data
+  const [dashboardData, setDashboardData] = useState({
+    totalMembers: 0,
+    todaysCheckIns: 0,
+    earningsOverview: [],
+    sessionsOverview: null,
+    recentActivities: [],
+  });
+
  const getUserFromStorage = () => {
     try {
       const userStr = localStorage.getItem('user');
@@ -27,16 +36,6 @@ const PersonalTrainerDashboard = () => {
 
   const user = getUserFromStorage();
   const adminId = user?.adminId || null;
-  console.log('Admin ID:', adminId);
-
-  // State for dashboard data
-  const [dashboardData, setDashboardData] = useState({
-    totalMembers: 0,
-    todaysCheckIns: 0,
-    earningsOverview: [],
-    sessionsOverview: { completed: 0, upcoming: 0, cancelled: 0 },
-    recentActivities: [],
-  });
 
   // Fetch data on component mount
   useEffect(() => {
@@ -48,29 +47,36 @@ const PersonalTrainerDashboard = () => {
 
     const fetchDashboardData = async () => {
       try {
-        const response = await axiosInstance.get(`/personal-trainer-dashboard/trainer/${adminId}`);
+        const response = await axiosInstance.get(`personal-trainer-dashboard/trainer/${adminId}`);
         if (response.data.success && response.data.data) {
-          // Transform the API response to match the expected structure
+          // Process the API response to match frontend expectations
           const apiData = response.data.data;
           
-          // Transform earningsOverview from {date, total} to {day, amount}
-          const transformedEarnings = apiData.earningsOverview.map(item => ({
-            day: new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }),
-            amount: item.total
+          // Transform earnings data
+          const transformedEarnings = apiData.earningsOverview.map(item => {
+            // Extract day from date
+            const dateObj = new Date(item.date);
+            const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+            
+            return {
+              day: dayName,
+              amount: item.total || 0
+            };
+          });
+          
+          // Transform recent activities
+          const transformedActivities = apiData.recentActivities.map(item => ({
+            id: item.id,
+            name: item.memberName,
+            action: `${item.status} - ${item.notes}`,
+            time: new Date(item.time).toLocaleString(),
+            image: `https://ui-avatars.com/api/?name=${item.memberName}&background=random`
           }));
           
-          // Transform recentActivities from API structure to expected structure
-          const transformedActivities = apiData.recentActivities.map(activity => ({
-            id: activity.id,
-            name: activity.memberName,
-            action: `checked in (${activity.mode})`,
-            time: new Date(activity.time).toLocaleString(),
-            image: 'https://via.placeholder.com/40' // Using placeholder since no image URL in API
-          }));
-          
+          // Set the transformed data
           setDashboardData({
-            totalMembers: apiData.totalMembers,
-            todaysCheckIns: apiData.todaysCheckIns,
+            totalMembers: apiData.totalMembers || 0,
+            todaysCheckIns: apiData.todaysCheckIns || 0,
             earningsOverview: transformedEarnings,
             sessionsOverview: apiData.sessionsOverview || { completed: 0, upcoming: 0, cancelled: 0 },
             recentActivities: transformedActivities,

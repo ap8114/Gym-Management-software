@@ -24,6 +24,7 @@ import jsPDF from "jspdf";
 import GymLogo from "../../assets/Logo/Logo1.png";
 import { numberToWords } from "../../utils/numberToWords";
 import ImageCropper from "../../Components/ImageCropper";
+import MemberPlansDisplay from "../../Components/MemberPlansDisplay";
 
 const AdminMember = () => {
   const [members, setMembers] = useState([]);
@@ -73,6 +74,7 @@ const AdminMember = () => {
     email: "",
     password: "",
     planId: "",
+    planIds: [], // NEW: Support multiple plans
     address: "",
     gender: "",
     dateOfBirth: "",
@@ -91,11 +93,13 @@ const AdminMember = () => {
     phone: "",
     email: "",
     planId: "",
+    planIds: [], // ✅ Support multiple plans
     address: "",
     gender: "",
     dateOfBirth: "",
     interestedIn: "",
     status: "Active",
+    startDate: new Date().toISOString().split("T")[0], // ✅ Start Date for new plans
     paymentMode: "cash",
     amountPaid: "",
     profileImage: null, // Store file object directly
@@ -132,33 +136,46 @@ const AdminMember = () => {
   };
 
   // Handle cropped image
-  const handleCropComplete = (croppedImageBlob) => {
-    // Convert blob to file
-    const croppedFile = new File([croppedImageBlob], 'profile-image.jpg', {
-      type: 'image/jpeg',
-      lastModified: Date.now(),
-    });
+  const handleCropComplete = async (croppedImageData) => {
+    try {
+      // ImageCropper returns { blob, url }
+      const { blob, url } = croppedImageData;
+      
+      if (!blob) {
+        console.error('No blob received from cropper');
+        return;
+      }
 
-    // Create preview URL
-    const previewUrl = URL.createObjectURL(croppedImageBlob);
+      // Convert blob to file
+      const croppedFile = new File([blob], 'profile-image.jpg', {
+        type: 'image/jpeg',
+        lastModified: Date.now(),
+      });
 
-    if (cropperMode === 'edit') {
-      setEditMember({
-        ...editMember,
-        profileImage: croppedFile,
-        profileImagePreview: previewUrl,
-      });
-    } else {
-      setNewMember({
-        ...newMember,
-        profileImage: croppedFile,
-        profileImagePreview: previewUrl,
-      });
+      // Use the URL from cropper or create new one
+      const previewUrl = url || URL.createObjectURL(blob);
+
+      if (cropperMode === 'edit') {
+        setEditMember({
+          ...editMember,
+          profileImage: croppedFile,
+          profileImagePreview: previewUrl,
+        });
+      } else {
+        setNewMember({
+          ...newMember,
+          profileImage: croppedFile,
+          profileImagePreview: previewUrl,
+        });
+      }
+
+      setShowCropper(false);
+      setCropperImage(null);
+      setCropperMode(null);
+    } catch (error) {
+      console.error('Error handling cropped image:', error);
+      alert('Error processing cropped image. Please try again.');
     }
-
-    setShowCropper(false);
-    setCropperImage(null);
-    setCropperMode(null);
   };
 
   // Handle cropper cancel
@@ -192,8 +209,9 @@ const AdminMember = () => {
           phone: member.phone,
           email: member.email,
           gender: member.gender,
-          plan: getPlanNameById(member.planId),
+          plan: getPlanNameById(member.planId), // Keep for backward compatibility
           planId: member.planId,
+          assignedPlans: member.assignedPlans || [], // ✅ Multiple plans array
           address: member.address,
           dob: member.dateOfBirth,
           planStart: member.membershipFrom,
@@ -235,15 +253,16 @@ const AdminMember = () => {
       console.log("API response for member detail:", response.data);
 
       if (response.data?.success) {
-        const member = response.data.data;
+        const member = response.data.member || response.data.data;
         return {
           id: member.id,
           name: member.fullName,
           phone: member.phone,
           email: member.email,
           gender: member.gender,
-          plan: getPlanNameById(member.planId), // This might fail if plans aren't loaded yet
+          plan: getPlanNameById(member.planId), // Keep for backward compatibility
           planId: member.planId,
+          assignedPlans: member.assignedPlans || [], // ✅ Multiple plans array
           address: member.address,
           dob: member.dateOfBirth,
           // Fix typos in property names
@@ -330,7 +349,15 @@ const AdminMember = () => {
       formData.append("dateOfBirth", newMember.dateOfBirth);
       formData.append("address", newMember.address);
       formData.append("interestedIn", newMember.interestedIn);
-      formData.append("planId", newMember.planId);
+      
+      // Support both single and multiple plans
+      if (newMember.planIds && newMember.planIds.length > 0) {
+        formData.append("planIds", JSON.stringify(newMember.planIds));
+        formData.append("planId", newMember.planIds[0]); // Backward compatibility
+      } else if (newMember.planId) {
+        formData.append("planId", newMember.planId);
+      }
+      
       formData.append("membershipFrom", newMember.startDate);
       formData.append(
         "paymentMode",
@@ -366,6 +393,7 @@ const AdminMember = () => {
           email: "",
           password: "",
           planId: "",
+          planIds: [],
           address: "",
           gender: "",
           dateOfBirth: "",
@@ -408,7 +436,23 @@ const AdminMember = () => {
       formData.append("dateOfBirth", editMember.dateOfBirth);
       formData.append("interestedIn", editMember.interestedIn);
       formData.append("status", editMember.status);
-      formData.append("planId", editMember.planId);
+      
+      // ✅ Support multiple plans in edit
+      if (editMember.planIds && editMember.planIds.length > 0) {
+        formData.append("planIds", JSON.stringify(editMember.planIds));
+        formData.append("planId", editMember.planIds[0]); // Backward compatibility
+      } else if (editMember.planId) {
+        formData.append("planIds", JSON.stringify([editMember.planId]));
+        formData.append("planId", editMember.planId);
+      }
+      
+      // ✅ Use startDate for new plans (required field)
+      if (!editMember.startDate) {
+        alert("Please select a Start Date for new plans");
+        setEditLoading(false);
+        return;
+      }
+      formData.append("membershipFrom", editMember.startDate);
       formData.append(
         "paymentMode",
         editMember.paymentMode.charAt(0).toUpperCase() +
@@ -480,9 +524,29 @@ const AdminMember = () => {
     setShowViewModal(true);
   };
 
-  const handleEditFormOpen = (member) => {
+  const handleEditFormOpen = async (member) => {
     try {
       console.log("Opening edit form for member:", member);
+
+      // Fetch full member details to get assignedPlans
+      let memberDetails = member;
+      if (member.id) {
+        try {
+          const response = await axiosInstance.get(
+            `${BaseUrl}members/detail/${member.id}`
+          );
+          if (response.data?.success) {
+            memberDetails = response.data.member || response.data.data;
+          }
+        } catch (err) {
+          console.log("Could not fetch member details, using list data");
+        }
+      }
+
+      // Extract planIds from assignedPlans array
+      const planIds = memberDetails.assignedPlans && memberDetails.assignedPlans.length > 0
+        ? memberDetails.assignedPlans.map(p => p.planId)
+        : (memberDetails.planId ? [memberDetails.planId] : []);
 
       // Use the member data directly from the list
       setEditMember({
@@ -493,11 +557,13 @@ const AdminMember = () => {
         gender: member.gender,
         address: member.address,
         dateOfBirth: member.dob,
-        interestedIn: member.interestedIn,
+        interestedIn: member.interestedIn || memberDetails.interestedIn || "",
         status: member.status,
-        planId: member.planId,
+        planId: member.planId, // Keep for backward compatibility
+        planIds: planIds, // ✅ Multiple plans array
         paymentMode: member.paymentMode || "cash",
         amountPaid: member.amountPaid || "",
+        startDate: member.planStart ? new Date(member.planStart).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
         profileImage: null,
         profileImagePreview: member.profileImage || "",
         existingProfileImage: member.profileImage || "",
@@ -642,55 +708,130 @@ const handleDownloadReceipt = async (member) => {
         console.log("Payment history not available");
       }
 
-      // Fetch admin profile
+      // ✅ Fetch admin profile from member-self/profile API (contains gymName, gymAddress, gstNumber, phone, email, tax)
       try {
-        const adminResponse = await axiosInstance.get(
-          `${BaseUrl}auth/user/${finalAdminId}`
+        const adminProfileResponse = await axiosInstance.get(
+          `member-self/profile/${finalAdminId}`
         );
-        if (adminResponse.data) {
-          adminDetails = adminResponse.data;
+        if (adminProfileResponse.data?.success && adminProfileResponse.data?.profile) {
+          const profile = adminProfileResponse.data.profile;
+          adminDetails = {
+            fullName: profile.fullName || "Gym Name",
+            gymName: profile.gymName || profile.fullName || "Gym Name",
+            gymAddress: profile.gymAddress || profile.address_street || profile.address || "Gym Address",
+            gstNumber: profile.gstNumber || "",
+            tax: profile.tax || "5",
+            phone: profile.phone || "",
+            email: profile.email || ""
+          };
         }
       } catch (err) {
-        console.log("Admin details not available, using localStorage data");
-        const userData = getUserFromStorage();
-        adminDetails = {
-          fullName: userData?.fullName || "Gym Name",
-          gymName: userData?.gymName || userData?.fullName || "Gym Name",
-          gymAddress: userData?.gymAddress || userData?.address || "Gym Address",
-          gstNumber: userData?.gstNumber || "",
-          tax: userData?.tax || "5",
-          phone: userData?.phone || "",
-          email: userData?.email || ""
-        };
+        console.log("Admin profile API failed, trying auth/user API");
+        // Fallback to auth/user API
+        try {
+          const adminResponse = await axiosInstance.get(
+            `${BaseUrl}auth/user/${finalAdminId}`
+          );
+          if (adminResponse.data) {
+            adminDetails = {
+              fullName: adminResponse.data.fullName || adminResponse.data.name || "Gym Name",
+              gymName: adminResponse.data.gymName || adminResponse.data.fullName || "Gym Name",
+              gymAddress: adminResponse.data.gymAddress || adminResponse.data.address || "Gym Address",
+              gstNumber: adminResponse.data.gstNumber || adminResponse.data.gst_number || "",
+              tax: adminResponse.data.tax || "5",
+              phone: adminResponse.data.phone || "",
+              email: adminResponse.data.email || ""
+            };
+          }
+        } catch (err2) {
+          console.log("Auth API also failed, using localStorage data");
+          const userData = getUserFromStorage();
+          adminDetails = {
+            fullName: userData?.fullName || "Gym Name",
+            gymName: userData?.gymName || userData?.fullName || "Gym Name",
+            gymAddress: userData?.gymAddress || userData?.address || "Gym Address",
+            gstNumber: userData?.gstNumber || "",
+            tax: userData?.tax || "5",
+            phone: userData?.phone || "",
+            email: userData?.email || ""
+          };
+        }
       }
 
-      // Fetch from app-settings
+      // ✅ Fetch from app-settings (only for gym_name override, other fields from profile API)
       try {
         const settingsResponse = await axiosInstance.get(
           `adminSettings/app-settings/admin/${finalAdminId}`
         );
         if (settingsResponse.data?.data) {
           const settingsData = settingsResponse.data.data;
+          // Only override gym_name from app_settings if available
           if (settingsData.gym_name || settingsData.gymName) {
-            adminDetails = { 
-              ...adminDetails, 
-              gymName: settingsData.gym_name || settingsData.gymName 
-            };
+            adminDetails.gymName = settingsData.gym_name || settingsData.gymName;
           }
         }
       } catch (err) {
         console.log("Settings not available, using admin profile data only");
       }
 
-      // Get plan details
-      const plan = apiPlans.find((p) => p.id === parseInt(member.planId));
-      const planName = plan ? plan.name : "Gym annual subscription";
-      const planPrice = plan ? parseFloat(plan.price.toString().replace("₹", "").replace(/,/g, "")) : 0;
+      // ✅ Get all assigned plans (support multiple plans)
+      const assignedPlans = memberDetails?.assignedPlans || [];
+      
+      // Calculate totals from all plans
+      let totalBaseAmount = 0;
+      let totalTaxAmount = 0;
+      let totalQuantity = 0;
+      
+      // Build services array for invoice table
+      const services = [];
+      
+      if (assignedPlans.length > 0) {
+        // Use assigned plans
+        assignedPlans.forEach((assignedPlan, index) => {
+          const planPrice = assignedPlan.amountPaid || assignedPlan.price || 0;
+          const taxRate = parseFloat(adminDetails?.tax || "5");
+          const planTax = (planPrice * taxRate) / 100;
+          const planTotal = planPrice + planTax;
+          
+          services.push({
+            no: index + 1,
+            name: assignedPlan.planName || "Gym subscription",
+            qty: "1 PCS",
+            rate: planPrice,
+            tax: planTax,
+            total: planTotal
+          });
+          
+          totalBaseAmount += planPrice;
+          totalTaxAmount += planTax;
+          totalQuantity += 1;
+        });
+      } else {
+        // Fallback to single plan
+        const plan = apiPlans.find((p) => p.id === parseInt(member.planId));
+        const planName = plan ? plan.name : "Gym annual subscription";
+        const planPrice = plan ? parseFloat(plan.price.toString().replace("₹", "").replace(/,/g, "")) : (memberDetails?.amountPaid || 0);
+        const taxRate = parseFloat(adminDetails?.tax || "5");
+        const planTax = (planPrice * taxRate) / 100;
+        const planTotal = planPrice + planTax;
+        
+        services.push({
+          no: 1,
+          name: planName,
+          qty: "1 PCS",
+          rate: planPrice,
+          tax: planTax,
+          total: planTotal
+        });
+        
+        totalBaseAmount = planPrice;
+        totalTaxAmount = planTax;
+        totalQuantity = 1;
+      }
 
-      // Calculate amounts
-      const baseAmount = paymentData?.amount || memberDetails?.amountPaid || planPrice || 0;
+      // Calculate final amounts
       const paymentMode = paymentData?.paymentMode || memberDetails?.paymentMode || "Cash";
-      const cashPaid = paymentData?.amount || memberDetails?.amountPaid || planPrice || 0;
+      const cashPaid = paymentData?.amount || memberDetails?.amountPaid || totalBaseAmount;
       const invoiceNo = paymentData?.invoiceNo || `${member.id}`;
       const paymentDate = paymentData?.paymentDate
         ? new Date(paymentData.paymentDate).toLocaleDateString('en-GB')
@@ -698,11 +839,10 @@ const handleDownloadReceipt = async (member) => {
 
       // Calculate tax (CGST and SGST - split 50-50)
       const taxRate = parseFloat(adminDetails?.tax || "5");
-      const taxAmount = (baseAmount * taxRate) / 100;
-      const cgstAmount = taxAmount / 2;
-      const sgstAmount = taxAmount / 2;
-      const subtotal = baseAmount;
-      const totalAmount = subtotal + taxAmount;
+      const cgstAmount = totalTaxAmount / 2;
+      const sgstAmount = totalTaxAmount / 2;
+      const subtotal = totalBaseAmount;
+      const totalAmount = subtotal + totalTaxAmount;
 
       // Member details
       const memberName = memberDetails?.fullName || member.name || "N/A";
@@ -771,8 +911,7 @@ const handleDownloadReceipt = async (member) => {
           margin: 0 auto;
           box-sizing: border-box;
           position: relative;
-          border: 10px solid;
-          border-image: linear-gradient(135deg, #c9a961 0%, #e8d4a0 25%, #c9a961 50%, #e8d4a0 75%, #c9a961 100%) 1;
+          border: 2px solid #ffffff;
         ">
           <!-- Corner Decorations -->
           <div style="position: absolute; top: 15px; left: 15px; width: 25px; height: 25px;">
@@ -809,8 +948,8 @@ const handleDownloadReceipt = async (member) => {
               </div>
               <div style="font-size: 10px; color: #333; line-height: 1.5;">
                 ${companyGST ? `<span style="font-weight: 600;">GSTIN</span> ${companyGST}<br/>` : ''}
-                ${companyPhone ? `📞 ${companyPhone}` : ''} ${companyEmail ? `📧 ${companyEmail}` : ''}<br/>
-                ${companyAddress}
+                ${companyPhone ? `<span style="margin-right: 10px;">📞 ${companyPhone}</span>` : ''} ${companyEmail ? `<span>📧 ${companyEmail}</span>` : ''}<br/>
+                ${companyAddress ? `<span>📍 ${companyAddress}</span>` : ''}
               </div>
             </div>
 
@@ -853,23 +992,25 @@ const handleDownloadReceipt = async (member) => {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: center;">1</td>
-                  <td style="padding: 10px 6px; border: 1px solid #d0d0d0;">${planName}</td>
-                  <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: center;">1 PCS</td>
-                  <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: right;">${subtotal.toLocaleString('en-IN')}</td>
-                  <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: right;">${taxAmount.toFixed(0)}<br/><span style="font-size: 8px;">(${taxRate}%)</span></td>
-                  <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: right; font-weight: bold;">${totalAmount.toLocaleString('en-IN')}</td>
-                </tr>
+                ${services.map(service => `
+                  <tr>
+                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: center;">${service.no}</td>
+                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0;">${service.name}</td>
+                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: center;">${service.qty}</td>
+                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: right;">${service.rate.toLocaleString('en-IN')}</td>
+                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: right;">${Math.round(service.tax)}<br/><span style="font-size: 8px;">(${taxRate}%)</span></td>
+                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: right; font-weight: bold;">${Math.round(service.total).toLocaleString('en-IN')}</td>
+                  </tr>
+                `).join('')}
               </tbody>
             </table>
 
             <!-- Subtotal Bar -->
             <div style="background: linear-gradient(to right, #f5f0e0, #faf7ed); padding: 8px 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; border-top: 2px solid #c9a961; border-bottom: 2px solid #c9a961;">
               <span style="font-weight: bold;">SUBTOTAL</span>
-              <span>1</span>
-              <span style="font-weight: bold;">₹ ${taxAmount.toFixed(0)}</span>
-              <span style="font-weight: bold;">₹ ${totalAmount.toLocaleString('en-IN')}</span>
+              <span>${totalQuantity}</span>
+              <span style="font-weight: bold;">₹ ${Math.round(totalTaxAmount).toLocaleString('en-IN')}</span>
+              <span style="font-weight: bold;">₹ ${Math.round(totalAmount).toLocaleString('en-IN')}</span>
             </div>
 
             <!-- Bottom Section: Terms & Tax Breakdown -->
@@ -887,19 +1028,19 @@ const handleDownloadReceipt = async (member) => {
                 <table style="width: 100%; border-collapse: collapse;">
                   <tr>
                     <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; font-weight: bold;">Taxable Amount</td>
-                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">₹ ${subtotal.toLocaleString('en-IN')}</td>
+                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">₹ ${Math.round(subtotal).toLocaleString('en-IN')}</td>
                   </tr>
                   <tr>
                     <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0;">CGST @${(taxRate/2).toFixed(1)}%</td>
-                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">₹ ${cgstAmount.toFixed(0)}</td>
+                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">₹ ${Math.round(cgstAmount).toLocaleString('en-IN')}</td>
                   </tr>
                   <tr>
                     <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0;">SGST @${(taxRate/2).toFixed(1)}%</td>
-                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">₹ ${sgstAmount.toFixed(0)}</td>
+                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">₹ ${Math.round(sgstAmount).toLocaleString('en-IN')}</td>
                   </tr>
                   <tr style="background: linear-gradient(to right, #f5f0e0, #faf7ed);">
                     <td style="padding: 8px 10px; font-weight: bold;">Total Amount</td>
-                    <td style="padding: 8px 10px; text-align: right; font-weight: bold; font-size: 11px;">₹ ${totalAmount.toLocaleString('en-IN')}</td>
+                    <td style="padding: 8px 10px; text-align: right; font-weight: bold; font-size: 11px;">₹ ${Math.round(totalAmount).toLocaleString('en-IN')}</td>
                   </tr>
                 </table>
               </div>
@@ -927,19 +1068,19 @@ const handleDownloadReceipt = async (member) => {
     margin-bottom: 6px;
   ">
     <span>Total Amount</span>
-    <span>₹ ${totalAmount.toLocaleString('en-IN')}</span>
+    <span>₹ ${Math.round(totalAmount).toLocaleString('en-IN')}</span>
   </div>
 
   <!-- Received Amount -->
   <div style="display: flex; justify-content: space-between; color: #555;">
     <span>Received Amount</span>
-    <span>₹ ${cashPaid.toLocaleString('en-IN')}</span>
+    <span>₹ ${Math.round(cashPaid).toLocaleString('en-IN')}</span>
   </div>
 
   <!-- Balance -->
   <div style="display: flex; justify-content: space-between; font-weight: bold;">
     <span>Balance</span>
-    <span>₹ ${balance.toFixed(0)}</span>
+    <span>₹ ${Math.round(Math.abs(balance)).toLocaleString('en-IN')}</span>
   </div>
 
   <!-- Amount in Words -->
@@ -988,7 +1129,7 @@ const handleDownloadReceipt = async (member) => {
       font-weight: bold;
       color: #1a1a1a;
     ">
-      Speed Fitness Elite
+      ${companyName}
     </div>
 
   </div>
@@ -1145,7 +1286,7 @@ const handleDownloadReceipt = async (member) => {
                     <th>Gender</th>
                     <th>Plan</th>
                     <th>Expiry</th>
-                    <th>Remaining Days</th>
+                    {/* <th>Remaining Days</th> */}
                     <th>Status</th>
                     <th className="text-center">Actions</th>
                   </tr>
@@ -1190,9 +1331,26 @@ const handleDownloadReceipt = async (member) => {
                         <td>{member.phone}</td>
                         <td>{member.email}</td>
                         <td>{member.gender}</td>
-                        <td>{getPlanNameById(member.planId)}</td>
-                        <td>{new Date(member.expiry).toLocaleDateString()}</td>
                         <td>
+                          {member.assignedPlans && member.assignedPlans.length > 0 ? (
+                            <MemberPlansDisplay plans={member.assignedPlans} compact={true} />
+                          ) : (
+                            <span>{getPlanNameById(member.planId) || "No Plan"}</span>
+                          )}
+                        </td>
+                        <td>
+                          {member.assignedPlans && member.assignedPlans.length > 0 ? (
+                            <div>
+                              {member.assignedPlans
+                                .filter(p => p.computedStatus === 'Active')
+                                .map(p => new Date(p.membershipTo).toLocaleDateString())
+                                .join(', ')}
+                            </div>
+                          ) : (
+                            <span>{member.expiry ? new Date(member.expiry).toLocaleDateString() : "N/A"}</span>
+                          )}
+                        </td>
+                        {/* <td>
                           {member.remainingDays === null || member.remainingDays === undefined ? (
                             "-"
                           ) : member.remainingDays <= 10 ? (
@@ -1200,7 +1358,7 @@ const handleDownloadReceipt = async (member) => {
                           ) : (
                             member.remainingDays
                           )}
-                        </td>
+                        </td> */}
                         <td>
                           <span
                             className={`badge ${getStatusClass(member.status)}`}
@@ -1761,9 +1919,10 @@ const handleDownloadReceipt = async (member) => {
                         }
                       ></textarea>
                     </div>
-                    <div className="col-12 col-md-6">
+                    <div className="col-12">
                       <label className="form-label">
-                        Plan <span className="text-danger">*</span>
+                        Plans <span className="text-danger">*</span> 
+                        <small className="text-muted ms-2">(Select one or multiple plans)</small>
                       </label>
                       {planLoading ? (
                         <div className="form-select text-center">
@@ -1780,33 +1939,50 @@ const handleDownloadReceipt = async (member) => {
                           {planError}
                         </div>
                       ) : (
-                        <select
-                          className="form-select"
-                          value={newMember.planId}
-                          onChange={(e) =>
-                            setNewMember({
-                              ...newMember,
-                              planId: e.target.value,
-                            })
-                          }
-                          required
-                          disabled={!newMember.interestedIn}
-                        >
-                          <option value="">
-                            {newMember.interestedIn
-                              ? "Select Plan"
-                              : "Please select 'Interested In' first"}
-                          </option>
-                          {plansLoaded &&
-                            getFilteredPlans(newMember.interestedIn).map(
-                              (plan) => (
-                                <option key={plan.id} value={plan.id}>
-                                  {plan.name} - {plan.price} ({plan.validity}{" "}
-                                  days)
-                                </option>
-                              )
+                        <div>
+                          <div className="border rounded p-3" style={{ maxHeight: "250px", overflowY: "auto" }}>
+                            {!newMember.interestedIn ? (
+                              <p className="text-muted mb-0">Please select 'Interested In' first</p>
+                            ) : getFilteredPlans(newMember.interestedIn).length === 0 ? (
+                              <p className="text-muted mb-0">No plans available</p>
+                            ) : (
+                              getFilteredPlans(newMember.interestedIn).map((plan) => (
+                                <div key={plan.id} className="form-check mb-2">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    id={`plan-${plan.id}`}
+                                    value={plan.id}
+                                    checked={newMember.planIds.includes(plan.id)}
+                                    onChange={(e) => {
+                                      const planId = parseInt(e.target.value);
+                                      const isChecked = e.target.checked;
+                                      setNewMember({
+                                        ...newMember,
+                                        planIds: isChecked
+                                          ? [...newMember.planIds, planId]
+                                          : newMember.planIds.filter(id => id !== planId),
+                                        planId: isChecked && newMember.planIds.length === 0 
+                                          ? planId 
+                                          : newMember.planId
+                                      });
+                                    }}
+                                  />
+                                  <label className="form-check-label" htmlFor={`plan-${plan.id}`}>
+                                    <strong>{plan.name}</strong> - ₹{plan.price} ({plan.validity} days)
+                                  </label>
+                                </div>
+                              ))
                             )}
-                        </select>
+                          </div>
+                          {newMember.planIds.length > 0 && (
+                            <div className="mt-2">
+                              <small className="text-success">
+                                ✓ {newMember.planIds.length} plan(s) selected
+                              </small>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                     <div className="col-12 col-md-6">
@@ -2094,35 +2270,87 @@ const handleDownloadReceipt = async (member) => {
                         </div>
                       </div>
               </div>
+              <div className="col-12">
+                <label className="form-label">
+                  Plans <span className="text-danger">*</span>
+                </label>
+                {planLoading ? (
+                  <div className="text-center py-3">
+                    <div className="spinner-border spinner-border-sm" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                    <p className="mt-2 text-muted">Loading plans...</p>
+                  </div>
+                ) : planError ? (
+                  <div className="alert alert-danger" role="alert">
+                    {planError}
+                  </div>
+                ) : (
+                  <div>
+                    <div className="border rounded p-3" style={{ maxHeight: "250px", overflowY: "auto" }}>
+                      {!editMember.interestedIn ? (
+                        <p className="text-muted mb-0">Please select 'Interested In' first</p>
+                      ) : getFilteredPlans(editMember.interestedIn).length === 0 ? (
+                        <p className="text-muted mb-0">No plans available</p>
+                      ) : (
+                        getFilteredPlans(editMember.interestedIn).map((plan) => (
+                          <div key={plan.id} className="form-check mb-2">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              id={`edit-plan-${plan.id}`}
+                              value={plan.id}
+                              checked={editMember.planIds.includes(plan.id)}
+                              onChange={(e) => {
+                                const planId = parseInt(e.target.value);
+                                const isChecked = e.target.checked;
+                                setEditMember({
+                                  ...editMember,
+                                  planIds: isChecked
+                                    ? [...editMember.planIds, planId]
+                                    : editMember.planIds.filter(id => id !== planId),
+                                  planId: isChecked && editMember.planIds.length === 0 
+                                    ? planId 
+                                    : editMember.planId
+                                });
+                              }}
+                            />
+                            <label className="form-check-label" htmlFor={`edit-plan-${plan.id}`}>
+                              <strong>{plan.name}</strong> - {plan.price} ({plan.validity} days)
+                            </label>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    {editMember.planIds.length > 0 && (
+                      <div className="mt-2">
+                        <small className="text-success">
+                          ✓ {editMember.planIds.length} plan(s) selected
+                        </small>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="col-12 col-md-6">
-                <label className="form-label">Membership Plan</label>
-                <select
-                  className="form-select"
-                  value={editMember.planId}
+                <label className="form-label">
+                  Start Date (for new plans) <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="date"
+                  className="form-control"
+                  value={editMember.startDate}
                   onChange={(e) =>
                     setEditMember({
                       ...editMember,
-                      planId: e.target.value,
+                      startDate: e.target.value,
                     })
                   }
                   required
-                  disabled={!editMember.interestedIn}
-                >
-                  <option value="">
-                    {editMember.interestedIn
-                      ? "Select Plan"
-                      : "Please select 'Interested In' first"}
-                  </option>
-                  {plansLoaded &&
-                    getFilteredPlans(editMember.interestedIn).map(
-                      (plan) => (
-                        <option key={plan.id} value={plan.id}>
-                          {plan.name} - {plan.price} ({plan.validity}{" "}
-                          days)
-                        </option>
-                      )
-                    )}
-                </select>
+                />
+                <small className="text-muted">
+                  This date will be used for newly assigned plans
+                </small>
               </div>
               <div className="col-12 col-md-6">
                 <label className="form-label">Gender</label>
@@ -2391,23 +2619,29 @@ const handleDownloadReceipt = async (member) => {
                     <strong>Gender:</strong>
                     <div>{selectedMember.gender}</div>
                   </div>
-                  <div className="col-12 col-sm-6">
-                    <strong>Plan:</strong>
-                    <div>{getPlanNameById(selectedMember.planId)}</div>
-                  </div>
-                  <div className="col-12 col-sm-6">
-                    <strong>Plan Start:</strong>
-                    <div>
-                      {new Date(
-                        selectedMember.planStart
-                      ).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <div className="col-12 col-sm-6">
-                    <strong>Expiry:</strong>
-                    <div>
-                      {new Date(selectedMember.expiry).toLocaleDateString()}
-                    </div>
+                  <div className="col-12">
+                    <strong>Assigned Plans:</strong>
+                    {selectedMember.assignedPlans && selectedMember.assignedPlans.length > 0 ? (
+                      <div className="mt-2">
+                        <MemberPlansDisplay plans={selectedMember.assignedPlans} compact={false} />
+                      </div>
+                    ) : (
+                      <div className="mt-2">
+                        <div className="text-muted">
+                          <small>Plan: {getPlanNameById(selectedMember.planId) || "No Plan"}</small>
+                          {selectedMember.planStart && (
+                            <div>
+                              <small>Start: {new Date(selectedMember.planStart).toLocaleDateString()}</small>
+                            </div>
+                          )}
+                          {selectedMember.expiry && (
+                            <div>
+                              <small>Expiry: {new Date(selectedMember.expiry).toLocaleDateString()}</small>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="col-12 col-sm-6">
                     <strong>Date of Birth:</strong>
