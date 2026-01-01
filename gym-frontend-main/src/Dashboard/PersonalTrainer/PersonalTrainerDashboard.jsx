@@ -3,7 +3,6 @@ import { FaUserFriends, FaCalendarCheck, FaDollarSign, FaChevronRight } from 're
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Line, Pie } from 'react-chartjs-2';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import GetAdminId from '../../Api/GetAdminId';
 import axiosInstance from '../../Api/axiosInstance';
 
 // Register Chart.js components
@@ -15,15 +14,27 @@ const PersonalTrainerDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  const adminId = GetAdminId();
+
+ const getUserFromStorage = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (err) {
+      console.error('Error parsing user from localStorage:', err);
+      return null;
+    }
+  };
+
+  const user = getUserFromStorage();
+  const adminId = user?.adminId || null;
+  console.log('Admin ID:', adminId);
 
   // State for dashboard data
   const [dashboardData, setDashboardData] = useState({
     totalMembers: 0,
     todaysCheckIns: 0,
     earningsOverview: [],
-    sessionsOverview: null,
+    sessionsOverview: { completed: 0, upcoming: 0, cancelled: 0 },
     recentActivities: [],
   });
 
@@ -37,9 +48,33 @@ const PersonalTrainerDashboard = () => {
 
     const fetchDashboardData = async () => {
       try {
-        const response = await axiosInstance.get(`personal-trainer-dashboard/trainer/${adminId}`);
+        const response = await axiosInstance.get(`/personal-trainer-dashboard/trainer/${adminId}`);
         if (response.data.success && response.data.data) {
-          setDashboardData(response.data.data);
+          // Transform the API response to match the expected structure
+          const apiData = response.data.data;
+          
+          // Transform earningsOverview from {date, total} to {day, amount}
+          const transformedEarnings = apiData.earningsOverview.map(item => ({
+            day: new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }),
+            amount: item.total
+          }));
+          
+          // Transform recentActivities from API structure to expected structure
+          const transformedActivities = apiData.recentActivities.map(activity => ({
+            id: activity.id,
+            name: activity.memberName,
+            action: `checked in (${activity.mode})`,
+            time: new Date(activity.time).toLocaleString(),
+            image: 'https://via.placeholder.com/40' // Using placeholder since no image URL in API
+          }));
+          
+          setDashboardData({
+            totalMembers: apiData.totalMembers,
+            todaysCheckIns: apiData.todaysCheckIns,
+            earningsOverview: transformedEarnings,
+            sessionsOverview: apiData.sessionsOverview || { completed: 0, upcoming: 0, cancelled: 0 },
+            recentActivities: transformedActivities,
+          });
         } else {
           setError('Failed to load dashboard data');
         }
@@ -54,8 +89,7 @@ const PersonalTrainerDashboard = () => {
     fetchDashboardData();
   }, [adminId]);
 
-  // Format earnings data for chart (assuming it's an array of { day, amount })
-  // Example expected format: [{ day: "Mon", amount: 820 }, ...]
+  // Format earnings data for chart
   const earningsData = {
     labels: dashboardData.earningsOverview.map(item => item.day || ''),
     datasets: [
@@ -70,7 +104,7 @@ const PersonalTrainerDashboard = () => {
     ],
   };
 
-  // Sessions pie chart: expect sessionsOverview to be { completed, upcoming, cancelled }
+  // Sessions pie chart
   const sessions = dashboardData.sessionsOverview || { completed: 0, upcoming: 0, cancelled: 0 };
   const sessionsData = {
     labels: ['Completed', 'Upcoming', 'Cancelled'],
@@ -85,7 +119,7 @@ const PersonalTrainerDashboard = () => {
     ],
   };
 
-  // Chart options (unchanged)
+  // Chart options
   const earningsOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -159,7 +193,7 @@ const PersonalTrainerDashboard = () => {
     },
   ];
 
-  // Recent Activities (use as-is from API if available, else fallback)
+  // Recent Activities
   const recentActivities = dashboardData.recentActivities.length
     ? dashboardData.recentActivities
     : [
