@@ -53,18 +53,47 @@ const MemberAllPlans = () => {
     };
 
     const user = getUserFromStorage();
-    const memberId = user?.id || null;
+    const userId = user?.id || null;
     const branchId = user?.branchId || null;
     const adminId = user?.adminId || null;
     const name = user?.fullName || null;
+    const [actualMemberId, setActualMemberId] = useState(null); // ✅ Store actual memberId
 
     console.log("admin id User:", adminId);
+    
+    // ✅ Fetch actual memberId from member profile API using userId
+    useEffect(() => {
+        const fetchMemberId = async () => {
+            if (!userId) return;
+            try {
+                // Fetch member profile - it returns memberId
+                const response = await axiosInstance.get(`member-self/profile/${userId}`);
+                if (response.data?.success && response.data?.profile?.memberId) {
+                    setActualMemberId(response.data.profile.memberId);
+                } else {
+                    // Fallback: use userId (in some cases userId = memberId)
+                    console.warn("memberId not found in profile, using userId");
+                    setActualMemberId(userId);
+                }
+            } catch (err) {
+                console.error("Error fetching memberId:", err);
+                // Fallback to userId
+                setActualMemberId(userId);
+            }
+        };
+        fetchMemberId();
+    }, [userId]);
+
+    const memberId = actualMemberId || user?.memberId || userId; // ✅ Use actual memberId
+    
     // Fetch all data on mount
     useEffect(() => {
-        fetchPlansFromAPI();
-        fetchRenewalRequests();
-        fetchMembershipRequests();
-    }, []);
+        if (adminId && memberId) {
+            fetchPlansFromAPI();
+            fetchRenewalRequests();
+            fetchMembershipRequests();
+        }
+    }, [adminId, memberId]);
 
     // Fetch trainers when trainer type changes
     useEffect(() => {
@@ -149,6 +178,7 @@ const MemberAllPlans = () => {
                     sessions: plan.sessions,
                     validity: plan.validityDays,
                     price: `₹${plan.price.toLocaleString()}`,
+                    numericPrice: plan.price, // ✅ Store numeric price for API calls
                     active: plan.status !== undefined ? (plan.status === "Active" || plan.status === true) : true,
                     type: plan.type.toLowerCase(),
                     trainerType: plan.trainerType || "",
@@ -291,24 +321,53 @@ const MemberAllPlans = () => {
             return;
         }
 
+        if (!memberId || !adminId) {
+            setError("Member or Admin information missing. Please log in again.");
+            return;
+        }
+
         setLoading(true);
         setError(null);
         try {
+            // Get plan details to get price
+            const plan = selectedPlan;
+            // Extract numeric price from plan (handle both string and number)
+            let planPrice = 0;
+            if (plan?.numericPrice) {
+                planPrice = Number(plan.numericPrice);
+            } else if (plan?.price) {
+                // Parse from string like "₹1,500" or "1500"
+                planPrice = parseFloat(String(plan.price).replace(/[₹,]/g, '')) || 0;
+            }
+            
+            if (planPrice <= 0) {
+                setError("Invalid plan price. Please select a valid plan.");
+                setLoading(false);
+                return;
+            }
+            
+            // ✅ Assign plan directly to member using member-plan-assignments API
             const payload = {
                 memberId: parseInt(bookingForm.memberId),
-                planId: parseInt(bookingForm.planId),
-                paymentMethod: bookingForm.paymentMethod,
-                upiId: bookingForm.upiId,
-                adminId: parseInt(adminId),
+                plans: [
+                    {
+                        planId: parseInt(bookingForm.planId),
+                        membershipFrom: new Date().toISOString().split('T')[0], // Today's date
+                        paymentMode: bookingForm.paymentMethod === "upi" ? "UPI" : 
+                                    bookingForm.paymentMethod === "cash" ? "Cash" : "Card",
+                        amountPaid: planPrice
+                    }
+                ],
+                assignedBy: parseInt(adminId)
             };
 
             const response = await axiosInstance.post(
-                `${BaseUrl}booking/create`,
+                `${BaseUrl}member-plan-assignments/assign`,
                 payload
             );
 
             if (response.data.success) {
-                alert("✅ Booking request submitted successfully!");
+                alert("✅ Plan purchased successfully! Your plan has been activated.");
                 setShowBookingModal(false);
                 setSelectedPlan(null);
                 setBookingForm({
@@ -317,12 +376,17 @@ const MemberAllPlans = () => {
                     paymentMethod: "upi",
                     upiId: "",
                 });
+                
+                // ✅ Refresh member profile to show new plan
+                // The plan will automatically show in member/viewplan, member/account, admin, and receptionist dashboards
+                // because they all fetch from member detail API which includes assignedPlans
+                window.location.reload(); // Simple refresh to show updated plans
             } else {
-                setError("Failed to submit booking request.");
+                setError(response.data.message || "Failed to purchase plan.");
             }
         } catch (err) {
-            console.error("Error submitting booking:", err);
-            setError(err.response?.data?.message || "Failed to submit booking request.");
+            console.error("Error purchasing plan:", err);
+            setError(err.response?.data?.message || "Failed to purchase plan. Please try again.");
         } finally {
             setLoading(false);
         }
