@@ -20,17 +20,10 @@ const ImageCropper = ({ image, onCropComplete, onCancel }) => {
 
   const handleSave = async () => {
     try {
-      if (!croppedAreaPixels) {
-        console.error("No cropped area available. Please adjust the image.");
-        alert("Please adjust the image before applying crop.");
-        return;
-      }
-      
       const croppedImage = await getCroppedImg(image, croppedAreaPixels);
       onCropComplete(croppedImage);
     } catch (e) {
       console.error("Error cropping image:", e);
-      alert("Error cropping image. Please try again.");
     }
   };
 

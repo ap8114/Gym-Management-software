@@ -718,11 +718,8 @@ import { FaEye, FaRedo } from 'react-icons/fa';
 import { Download } from 'lucide-react';
 import axiosInstance from '../../Api/axiosInstance';
 import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 import GymLogo from "../../assets/Logo/Logo1.png";
 import BaseUrl from "../../Api/BaseUrl";
-import MemberPlansDisplay from "../../Components/MemberPlansDisplay";
-import { numberToWords } from "../../utils/numberToWords";
 
 const ViewPlans = () => {
   const [profile, setProfile] = useState(null);
@@ -879,8 +876,13 @@ const ViewPlans = () => {
   // Function to generate and download receipt as image using html2canvas
   const handleDownloadReceipt = async () => {
     try {
-      if (!profile || !memberId || !adminId) {
+      if (!profile || !memberId) {
         setToast({ show: true, message: 'Profile data not available. Please refresh the page.', variant: 'danger' });
+        return;
+      }
+
+      if (profile.membership_status !== 'Active') {
+        setToast({ show: true, message: 'Receipt is only available for Active memberships.', variant: 'warning' });
         return;
       }
 
@@ -891,149 +893,46 @@ const ViewPlans = () => {
           `${BaseUrl}payment/member/${memberId}`
         );
         if (paymentResponse.data?.success && paymentResponse.data.payments?.length > 0) {
-          paymentData = paymentResponse.data.payments[0];
+          paymentData = paymentResponse.data.payments[0]; // Get latest payment
         }
       } catch (err) {
         console.log("Payment history not available");
       }
 
-      // ✅ Fetch admin profile from member-self/profile API
-      let adminDetails = null;
-      try {
-        const adminProfileResponse = await axiosInstance.get(
-          `member-self/profile/${adminId}`
-        );
-        if (adminProfileResponse.data?.success && adminProfileResponse.data?.profile) {
-          const adminProfile = adminProfileResponse.data.profile;
-          adminDetails = {
-            fullName: adminProfile.fullName || "Gym Name",
-            gymName: adminProfile.gymName || adminProfile.fullName || "Gym Name",
-            gymAddress: adminProfile.gymAddress || adminProfile.address_street || adminProfile.address || "Gym Address",
-            gstNumber: adminProfile.gstNumber || "",
-            tax: adminProfile.tax || "5",
-            phone: adminProfile.phone || "",
-            email: adminProfile.email || ""
-          };
-        }
-      } catch (err) {
-        console.log("Admin profile API failed, trying auth/user API");
-        try {
-          const adminResponse = await axiosInstance.get(
-            `${BaseUrl}auth/user/${adminId}`
-          );
-          if (adminResponse.data) {
-            adminDetails = {
-              fullName: adminResponse.data.fullName || "Gym Name",
-              gymName: adminResponse.data.gymName || adminResponse.data.fullName || "Gym Name",
-              gymAddress: adminResponse.data.gymAddress || adminResponse.data.address || "Gym Address",
-              gstNumber: adminResponse.data.gstNumber || "",
-              tax: adminResponse.data.tax || "5",
-              phone: adminResponse.data.phone || "",
-              email: adminResponse.data.email || ""
-            };
-          }
-        } catch (err2) {
-          console.log("Auth API also failed");
-          adminDetails = {
-            fullName: "Gym Name",
-            gymName: "Gym Name",
-            gymAddress: "Gym Address",
-            gstNumber: "",
-            tax: "5",
-            phone: "",
-            email: ""
-          };
-        }
-      }
-
-      // ✅ Get all assigned plans (support multiple plans)
-      const assignedPlans = profile.assignedPlans || [];
+      // Get plan details from plans array
+      const plan = plans.find((p) => p.name === profile.membership_plan);
+      const planName = profile.membership_plan || "Membership Plan";
+      const planPrice = profile.membership_fee 
+        ? parseFloat(profile.membership_fee.toString().replace("₹", "").replace(/,/g, "")) 
+        : (plan ? parseFloat(plan.price.toString().replace("₹", "").replace(/,/g, "")) : 0);
+      const planValidity = profile.plan_duration || (plan ? plan.validityDays : "N/A");
+      const planSessions = plan ? plan.sessions : "N/A";
       
-      // Calculate totals from all plans
-      let totalBaseAmount = 0;
-      let totalTaxAmount = 0;
-      let totalQuantity = 0;
-      
-      // Build services array for invoice table
-      const services = [];
-      
-      if (assignedPlans.length > 0) {
-        assignedPlans.forEach((assignedPlan, index) => {
-          const planPrice = assignedPlan.amountPaid || assignedPlan.price || 0;
-          const taxRate = parseFloat(adminDetails?.tax || "5");
-          const planTax = (planPrice * taxRate) / 100;
-          const planTotal = planPrice + planTax;
-          
-          services.push({
-            no: index + 1,
-            name: assignedPlan.planName || "Gym subscription",
-            qty: "1 PCS",
-            rate: planPrice,
-            tax: planTax,
-            total: planTotal
-          });
-          
-          totalBaseAmount += planPrice;
-          totalTaxAmount += planTax;
-          totalQuantity += 1;
-        });
-      } else {
-        // Fallback to single plan
-        const plan = plans.find((p) => p.name === profile.membership_plan);
-        const planName = profile.membership_plan || "Membership Plan";
-        const planPrice = profile.membership_fee 
-          ? parseFloat(profile.membership_fee.toString().replace("₹", "").replace(/,/g, "")) 
-          : (plan ? parseFloat(plan.price.toString().replace("₹", "").replace(/,/g, "")) : 0);
-        const taxRate = parseFloat(adminDetails?.tax || "5");
-        const planTax = (planPrice * taxRate) / 100;
-        const planTotal = planPrice + planTax;
-        
-        services.push({
-          no: 1,
-          name: planName,
-          qty: "1 PCS",
-          rate: planPrice,
-          tax: planTax,
-          total: planTotal
-        });
-        
-        totalBaseAmount = planPrice;
-        totalTaxAmount = planTax;
-        totalQuantity = 1;
-      }
-
-      // Calculate final amounts
-      const paymentMode = paymentData?.paymentMode || profile.paymentMode || "Cash";
-      const cashPaid = paymentData?.amount || profile.amountPaid || totalBaseAmount;
+      // Use payment data if available, otherwise use profile data
+      const totalAmount = paymentData?.amount || planPrice || 0;
+      const paymentMode = paymentData?.paymentMode || renewData?.paymentMode || "Cash";
+      const cashPaid = paymentData?.amount || planPrice || 0;
+      const change = 0;
       const invoiceNo = paymentData?.invoiceNo || `INV-${memberId}-${Date.now()}`;
-      const paymentDate = paymentData?.paymentDate
-        ? new Date(paymentData.paymentDate).toLocaleDateString('en-GB')
-        : new Date().toLocaleDateString('en-GB');
+      const paymentDate = paymentData?.paymentDate 
+        ? new Date(paymentData.paymentDate).toLocaleDateString() 
+        : new Date().toLocaleDateString();
 
-      // Calculate tax (CGST and SGST - split 50-50)
-      const taxRate = parseFloat(adminDetails?.tax || "5");
-      const cgstAmount = totalTaxAmount / 2;
-      const sgstAmount = totalTaxAmount / 2;
-      const subtotal = totalBaseAmount;
-      const totalAmount = subtotal + totalTaxAmount;
-
-      // Member details
+      // Member details from profile
       const memberName = profile.fullName || "N/A";
       const memberPhone = profile.phone || "N/A";
-      const memberAddress = profile.address_street || profile.address || "N/A";
+      const memberEmail = profile.email || "N/A";
+      const memberAddress = profile.address_street || "N/A";
+      const memberGender = profile.gender || "N/A";
+      const memberDOB = profile.dateOfBirth 
+        ? new Date(profile.dateOfBirth).toLocaleDateString() 
+        : "N/A";
+      const membershipFrom = profile.plan_start_date || new Date().toLocaleDateString();
+      const membershipTo = profile.plan_end_date || "N/A";
+      const memberStatus = profile.membership_status || "N/A";
 
-      // Fetch logo
-      let logoDataUrl = GymLogo;
-      try {
-        const logoResponse = await axiosInstance.get(`adminSettings/app-settings/admin/${adminId}`);
-        if (logoResponse.data?.data?.logo) {
-          logoDataUrl = logoResponse.data.data.logo;
-        }
-      } catch (err) {
-        console.log("Failed to fetch logo, using default");
-      }
-
-      // Convert logo to data URL
+      // Convert logo to data URL for html2canvas
+      let logoDataUrl = "";
       try {
         const img = new Image();
         img.crossOrigin = "anonymous";
@@ -1047,269 +946,128 @@ const ViewPlans = () => {
               ctx.drawImage(img, 0, 0);
               resolve(canvas.toDataURL("image/png"));
             } catch (err) {
-              resolve(logoDataUrl);
+              resolve(GymLogo); // Fallback to original path
             }
           };
-          img.onerror = () => resolve(logoDataUrl);
-          img.src = logoDataUrl;
+          img.onerror = () => resolve(GymLogo); // Fallback to original path
+          img.src = GymLogo;
         });
       } catch (err) {
-        // Keep original logoDataUrl if conversion fails
+        logoDataUrl = GymLogo; // Use original path if conversion fails
       }
 
-      // Company details
-      const companyName = adminDetails?.gymName || adminDetails?.fullName || "Gym Name";
-      const companyAddress = adminDetails?.gymAddress || adminDetails?.address || "Gym Address";
-      const companyGST = adminDetails?.gstNumber || "";
-      const companyPhone = adminDetails?.phone || "";
-      const companyEmail = adminDetails?.email || "";
-      
-      // Extract state from address
-      const addressParts = companyAddress.split(',');
-      const placeOfSupply = addressParts[addressParts.length - 2]?.trim() || addressParts[addressParts.length - 1]?.trim() || "Telangana";
-      
-      // Convert amount to words
-      const amountInWords = numberToWords(Math.floor(totalAmount));
-      const balance = totalAmount - cashPaid;
-
-      // Create receipt HTML matching exact image design
+      // Create receipt HTML with all details matching the image format
       const receiptHTML = `
         <div id="receipt-container" style="
-          width: 794px;
-          min-height: 1123px;
-          background: linear-gradient(135deg, #fffef5 0%, #fffdf0 100%);
-          padding: 0;
-          font-family: Arial, sans-serif;
-          color: #1a1a1a;
+          width: 400px;
+          background: white;
+          padding: 30px 20px;
+          font-family: 'Courier New', monospace;
+          color: black;
           margin: 0 auto;
           box-sizing: border-box;
-          position: relative;
-          border: 2px solid #ffffff;
         ">
-          <!-- Corner Decorations -->
-          <div style="position: absolute; top: 15px; left: 15px; width: 25px; height: 25px;">
-            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: linear-gradient(to right, #c9a961, transparent);"></div>
-            <div style="position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: linear-gradient(to bottom, #c9a961, transparent);"></div>
-            <div style="position: absolute; top: 3px; left: 3px; width: 8px; height: 8px; border: 2px solid #c9a961; border-radius: 50%;"></div>
+          <div style="border-top: 2px dashed #000; margin-bottom: 15px;"></div>
+          <h1 style="text-align: center; font-weight: bold; font-size: 28px; margin: 15px 0; text-transform: uppercase; letter-spacing: 2px;">RECEIPT</h1>
+          <div style="border-top: 2px dashed #000; margin: 15px 0 25px 0;"></div>
+          
+          <!-- Invoice and Date -->
+          <div style="margin-bottom: 15px; font-size: 11px;">
+            <div style="margin-bottom: 5px;"><strong>Invoice No:</strong> ${invoiceNo}</div>
+            <div><strong>Date:</strong> ${paymentDate}</div>
           </div>
-          <div style="position: absolute; top: 15px; right: 15px; width: 25px; height: 25px;">
-            <div style="position: absolute; top: 0; right: 0; width: 100%; height: 3px; background: linear-gradient(to left, #c9a961, transparent);"></div>
-            <div style="position: absolute; top: 0; right: 0; width: 3px; height: 100%; background: linear-gradient(to bottom, #c9a961, transparent);"></div>
-            <div style="position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border: 2px solid #c9a961; border-radius: 50%;"></div>
+          
+          <div style="border-top: 1px dashed #000; margin: 15px 0;"></div>
+          
+          <!-- Member Details Section -->
+          <div style="margin-bottom: 15px;">
+            <div style="font-weight: bold; font-size: 12px; margin-bottom: 8px;">Member Details:</div>
+            <div style="font-size: 11px; line-height: 1.6;">
+              <div><strong>Name:</strong> ${memberName}</div>
+              <div><strong>Phone:</strong> ${memberPhone}</div>
+              <div><strong>Email:</strong> ${memberEmail}</div>
+              <div><strong>Address:</strong> ${memberAddress}</div>
+              <div><strong>Gender:</strong> ${memberGender}</div>
+              <div><strong>Date of Birth:</strong> ${memberDOB}</div>
+            </div>
           </div>
-          <div style="position: absolute; bottom: 15px; left: 15px; width: 25px; height: 25px;">
-            <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: linear-gradient(to right, #c9a961, transparent);"></div>
-            <div style="position: absolute; bottom: 0; left: 0; width: 3px; height: 100%; background: linear-gradient(to top, #c9a961, transparent);"></div>
-            <div style="position: absolute; bottom: 3px; left: 3px; width: 8px; height: 8px; border: 2px solid #c9a961; border-radius: 50%;"></div>
+          
+          <div style="border-top: 1px dashed #000; margin: 15px 0;"></div>
+          
+          <!-- Membership Details Section -->
+          <div style="margin-bottom: 15px;">
+            <div style="font-weight: bold; font-size: 12px; margin-bottom: 8px;">Membership Details:</div>
+            <div style="font-size: 11px; line-height: 1.6;">
+              <div><strong>Plan:</strong> ${planName}</div>
+              <div><strong>Validity:</strong> ${planValidity} days</div>
+              <div><strong>Sessions:</strong> ${planSessions}</div>
+              <div><strong>From:</strong> ${membershipFrom}</div>
+              <div><strong>To:</strong> ${membershipTo}</div>
+              <div><strong>Status:</strong> ${memberStatus}</div>
+            </div>
           </div>
-          <div style="position: absolute; bottom: 15px; right: 15px; width: 25px; height: 25px;">
-            <div style="position: absolute; bottom: 0; right: 0; width: 100%; height: 3px; background: linear-gradient(to left, #c9a961, transparent);"></div>
-            <div style="position: absolute; bottom: 0; right: 0; width: 3px; height: 100%; background: linear-gradient(to top, #c9a961, transparent);"></div>
-            <div style="position: absolute; bottom: 3px; right: 3px; width: 8px; height: 8px; border: 2px solid #c9a961; border-radius: 50%;"></div>
+          
+          <div style="border-top: 2px dashed #000; margin: 20px 0;"></div>
+          
+          <!-- Payment Items -->
+          <div style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
+              <span style="text-align: left;">1x ${planName}</span>
+              <span style="text-align: right; margin-left: 20px;">₹ ${totalAmount.toFixed(2)}</span>
+            </div>
           </div>
-
+          
+          <div style="border-top: 2px dashed #000; margin: 20px 0;"></div>
+          
+          <!-- Payment Summary -->
+          <div style="margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
+              <span style="font-weight: bold; text-align: left;">TOTAL AMOUNT</span>
+              <span style="font-weight: bold; text-align: right;">₹ ${totalAmount.toFixed(2)}</span>
+            </div>
+          </div>
+          
+          <div style="border-top: 2px dashed #000; margin: 20px 0;"></div>
+          
+          <!-- Payment Details -->
+          <div style="margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
+              <span style="font-weight: bold; text-align: left;">${paymentMode.toUpperCase()}</span>
+              <span style="font-weight: bold; text-align: right;">₹ ${cashPaid.toFixed(2)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
+              <span style="font-weight: bold; text-align: left;">CHANGE</span>
+              <span style="font-weight: bold; text-align: right;">₹ ${change.toFixed(2)}</span>
+            </div>
+          </div>
+          
+          <div style="border-top: 2px dashed #000; margin: 20px 0;"></div>
+          
+          <!-- Thank You -->
+          <h2 style="text-align: center; font-weight: bold; font-size: 22px; margin: 20px 0; text-transform: uppercase; letter-spacing: 1px;">THANK YOU</h2>
+          <div style="border-top: 2px dashed #000; margin: 15px 0 20px 0;"></div>
+          
+          <!-- Gym Logo in Blank Rectangle Box -->
+          <div style="margin-top: 25px; text-align: center;">
+            <div style="
+              border: 1px solid #000;
+              margin: 15px auto;
+              width: 320px;
+              min-height: 100px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 20px;
+              box-sizing: border-box;
+            ">
+              <img src="${logoDataUrl}" alt="Gym Logo" style="max-width: 100%; max-height: 100px; height: auto; object-fit: contain; display: block;" />
+            </div>
+          </div>
+        
+          
           <!-- Watermark -->
-          <div style="position: absolute; bottom: 40%; right: 10%; opacity: 0.04; font-size: 200px; font-weight: bold; color: #c9a961; transform: rotate(-15deg); pointer-events: none; z-index: 0; font-family: 'Arial Black', sans-serif;">FIT</div>
-
-          <!-- Content -->
-          <div style="position: relative; z-index: 1; padding: 25px 35px;">
-            
-            <!-- Header -->
-            <div style="border: 2px solid #c9a961; padding: 18px 20px; margin-bottom: 18px; background: linear-gradient(to bottom, #ffffff, #fffef8);">
-              <div style="font-size: 26px; font-weight: bold; color: #1a1a1a; margin-bottom: 6px; letter-spacing: 0.5px;">
-                ${companyName}
-              </div>
-              <div style="font-size: 10px; color: #333; line-height: 1.5;">
-                ${companyGST ? `<span style="font-weight: 600;">GSTIN</span> ${companyGST}<br/>` : ''}
-                ${companyPhone ? `<span style="margin-right: 10px;">📞 ${companyPhone}</span>` : ''} ${companyEmail ? `<span>📧 ${companyEmail}</span>` : ''}<br/>
-                ${companyAddress ? `<span>📍 ${companyAddress}</span>` : ''}
-              </div>
-            </div>
-
-            <!-- Tax Invoice Title (Right Aligned) -->
-            <div style="text-align: right; margin-bottom: 15px;">
-              <span style="font-size: 18px; font-weight: bold; color: #1a1a1a; letter-spacing: 2px;">TAX INVOICE</span>
-            </div>
-
-            <!-- Invoice Details -->
-            <div style="display: flex; justify-content: space-between; margin-bottom: 18px; font-size: 10px; color: #1a1a1a;">
-              <div>
-                <div style="font-weight: bold; margin-bottom: 3px;">Invoice No.</div>
-                <div>${invoiceNo}</div>
-              </div>
-              <div style="text-align: right;">
-                <div style="font-weight: bold; margin-bottom: 3px;">Invoice Date</div>
-                <div>${paymentDate}</div>
-              </div>
-            </div>
-
-            <!-- Bill To -->
-            <div style="margin-bottom: 18px; font-size: 10px; color: #1a1a1a; line-height: 1.6;">
-              <div style="font-weight: bold; margin-bottom: 6px;">Bill To</div>
-              <div>${memberName}</div>
-              <div>${memberAddress}</div>
-              <div>Mobile ${memberPhone}</div>
-              <div style="margin-top: 8px;"><span style="font-weight: bold;">Place of Supply</span> ${placeOfSupply}</div>
-            </div>
-
-            <!-- Services Table -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10px;">
-              <thead>
-                <tr style="background: #f5f5f5; color: #1a1a1a;">
-                  <th style="padding: 8px 6px; text-align: left; border: 1px solid #d0d0d0; font-weight: bold; width: 40px;">No</th>
-                  <th style="padding: 8px 6px; text-align: left; border: 1px solid #d0d0d0; font-weight: bold;">SERVICES</th>
-                  <th style="padding: 8px 6px; text-align: center; border: 1px solid #d0d0d0; font-weight: bold; width: 60px;">Qty.</th>
-                  <th style="padding: 8px 6px; text-align: right; border: 1px solid #d0d0d0; font-weight: bold; width: 80px;">Rate</th>
-                  <th style="padding: 8px 6px; text-align: right; border: 1px solid #d0d0d0; font-weight: bold; width: 70px;">Tax</th>
-                  <th style="padding: 8px 6px; text-align: right; border: 1px solid #d0d0d0; font-weight: bold; width: 80px;">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${services.map(service => `
-                  <tr>
-                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: center;">${service.no}</td>
-                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0;">${service.name}</td>
-                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: center;">${service.qty}</td>
-                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: right;">${service.rate.toLocaleString('en-IN')}</td>
-                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: right;">${Math.round(service.tax)}<br/><span style="font-size: 8px;">(${taxRate}%)</span></td>
-                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: right; font-weight: bold;">${Math.round(service.total).toLocaleString('en-IN')}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-
-            <!-- Subtotal Bar -->
-            <div style="background: linear-gradient(to right, #f5f0e0, #faf7ed); padding: 8px 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; border-top: 2px solid #c9a961; border-bottom: 2px solid #c9a961;">
-              <span style="font-weight: bold;">SUBTOTAL</span>
-              <span>${totalQuantity}</span>
-              <span style="font-weight: bold;">₹ ${Math.round(totalTaxAmount).toLocaleString('en-IN')}</span>
-              <span style="font-weight: bold;">₹ ${Math.round(totalAmount).toLocaleString('en-IN')}</span>
-            </div>
-
-            <!-- Bottom Section: Terms & Tax Breakdown -->
-            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
-              
-              <!-- Left: Terms -->
-              <div style="flex: 1; font-size: 9px; line-height: 1.6; color: #333;">
-                <div style="font-weight: bold; margin-bottom: 8px; font-size: 10px;">Terms & Conditions</div>
-                <div>1. Goods once sold will not be taken back or exchanged</div>
-                <div>2. All disputes are subject to ${placeOfSupply} jurisdiction only</div>
-              </div>
-
-              <!-- Right: Tax Breakdown -->
-              <div style="width: 240px; font-size: 10px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                  <tr>
-                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; font-weight: bold;">Taxable Amount</td>
-                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">₹ ${Math.round(subtotal).toLocaleString('en-IN')}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0;">CGST @${(taxRate/2).toFixed(1)}%</td>
-                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">₹ ${Math.round(cgstAmount).toLocaleString('en-IN')}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0;">SGST @${(taxRate/2).toFixed(1)}%</td>
-                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">₹ ${Math.round(sgstAmount).toLocaleString('en-IN')}</td>
-                  </tr>
-                  <tr style="background: linear-gradient(to right, #f5f0e0, #faf7ed);">
-                    <td style="padding: 8px 10px; font-weight: bold;">Total Amount</td>
-                    <td style="padding: 8px 10px; text-align: right; font-weight: bold; font-size: 11px;">₹ ${Math.round(totalAmount).toLocaleString('en-IN')}</td>
-                  </tr>
-                </table>
-              </div>
-            </div>
-
-            <!-- Payment Summary -->
-            <!-- Amount Summary (Exact Alignment Like Image) -->
-<div style="
-  width: 280px;
-  margin-left: auto;
-  font-size: 10px;
-  color: #1a1a1a;
-  line-height: 1.9;
-  margin-bottom: 20px;
-">
-
-  <!-- Total Amount -->
-  <div style="
-    display: flex;
-    justify-content: space-between;
-    font-weight: bold;
-    font-size: 11px;
-    border-top: 2px solid #c9a961;
-    padding-top: 6px;
-    margin-bottom: 6px;
-  ">
-    <span>Total Amount</span>
-    <span>₹ ${Math.round(totalAmount).toLocaleString('en-IN')}</span>
-  </div>
-
-  <!-- Received Amount -->
-  <div style="display: flex; justify-content: space-between; color: #555;">
-    <span>Received Amount</span>
-    <span>₹ ${Math.round(cashPaid).toLocaleString('en-IN')}</span>
-  </div>
-
-  <!-- Balance -->
-  <div style="display: flex; justify-content: space-between; font-weight: bold;">
-    <span>Balance</span>
-    <span>₹ ${Math.round(Math.abs(balance)).toLocaleString('en-IN')}</span>
-  </div>
-
-  <!-- Amount in Words -->
-  <div style="margin-top: 10px; font-weight: bold;">
-    Total Amount (in words)
-  </div>
-
-  <div style="font-size: 10px; color: #333;">
-    ${amountInWords} Rupees
-  </div>
-
-</div>
-
-
-            <!-- Signature -->
-          <!-- Signature (PDF Safe) -->
-<div style="
-  width: 100%;
-  margin-top: 25px;
-  overflow: visible;
-">
-  <div style="
-    float: right;
-    border: 2px solid #c9a961;
-    padding: 25px 35px 18px 35px;
-    min-width: 220px;
-    background: #fff;
-  ">
-
-    <div style="
-      border-bottom: 2px solid #c9a961;
-      height: 32px;
-      margin-bottom: 10px;
-    "></div>
-
-    <div style="
-      font-size: 10px;
-      font-weight: bold;
-      color: #555;
-    ">
-      Signature
-    </div>
-
-    <div style="
-      font-size: 12px;
-      font-weight: bold;
-      color: #1a1a1a;
-    ">
-      ${companyName}
-    </div>
-
-  </div>
-  <div style="clear: both;"></div>
-</div>
-
-
+          <div style="margin-top: 15px; text-align: left; font-size: 10px; color: #999; opacity: 0.5;">
+            modif.ai
           </div>
         </div>
       `;
@@ -1341,51 +1099,25 @@ const ViewPlans = () => {
         )
       );
 
-      // Convert to canvas with high quality
+      // Convert to canvas and download
       const canvas = await html2canvas(receiptElement, {
         backgroundColor: "#ffffff",
         scale: 2,
-        width: 794,
-        height: receiptElement.scrollHeight,
         logging: false,
         useCORS: true,
         allowTaint: true,
-        windowWidth: 794,
-        windowHeight: receiptElement.scrollHeight,
-        onclone: (clonedDoc) => {
-          const clonedElement = clonedDoc.querySelector("#receipt-container");
-          if (clonedElement) {
-            const images = clonedElement.querySelectorAll("img");
-            images.forEach((img) => {
-              if (img.src && !img.complete) {
-                img.style.display = "none";
-              }
-            });
-          }
-        }
       });
 
-      // A4 dimensions
-      const pdfWidth = 210;
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      // Create PDF
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: [pdfWidth, pdfHeight]
-      });
-
-      const imgData = canvas.toDataURL("image/png", 1.0);
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST");
-
-      // Download PDF
-      pdf.save(`Invoice_${invoiceNo}_${memberName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`);
+      // Create download link
+      const link = document.createElement("a");
+      link.download = `Receipt_${memberName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
 
       // Clean up
       document.body.removeChild(tempDiv);
       
-      setToast({ show: true, message: 'Invoice downloaded successfully!', variant: 'success' });
+      setToast({ show: true, message: 'Receipt downloaded successfully!', variant: 'success' });
     } catch (error) {
       console.error("Error generating receipt:", error);
       setToast({ show: true, message: 'Failed to generate receipt. Please try again.', variant: 'danger' });
@@ -1420,69 +1152,63 @@ const ViewPlans = () => {
                 </tr>
               </thead>
               <tbody>
-                {profile.assignedPlans && profile.assignedPlans.length > 0 ? (
-                  profile.assignedPlans.map((plan, index) => (
-                    <tr key={plan.assignmentId || index}>
-                      <td className="py-2 py-md-3 fw-bold">{index + 1}</td>
-                      <td className="py-2 py-md-3">
-                        <strong style={{ color: '#333', fontSize: '1rem' }}>
-                          {plan.planName || '—'}
-                        </strong>
-                      </td>
-                      <td className="py-2 py-md-3 d-none d-md-table-cell">
-                        {plan.membershipFrom ? new Date(plan.membershipFrom).toLocaleDateString() : '—'}
-                      </td>
-                      <td className="py-2 py-md-3 d-none d-md-table-cell" style={{ fontSize: '0.95rem' }}>
-                        {plan.membershipTo ? new Date(plan.membershipTo).toLocaleDateString() : '—'}
-                      </td>
-                      <td className="py-2 py-md-3">₹{plan.amountPaid || plan.price || '0'}</td>
-                      <td className="py-2 py-md-3">
-                        {plan.validityDays ? `${plan.validityDays} Days` : '—'}
-                      </td>
-                      <td className="py-2 py-md-3">
-                        <span
-                          className={`badge bg-${plan.computedStatus === 'Active' ? 'success' : 'secondary'}`}
-                        >
-                          {plan.computedStatus || 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="py-2 py-md-3">
-                        <Button
-                          variant="outline-secondary"
-                          size="sm"
-                          className="me-2"
-                          onClick={() => handleViewClick(plan)}
-                          title="View"
-                        >
-                          <FaEye className="me-1" />
-                        </Button>
-                        {plan.computedStatus === 'Active' && (
-                          <Button
-                            variant="outline-success"
-                            size="sm"
-                            onClick={() => handleDownloadReceipt()}
-                            title="Download Receipt"
-                          >
-                            <Download size={14} className="me-1" /> 
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="8" className="text-center py-4">
-                      <div>
-                        <p className="text-muted mb-2">No plans assigned</p>
-                        <small className="text-muted">
-                          Plan: {profile.membership_plan || '—'} | 
-                          Start: {profile.plan_start_date || '—'} | 
-                          End: {profile.plan_end_date || '—'}
-                        </small>
-                      </div>
-                    </td>
-                  </tr>
-                )}
+                <tr>
+                  <td className="py-2 py-md-3 fw-bold">1</td>
+                  <td className="py-2 py-md-3">
+                    <strong style={{ color: '#333', fontSize: '1rem' }}>
+                      {profile.membership_plan || '—'}
+                    </strong>
+                  </td>
+                  <td className="py-2 py-md-3 d-none d-md-table-cell">
+                    {profile.plan_start_date || '—'}
+                  </td>
+                  <td className="py-2 py-md-3 d-none d-md-table-cell" style={{ fontSize: '0.95rem' }}>
+                    {profile.plan_end_date || '—'}
+                  </td>
+                  <td className="py-2 py-md-3">₹{profile.membership_fee || '0'}</td>
+                  <td className="py-2 py-md-3">
+                    {profile.plan_duration ? `${profile.plan_duration} Days` : '—'}
+                  </td>
+                  <td className="py-2 py-md-3">
+                    <span
+                      className={`badge bg-${profile.membership_status === 'Active' ? 'success' : 'secondary'
+                        }`}
+                    >
+                      {profile.membership_status || 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="py-2 py-md-3">
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      className="me-2"
+                      onClick={handleViewClick}
+                      title="View"
+                    >
+                      <FaEye className="me-1" />
+                    </Button>
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      className="me-2"
+                      onClick={handleRenewClick}
+                      title="Renew Plan"
+                      disabled={profile?.membership_status === 'Active'}
+                    >
+                      <FaRedo className="me-1" /> 
+                    </Button>
+                    {profile && profile.membership_status === 'Active' && (
+                      <Button
+                        variant="outline-success"
+                        size="sm"
+                        onClick={handleDownloadReceipt}
+                        title="Download Receipt"
+                      >
+                        <Download size={14} className="me-1" /> 
+                      </Button>
+                    )}
+                  </td>
+                </tr>
               </tbody>
             </Table>
           </Card.Body>
@@ -1503,27 +1229,16 @@ const ViewPlans = () => {
               <p><strong>Address:</strong> {profile.address_street || '—'}</p>
               <p><strong>Gender:</strong> {profile.gender || '—'}</p>
             </Col>
-            <Col md={12}>
-              <div className="mb-3">
-                <strong>Assigned Plans:</strong>
-                {profile.assignedPlans && profile.assignedPlans.length > 0 ? (
-                  <div className="mt-2">
-                    <MemberPlansDisplay plans={profile.assignedPlans} compact={false} />
-                  </div>
-                ) : (
-                  <div className="mt-2">
-                    <p><strong>Plan:</strong> {profile.membership_plan || '—'}</p>
-                    <p><strong>Start Date:</strong> {profile.plan_start_date || '—'}</p>
-                    <p><strong>End Date:</strong> {profile.plan_end_date || '—'}</p>
-                    <p><strong>Fee:</strong> ₹{profile.membership_fee || '0'}</p>
-                    <p><strong>Status:</strong>{' '}
-                      <span className={`badge bg-${profile.membership_status === 'Active' ? 'success' : 'secondary'}`}>
-                        {profile.membership_status || 'Inactive'}
-                      </span>
-                    </p>
-                  </div>
-                )}
-              </div>
+            <Col md={6}>
+              <p><strong>Plan:</strong> {profile.membership_plan || '—'}</p>
+              <p><strong>Start Date:</strong> {profile.plan_start_date || '—'}</p>
+              <p><strong>End Date:</strong> {profile.plan_end_date || '—'}</p>
+              <p><strong>Fee:</strong> ₹{profile.membership_fee || '0'}</p>
+              <p><strong>Status:</strong>{' '}
+                <span className={`badge bg-${profile.membership_status === 'Active' ? 'success' : 'secondary'}`}>
+                  {profile.membership_status || 'Inactive'}
+                </span>
+              </p>
             </Col>
           </Row>
         </Modal.Body>

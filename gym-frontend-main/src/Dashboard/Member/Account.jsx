@@ -3,7 +3,6 @@ import { format } from "date-fns";
 import GetAdminId from "../../Api/GetAdminId";
 import axiosInstance from "../../Api/axiosInstance";
 import ImageCropper from "../../Components/ImageCropper";
-import MemberPlansDisplay from "../../Components/MemberPlansDisplay";
 
 const Account = () => {
   const adminId = GetAdminId();
@@ -42,7 +41,6 @@ const Account = () => {
     membership_type: "",
     membership_fee: "",
   });
-  const [assignedPlans, setAssignedPlans] = useState([]); // ✅ Multiple plans
 
   const [gymInfo, setGymInfo] = useState({
     gymName: "",
@@ -112,7 +110,6 @@ const Account = () => {
           membership_type: profile.membership_type || "Standard",
           membership_fee: profile.membership_fee?.toString() || "",
         });
-        setAssignedPlans(profile.assignedPlans || []); // ✅ Set multiple plans
 
         setGymInfo({
           gymName: profile.gymName || "",
@@ -583,65 +580,59 @@ const Account = () => {
             <div className="card border-0 shadow-sm mb-4">
               <div className="card-body">
                 <h5 className="fw-bold mb-3">Membership Information</h5>
-                {assignedPlans && assignedPlans.length > 0 ? (
-                  <div>
-                    <MemberPlansDisplay plans={assignedPlans} compact={false} />
+                <div className="row g-3">
+                  <div className="col-12 col-sm-6">
+                    <label className="form-label">Membership Plan</label>
+                    <input
+                      className="form-control"
+                      value={membership.membership_plan}
+                      readOnly
+                    />
                   </div>
-                ) : (
-                  <div className="row g-3">
-                    <div className="col-12 col-sm-6">
-                      <label className="form-label">Membership Plan</label>
-                      <input
-                        className="form-control"
-                        value={membership.membership_plan}
-                        readOnly
-                      />
-                    </div>
-                    <div className="col-6 col-sm-3">
-                      <label className="form-label">Start Date</label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        value={membership.plan_start_date}
-                        readOnly
-                      />
-                    </div>
-                    <div className="col-6 col-sm-3">
-                      <label className="form-label">End Date</label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        value={membership.plan_end_date}
-                        readOnly
-                      />
-                    </div>
-                    <div className="col-6 col-sm-3">
-                      <label className="form-label">Status</label>
-                      <input
-                        className="form-control"
-                        value={membership.status || "N/A"}
-                        readOnly
-                      />
-                    </div>
-                    <div className="col-6 col-sm-3">
-                      <label className="form-label">Membership Type</label>
-                      <input
-                        className="form-control"
-                        value={membership.membership_type}
-                        readOnly
-                      />
-                    </div>
-                    <div className="col-12 col-sm-3">
-                      <label className="form-label">Membership Fee</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={membership.membership_fee ? `₹${membership.membership_fee}` : "Free"}
-                        readOnly
-                      />
-                    </div>
+                  <div className="col-6 col-sm-3">
+                    <label className="form-label">Start Date</label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={membership.plan_start_date}
+                      readOnly
+                    />
                   </div>
-                )}
+                  <div className="col-6 col-sm-3">
+                    <label className="form-label">End Date</label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={membership.plan_end_date}
+                      readOnly
+                    />
+                  </div>
+                  <div className="col-6 col-sm-3">
+                    <label className="form-label">Status</label>
+                    <input
+                      className="form-control"
+                      value={membership.status || "N/A"}
+                      readOnly
+                    />
+                  </div>
+                  <div className="col-6 col-sm-3">
+                    <label className="form-label">Membership Type</label>
+                    <input
+                      className="form-control"
+                      value={membership.membership_type}
+                      readOnly
+                    />
+                  </div>
+                  <div className="col-12 col-sm-3">
+                    <label className="form-label">Membership Fee</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={membership.membership_fee ? `₹${membership.membership_fee}` : "Free"}
+                      readOnly
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}
