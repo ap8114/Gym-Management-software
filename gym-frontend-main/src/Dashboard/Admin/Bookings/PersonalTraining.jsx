@@ -38,6 +38,7 @@ const PersonalTraining = () => {
             sessionId: item.sessionId,
             classId: item.classId,
             date: item.date ? new Date(item.date).toLocaleDateString() : 'N/A',
+            endDate: item.endDate ? new Date(item.endDate).toLocaleDateString() : 'N/A',
             startTime: item.startTime || 'N/A',
             endTime: item.endTime || 'N/A',
             time: item.startTime && item.endTime ? `${item.startTime} - ${item.endTime}` : 'N/A',
@@ -48,12 +49,13 @@ const PersonalTraining = () => {
             branchId: item.branchId,
             createdAt: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A',
             updatedAt: item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : 'N/A',
-            memberName: item.memberName || 'Member', // Use memberName from API response
-            trainerName: item.trainerName || 'Trainer', // Use trainerName from API response
+            memberName: item.memberName || `Member #${item.memberId}`, // Handle null memberName
+            trainerName: item.trainerName || `Trainer #${item.trainerId}`, // Handle null trainerName
             sessionName: item.sessionName || 'N/A',
+            // Use actual price from API response
+            price: item.price || 'N/A',
             // Adding additional fields that might be needed for UI
             type: item.sessionName || item.notes || 'Personal Training',
-            price: 'N/A', // Price is not provided in API response
             memberEmail: 'N/A', // Email is not provided in API response
             memberPhone: 'N/A', // Phone is not provided in API response
             memberJoinDate: 'N/A', // Join date is not provided in API response
@@ -114,22 +116,43 @@ const PersonalTraining = () => {
     }
   };
 
-  const handleBookingStatusClick = (index) => {
+  const handleBookingStatusClick = async (index) => {
     const newData = [...trainingData];
     const currentStatus = newData[index].bookingStatus;
+    let newStatus;
     
     if (currentStatus === "Booked") {
-      newData[index].bookingStatus = "Confirmed";
+      newStatus = "Confirmed";
     } else if (currentStatus === "Confirmed") {
-      newData[index].bookingStatus = "Cancelled";
+      newStatus = "Cancelled";
     } else if (currentStatus === "Cancelled") {
-      newData[index].bookingStatus = "Booked";
+      newStatus = "Booked";
     }
     
+    // Update local state
+    newData[index].bookingStatus = newStatus;
     setTrainingData(newData);
     
-    // In a real app, you would make an API call to update status
-    // For now, we're just updating the local state
+    try {
+      // Make API call to update status
+      const response = await axiosInstance.put(`booking/updateStatus/${newData[index].id}`, {
+        bookingStatus: newStatus
+      });
+      
+      if (!response.data || !response.data.success) {
+        // Revert the change if API call fails
+        newData[index].bookingStatus = currentStatus;
+        setTrainingData([...newData]);
+        throw new Error(response.data?.message || 'Failed to update booking status');
+      }
+    } catch (err) {
+      console.error('Error updating booking status:', err);
+      alert(`Error updating booking status: ${err.message || 'Unknown error'}`);
+      
+      // Revert the change if API call fails
+      newData[index].bookingStatus = currentStatus;
+      setTrainingData([...newData]);
+    }
   };
 
   const getBadgeColor = (status) => {
@@ -460,6 +483,9 @@ const PersonalTraining = () => {
                       <strong>Date:</strong> {selectedBooking.date}
                     </div>
                     <div className="col-md-6">
+                      <strong>End Date:</strong> {selectedBooking.endDate}
+                    </div>
+                    <div className="col-md-6">
                       <strong>Time:</strong> {selectedBooking.time}
                     </div>
                     <div className="col-md-6">
@@ -552,6 +578,10 @@ const PersonalTraining = () => {
                         <div className="col-6">
                           <small className="text-muted d-block">Time</small>
                           <div>{selectedBooking.time}</div>
+                        </div>
+                        <div className="col-6">
+                          <small className="text-muted d-block">Price</small>
+                          <div>{selectedBooking.price}</div>
                         </div>
                         <div className="col-6">
                           <small className="text-muted d-block">Payment</small>

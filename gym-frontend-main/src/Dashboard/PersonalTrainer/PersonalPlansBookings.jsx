@@ -27,9 +27,8 @@ const PersonalPlansBookings = () => {
   const user = getUserFromStorage();
   const memberId = user?.id || null;
   const branchId = user?.branchId || null;
-  const name = user?.fullName || null;
-  const staffId = user?.staffId || null;
   const adminId = user?.adminId || null;
+  const trainerId = user?.id || null; 
 
   console.log('Member ID:', memberId);
   console.log('Admin ID:', adminId);
@@ -41,7 +40,7 @@ const PersonalPlansBookings = () => {
 
     const fetchPlans = async () => {
       try {
-        const response = await axiosInstance.get(`personal-trainer-dashboard/admin/${adminId}/plans`);
+        const response = await axiosInstance.get(`personal-trainer-dashboard/admin/${adminId}/trainer/${trainerId}/plans`);
         if (response.data.success && Array.isArray(response.data.plans)) {
           setAllPlans(response.data.plans);
         } else {

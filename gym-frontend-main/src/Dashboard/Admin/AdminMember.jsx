@@ -119,16 +119,16 @@ const AdminMember = () => {
     const file = e.target.files[0];
     if (file) {
       // Check if file is an image
-      if (!file.type.startsWith('image/')) {
-        alert('Please select an image file.');
+      if (!file.type.startsWith("image/")) {
+        alert("Please select an image file.");
         return;
       }
-      
+
       // Create a preview URL and show cropper
       const reader = new FileReader();
       reader.onloadend = () => {
         setCropperImage(reader.result);
-        setCropperMode(isEdit ? 'edit' : 'add');
+        setCropperMode(isEdit ? "edit" : "add");
         setShowCropper(true);
       };
       reader.readAsDataURL(file);
@@ -140,22 +140,22 @@ const AdminMember = () => {
     try {
       // ImageCropper returns { blob, url }
       const { blob, url } = croppedImageData;
-      
+
       if (!blob) {
-        console.error('No blob received from cropper');
+        console.error("No blob received from cropper");
         return;
       }
 
       // Convert blob to file
-      const croppedFile = new File([blob], 'profile-image.jpg', {
-        type: 'image/jpeg',
+      const croppedFile = new File([blob], "profile-image.jpg", {
+        type: "image/jpeg",
         lastModified: Date.now(),
       });
 
       // Use the URL from cropper or create new one
       const previewUrl = url || URL.createObjectURL(blob);
 
-      if (cropperMode === 'edit') {
+      if (cropperMode === "edit") {
         setEditMember({
           ...editMember,
           profileImage: croppedFile,
@@ -173,8 +173,8 @@ const AdminMember = () => {
       setCropperImage(null);
       setCropperMode(null);
     } catch (error) {
-      console.error('Error handling cropped image:', error);
-      alert('Error processing cropped image. Please try again.');
+      console.error("Error handling cropped image:", error);
+      alert("Error processing cropped image. Please try again.");
     }
   };
 
@@ -227,8 +227,11 @@ const AdminMember = () => {
             typeof member.remainingDays === "number"
               ? member.remainingDays
               : member.membershipTo
-                ? Math.ceil((new Date(member.membershipTo) - new Date()) / (1000 * 60 * 60 * 24))
-                : null,
+              ? Math.ceil(
+                  (new Date(member.membershipTo) - new Date()) /
+                    (1000 * 60 * 60 * 24)
+                )
+              : null,
         }));
 
         setMembers(formattedMembers);
@@ -317,7 +320,7 @@ const AdminMember = () => {
       console.error("Error fetching plans:", err);
       setPlanError(
         err.response?.data?.message ||
-        "Failed to fetch plans. Please try again."
+          "Failed to fetch plans. Please try again."
       );
     } finally {
       setPlanLoading(false);
@@ -349,7 +352,7 @@ const AdminMember = () => {
       formData.append("dateOfBirth", newMember.dateOfBirth);
       formData.append("address", newMember.address);
       formData.append("interestedIn", newMember.interestedIn);
-      
+
       // Support both single and multiple plans
       if (newMember.planIds && newMember.planIds.length > 0) {
         formData.append("planIds", JSON.stringify(newMember.planIds));
@@ -357,12 +360,12 @@ const AdminMember = () => {
       } else if (newMember.planId) {
         formData.append("planId", newMember.planId);
       }
-      
+
       formData.append("membershipFrom", newMember.startDate);
       formData.append(
         "paymentMode",
         newMember.paymentMode.charAt(0).toUpperCase() +
-        newMember.paymentMode.slice(1)
+          newMember.paymentMode.slice(1)
       );
       formData.append("amountPaid", newMember.amountPaid);
       formData.append("status", newMember.status);
@@ -436,7 +439,7 @@ const AdminMember = () => {
       formData.append("dateOfBirth", editMember.dateOfBirth);
       formData.append("interestedIn", editMember.interestedIn);
       formData.append("status", editMember.status);
-      
+
       // ✅ Support multiple plans in edit
       if (editMember.planIds && editMember.planIds.length > 0) {
         formData.append("planIds", JSON.stringify(editMember.planIds));
@@ -445,7 +448,7 @@ const AdminMember = () => {
         formData.append("planIds", JSON.stringify([editMember.planId]));
         formData.append("planId", editMember.planId);
       }
-      
+
       // ✅ Use startDate for new plans (required field)
       if (!editMember.startDate) {
         alert("Please select a Start Date for new plans");
@@ -456,7 +459,7 @@ const AdminMember = () => {
       formData.append(
         "paymentMode",
         editMember.paymentMode.charAt(0).toUpperCase() +
-        editMember.paymentMode.slice(1)
+          editMember.paymentMode.slice(1)
       );
       formData.append("amountPaid", editMember.amountPaid);
 
@@ -544,9 +547,12 @@ const AdminMember = () => {
       }
 
       // Extract planIds from assignedPlans array
-      const planIds = memberDetails.assignedPlans && memberDetails.assignedPlans.length > 0
-        ? memberDetails.assignedPlans.map(p => p.planId)
-        : (memberDetails.planId ? [memberDetails.planId] : []);
+      const planIds =
+        memberDetails.assignedPlans && memberDetails.assignedPlans.length > 0
+          ? memberDetails.assignedPlans.map((p) => p.planId)
+          : memberDetails.planId
+          ? [memberDetails.planId]
+          : [];
 
       // Use the member data directly from the list
       setEditMember({
@@ -563,7 +569,9 @@ const AdminMember = () => {
         planIds: planIds, // ✅ Multiple plans array
         paymentMode: member.paymentMode || "cash",
         amountPaid: member.amountPaid || "",
-        startDate: member.planStart ? new Date(member.planStart).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+        startDate: member.planStart
+          ? new Date(member.planStart).toISOString().split("T")[0]
+          : new Date().toISOString().split("T")[0],
         profileImage: null,
         profileImagePreview: member.profileImage || "",
         existingProfileImage: member.profileImage || "",
@@ -628,7 +636,9 @@ const AdminMember = () => {
 
   const getStatusClass = (status) => {
     if (!status) return "bg-danger";
-    return String(status).toLowerCase() === "active" ? "bg-success" : "bg-danger";
+    return String(status).toLowerCase() === "active"
+      ? "bg-success"
+      : "bg-danger";
   };
 
   const getPlanNameById = (planId) => {
@@ -647,8 +657,10 @@ const AdminMember = () => {
     let filtered = [];
     switch (interestedIn) {
       case "Personal Training":
-        // Filter for plans where type is "PERSONAL"
-        filtered = apiPlans.filter((plan) => plan.type === "PERSONAL");
+        // Filter for plans where type is "PERSONAL" OR trainerType is "personal"
+        filtered = apiPlans.filter(
+          (plan) => plan.type === "PERSONAL" || plan.trainerType === "personal"
+        );
         break;
       case "Personal Trainer":
         // Filter for plans where trainerType is "personal"
@@ -671,7 +683,7 @@ const AdminMember = () => {
   };
 
   // Function to generate and download receipt as image using html2canvas
-const handleDownloadReceipt = async (member) => {
+  const handleDownloadReceipt = async (member) => {
     try {
       // Fetch full member details to get payment information
       let memberDetails = null;
@@ -680,13 +692,14 @@ const handleDownloadReceipt = async (member) => {
 
       // Get adminId from member API response
       let memberAdminId = null;
-      
+
       try {
         const memberResponse = await axiosInstance.get(
           `${BaseUrl}members/detail/${member.id}`
         );
         if (memberResponse.data?.success) {
-          memberDetails = memberResponse.data.member || memberResponse.data.data;
+          memberDetails =
+            memberResponse.data.member || memberResponse.data.data;
           memberAdminId = memberDetails?.adminId || member?.adminId || adminId;
         }
       } catch (err) {
@@ -701,7 +714,10 @@ const handleDownloadReceipt = async (member) => {
         const paymentResponse = await axiosInstance.get(
           `${BaseUrl}payment/member/${member.id}`
         );
-        if (paymentResponse.data?.success && paymentResponse.data.payments?.length > 0) {
+        if (
+          paymentResponse.data?.success &&
+          paymentResponse.data.payments?.length > 0
+        ) {
           paymentData = paymentResponse.data.payments[0];
         }
       } catch (err) {
@@ -713,16 +729,23 @@ const handleDownloadReceipt = async (member) => {
         const adminProfileResponse = await axiosInstance.get(
           `member-self/profile/${finalAdminId}`
         );
-        if (adminProfileResponse.data?.success && adminProfileResponse.data?.profile) {
+        if (
+          adminProfileResponse.data?.success &&
+          adminProfileResponse.data?.profile
+        ) {
           const profile = adminProfileResponse.data.profile;
           adminDetails = {
             fullName: profile.fullName || "Gym Name",
             gymName: profile.gymName || profile.fullName || "Gym Name",
-            gymAddress: profile.gymAddress || profile.address_street || profile.address || "Gym Address",
+            gymAddress:
+              profile.gymAddress ||
+              profile.address_street ||
+              profile.address ||
+              "Gym Address",
             gstNumber: profile.gstNumber || "",
             tax: profile.tax || "5",
             phone: profile.phone || "",
-            email: profile.email || ""
+            email: profile.email || "",
           };
         }
       } catch (err) {
@@ -734,13 +757,25 @@ const handleDownloadReceipt = async (member) => {
           );
           if (adminResponse.data) {
             adminDetails = {
-              fullName: adminResponse.data.fullName || adminResponse.data.name || "Gym Name",
-              gymName: adminResponse.data.gymName || adminResponse.data.fullName || "Gym Name",
-              gymAddress: adminResponse.data.gymAddress || adminResponse.data.address || "Gym Address",
-              gstNumber: adminResponse.data.gstNumber || adminResponse.data.gst_number || "",
+              fullName:
+                adminResponse.data.fullName ||
+                adminResponse.data.name ||
+                "Gym Name",
+              gymName:
+                adminResponse.data.gymName ||
+                adminResponse.data.fullName ||
+                "Gym Name",
+              gymAddress:
+                adminResponse.data.gymAddress ||
+                adminResponse.data.address ||
+                "Gym Address",
+              gstNumber:
+                adminResponse.data.gstNumber ||
+                adminResponse.data.gst_number ||
+                "",
               tax: adminResponse.data.tax || "5",
               phone: adminResponse.data.phone || "",
-              email: adminResponse.data.email || ""
+              email: adminResponse.data.email || "",
             };
           }
         } catch (err2) {
@@ -749,11 +784,12 @@ const handleDownloadReceipt = async (member) => {
           adminDetails = {
             fullName: userData?.fullName || "Gym Name",
             gymName: userData?.gymName || userData?.fullName || "Gym Name",
-            gymAddress: userData?.gymAddress || userData?.address || "Gym Address",
+            gymAddress:
+              userData?.gymAddress || userData?.address || "Gym Address",
             gstNumber: userData?.gstNumber || "",
             tax: userData?.tax || "5",
             phone: userData?.phone || "",
-            email: userData?.email || ""
+            email: userData?.email || "",
           };
         }
       }
@@ -767,7 +803,8 @@ const handleDownloadReceipt = async (member) => {
           const settingsData = settingsResponse.data.data;
           // Only override gym_name from app_settings if available
           if (settingsData.gym_name || settingsData.gymName) {
-            adminDetails.gymName = settingsData.gym_name || settingsData.gymName;
+            adminDetails.gymName =
+              settingsData.gym_name || settingsData.gymName;
           }
         }
       } catch (err) {
@@ -776,15 +813,15 @@ const handleDownloadReceipt = async (member) => {
 
       // ✅ Get all assigned plans (support multiple plans)
       const assignedPlans = memberDetails?.assignedPlans || [];
-      
+
       // Calculate totals from all plans
       let totalBaseAmount = 0;
       let totalTaxAmount = 0;
       let totalQuantity = 0;
-      
+
       // Build services array for invoice table
       const services = [];
-      
+
       if (assignedPlans.length > 0) {
         // Use assigned plans
         assignedPlans.forEach((assignedPlan, index) => {
@@ -792,16 +829,16 @@ const handleDownloadReceipt = async (member) => {
           const taxRate = parseFloat(adminDetails?.tax || "5");
           const planTax = (planPrice * taxRate) / 100;
           const planTotal = planPrice + planTax;
-          
+
           services.push({
             no: index + 1,
             name: assignedPlan.planName || "Gym subscription",
             qty: "1 PCS",
             rate: planPrice,
             tax: planTax,
-            total: planTotal
+            total: planTotal,
           });
-          
+
           totalBaseAmount += planPrice;
           totalTaxAmount += planTax;
           totalQuantity += 1;
@@ -810,32 +847,36 @@ const handleDownloadReceipt = async (member) => {
         // Fallback to single plan
         const plan = apiPlans.find((p) => p.id === parseInt(member.planId));
         const planName = plan ? plan.name : "Gym annual subscription";
-        const planPrice = plan ? parseFloat(plan.price.toString().replace("₹", "").replace(/,/g, "")) : (memberDetails?.amountPaid || 0);
+        const planPrice = plan
+          ? parseFloat(plan.price.toString().replace("₹", "").replace(/,/g, ""))
+          : memberDetails?.amountPaid || 0;
         const taxRate = parseFloat(adminDetails?.tax || "5");
         const planTax = (planPrice * taxRate) / 100;
         const planTotal = planPrice + planTax;
-        
+
         services.push({
           no: 1,
           name: planName,
           qty: "1 PCS",
           rate: planPrice,
           tax: planTax,
-          total: planTotal
+          total: planTotal,
         });
-        
+
         totalBaseAmount = planPrice;
         totalTaxAmount = planTax;
         totalQuantity = 1;
       }
 
       // Calculate final amounts
-      const paymentMode = paymentData?.paymentMode || memberDetails?.paymentMode || "Cash";
-      const cashPaid = paymentData?.amount || memberDetails?.amountPaid || totalBaseAmount;
+      const paymentMode =
+        paymentData?.paymentMode || memberDetails?.paymentMode || "Cash";
+      const cashPaid =
+        paymentData?.amount || memberDetails?.amountPaid || totalBaseAmount;
       const invoiceNo = paymentData?.invoiceNo || `${member.id}`;
       const paymentDate = paymentData?.paymentDate
-        ? new Date(paymentData.paymentDate).toLocaleDateString('en-GB')
-        : new Date().toLocaleDateString('en-GB');
+        ? new Date(paymentData.paymentDate).toLocaleDateString("en-GB")
+        : new Date().toLocaleDateString("en-GB");
 
       // Calculate tax (CGST and SGST - split 50-50)
       const taxRate = parseFloat(adminDetails?.tax || "5");
@@ -852,7 +893,9 @@ const handleDownloadReceipt = async (member) => {
       // Fetch logo
       let logoDataUrl = GymLogo;
       try {
-        const logoResponse = await axiosInstance.get(`adminSettings/app-settings/admin/${finalAdminId}`);
+        const logoResponse = await axiosInstance.get(
+          `adminSettings/app-settings/admin/${finalAdminId}`
+        );
         if (logoResponse.data?.data?.logo) {
           logoDataUrl = logoResponse.data.data.logo;
         }
@@ -885,16 +928,21 @@ const handleDownloadReceipt = async (member) => {
       }
 
       // Company details
-      const companyName = adminDetails?.gymName || adminDetails?.fullName || "Gym Name";
-      const companyAddress = adminDetails?.gymAddress || adminDetails?.address || "Gym Address";
+      const companyName =
+        adminDetails?.gymName || adminDetails?.fullName || "Gym Name";
+      const companyAddress =
+        adminDetails?.gymAddress || adminDetails?.address || "Gym Address";
       const companyGST = adminDetails?.gstNumber || "";
       const companyPhone = adminDetails?.phone || "";
       const companyEmail = adminDetails?.email || "";
-      
+
       // Extract state from address
-      const addressParts = companyAddress.split(',');
-      const placeOfSupply = addressParts[addressParts.length - 2]?.trim() || addressParts[addressParts.length - 1]?.trim() || "Telangana";
-      
+      const addressParts = companyAddress.split(",");
+      const placeOfSupply =
+        addressParts[addressParts.length - 2]?.trim() ||
+        addressParts[addressParts.length - 1]?.trim() ||
+        "Telangana";
+
       // Convert amount to words
       const amountInWords = numberToWords(Math.floor(totalAmount));
       const balance = totalAmount - cashPaid;
@@ -947,9 +995,17 @@ const handleDownloadReceipt = async (member) => {
                 ${companyName}
               </div>
               <div style="font-size: 10px; color: #333; line-height: 1.5;">
-                ${companyGST ? `<span style="font-weight: 600;">GSTIN</span> ${companyGST}<br/>` : ''}
-                ${companyPhone ? `<span style="margin-right: 10px;">📞 ${companyPhone}</span>` : ''} ${companyEmail ? `<span>📧 ${companyEmail}</span>` : ''}<br/>
-                ${companyAddress ? `<span>📍 ${companyAddress}</span>` : ''}
+                ${
+                  companyGST
+                    ? `<span style="font-weight: 600;">GSTIN</span> ${companyGST}<br/>`
+                    : ""
+                }
+                ${
+                  companyPhone
+                    ? `<span style="margin-right: 10px;">📞 ${companyPhone}</span>`
+                    : ""
+                } ${companyEmail ? `<span>📧 ${companyEmail}</span>` : ""}<br/>
+                ${companyAddress ? `<span>📍 ${companyAddress}</span>` : ""}
               </div>
             </div>
 
@@ -992,16 +1048,32 @@ const handleDownloadReceipt = async (member) => {
                 </tr>
               </thead>
               <tbody>
-                ${services.map(service => `
+                ${services
+                  .map(
+                    (service) => `
                   <tr>
-                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: center;">${service.no}</td>
-                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0;">${service.name}</td>
-                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: center;">${service.qty}</td>
-                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: right;">${service.rate.toLocaleString('en-IN')}</td>
-                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: right;">${Math.round(service.tax)}<br/><span style="font-size: 8px;">(${taxRate}%)</span></td>
-                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: right; font-weight: bold;">${Math.round(service.total).toLocaleString('en-IN')}</td>
+                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: center;">${
+                      service.no
+                    }</td>
+                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0;">${
+                      service.name
+                    }</td>
+                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: center;">${
+                      service.qty
+                    }</td>
+                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: right;">${service.rate.toLocaleString(
+                      "en-IN"
+                    )}</td>
+                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: right;">${Math.round(
+                      service.tax
+                    )}<br/><span style="font-size: 8px;">(${taxRate}%)</span></td>
+                    <td style="padding: 10px 6px; border: 1px solid #d0d0d0; text-align: right; font-weight: bold;">${Math.round(
+                      service.total
+                    ).toLocaleString("en-IN")}</td>
                   </tr>
-                `).join('')}
+                `
+                  )
+                  .join("")}
               </tbody>
             </table>
 
@@ -1009,8 +1081,12 @@ const handleDownloadReceipt = async (member) => {
             <div style="background: linear-gradient(to right, #f5f0e0, #faf7ed); padding: 8px 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; border-top: 2px solid #c9a961; border-bottom: 2px solid #c9a961;">
               <span style="font-weight: bold;">SUBTOTAL</span>
               <span>${totalQuantity}</span>
-              <span style="font-weight: bold;">₹ ${Math.round(totalTaxAmount).toLocaleString('en-IN')}</span>
-              <span style="font-weight: bold;">₹ ${Math.round(totalAmount).toLocaleString('en-IN')}</span>
+              <span style="font-weight: bold;">₹ ${Math.round(
+                totalTaxAmount
+              ).toLocaleString("en-IN")}</span>
+              <span style="font-weight: bold;">₹ ${Math.round(
+                totalAmount
+              ).toLocaleString("en-IN")}</span>
             </div>
 
             <!-- Bottom Section: Terms & Tax Breakdown -->
@@ -1028,19 +1104,31 @@ const handleDownloadReceipt = async (member) => {
                 <table style="width: 100%; border-collapse: collapse;">
                   <tr>
                     <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; font-weight: bold;">Taxable Amount</td>
-                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">₹ ${Math.round(subtotal).toLocaleString('en-IN')}</td>
+                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">₹ ${Math.round(
+                      subtotal
+                    ).toLocaleString("en-IN")}</td>
                   </tr>
                   <tr>
-                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0;">CGST @${(taxRate/2).toFixed(1)}%</td>
-                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">₹ ${Math.round(cgstAmount).toLocaleString('en-IN')}</td>
+                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0;">CGST @${(
+                      taxRate / 2
+                    ).toFixed(1)}%</td>
+                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">₹ ${Math.round(
+                      cgstAmount
+                    ).toLocaleString("en-IN")}</td>
                   </tr>
                   <tr>
-                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0;">SGST @${(taxRate/2).toFixed(1)}%</td>
-                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">₹ ${Math.round(sgstAmount).toLocaleString('en-IN')}</td>
+                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0;">SGST @${(
+                      taxRate / 2
+                    ).toFixed(1)}%</td>
+                    <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">₹ ${Math.round(
+                      sgstAmount
+                    ).toLocaleString("en-IN")}</td>
                   </tr>
                   <tr style="background: linear-gradient(to right, #f5f0e0, #faf7ed);">
                     <td style="padding: 8px 10px; font-weight: bold;">Total Amount</td>
-                    <td style="padding: 8px 10px; text-align: right; font-weight: bold; font-size: 11px;">₹ ${Math.round(totalAmount).toLocaleString('en-IN')}</td>
+                    <td style="padding: 8px 10px; text-align: right; font-weight: bold; font-size: 11px;">₹ ${Math.round(
+                      totalAmount
+                    ).toLocaleString("en-IN")}</td>
                   </tr>
                 </table>
               </div>
@@ -1068,19 +1156,19 @@ const handleDownloadReceipt = async (member) => {
     margin-bottom: 6px;
   ">
     <span>Total Amount</span>
-    <span>₹ ${Math.round(totalAmount).toLocaleString('en-IN')}</span>
+    <span>₹ ${Math.round(totalAmount).toLocaleString("en-IN")}</span>
   </div>
 
   <!-- Received Amount -->
   <div style="display: flex; justify-content: space-between; color: #555;">
     <span>Received Amount</span>
-    <span>₹ ${Math.round(cashPaid).toLocaleString('en-IN')}</span>
+    <span>₹ ${Math.round(cashPaid).toLocaleString("en-IN")}</span>
   </div>
 
   <!-- Balance -->
   <div style="display: flex; justify-content: space-between; font-weight: bold;">
     <span>Balance</span>
-    <span>₹ ${Math.round(Math.abs(balance)).toLocaleString('en-IN')}</span>
+    <span>₹ ${Math.round(Math.abs(balance)).toLocaleString("en-IN")}</span>
   </div>
 
   <!-- Amount in Words -->
@@ -1189,25 +1277,38 @@ const handleDownloadReceipt = async (member) => {
               }
             });
           }
-        }
+        },
       });
 
       // A4 dimensions
       const pdfWidth = 210;
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
+
       // Create PDF
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
-        format: [pdfWidth, pdfHeight]
+        format: [pdfWidth, pdfHeight],
       });
 
       const imgData = canvas.toDataURL("image/png", 1.0);
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST");
+      pdf.addImage(
+        imgData,
+        "PNG",
+        0,
+        0,
+        pdfWidth,
+        pdfHeight,
+        undefined,
+        "FAST"
+      );
 
       // Download PDF
-      pdf.save(`Invoice_${invoiceNo}_${memberName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`);
+      pdf.save(
+        `Invoice_${invoiceNo}_${memberName.replace(/\s+/g, "_")}_${
+          new Date().toISOString().split("T")[0]
+        }.pdf`
+      );
 
       // Clean up
       document.body.removeChild(tempDiv);
@@ -1332,22 +1433,35 @@ const handleDownloadReceipt = async (member) => {
                         <td>{member.email}</td>
                         <td>{member.gender}</td>
                         <td>
-                          {member.assignedPlans && member.assignedPlans.length > 0 ? (
-                            <MemberPlansDisplay plans={member.assignedPlans} compact={true} />
+                          {member.assignedPlans &&
+                          member.assignedPlans.length > 0 ? (
+                            <MemberPlansDisplay
+                              plans={member.assignedPlans}
+                              compact={true}
+                            />
                           ) : (
-                            <span>{getPlanNameById(member.planId) || "No Plan"}</span>
+                            <span>
+                              {getPlanNameById(member.planId) || "No Plan"}
+                            </span>
                           )}
                         </td>
                         <td>
-                          {member.assignedPlans && member.assignedPlans.length > 0 ? (
+                          {member.assignedPlans &&
+                          member.assignedPlans.length > 0 ? (
                             <div>
                               {member.assignedPlans
-                                .filter(p => p.computedStatus === 'Active')
-                                .map(p => new Date(p.membershipTo).toLocaleDateString())
-                                .join(', ')}
+                                .filter((p) => p.computedStatus === "Active")
+                                .map((p) =>
+                                  new Date(p.membershipTo).toLocaleDateString()
+                                )
+                                .join(", ")}
                             </div>
                           ) : (
-                            <span>{member.expiry ? new Date(member.expiry).toLocaleDateString() : "N/A"}</span>
+                            <span>
+                              {member.expiry
+                                ? new Date(member.expiry).toLocaleDateString()
+                                : "N/A"}
+                            </span>
                           )}
                         </td>
                         {/* <td>
@@ -1517,7 +1631,8 @@ const handleDownloadReceipt = async (member) => {
                             className="dropdown-item"
                             onClick={() => handleDownloadReceipt(member)}
                           >
-                            <Download size={16} className="me-2" /> Download Receipt
+                            <Download size={16} className="me-2" /> Download
+                            Receipt
                           </button>
                         </li>
                         <li>
@@ -1564,13 +1679,16 @@ const handleDownloadReceipt = async (member) => {
                     </div>
                     <div className="col-6">
                       <strong>Remaining:</strong>{" "}
-                      {member.remainingDays === null || member.remainingDays === undefined
-                        ? "-"
-                        : member.remainingDays <= 10
-                          ? (
-                            <span style={{ color: "red", fontWeight: 600 }}>{member.remainingDays}</span>
-                          )
-                          : member.remainingDays}
+                      {member.remainingDays === null ||
+                      member.remainingDays === undefined ? (
+                        "-"
+                      ) : member.remainingDays <= 10 ? (
+                        <span style={{ color: "red", fontWeight: 600 }}>
+                          {member.remainingDays}
+                        </span>
+                      ) : (
+                        member.remainingDays
+                      )}
                     </div>
                     <div className="col-12">
                       <strong>Email:</strong> {member.email}
@@ -1921,8 +2039,10 @@ const handleDownloadReceipt = async (member) => {
                     </div>
                     <div className="col-12">
                       <label className="form-label">
-                        Plans <span className="text-danger">*</span> 
-                        <small className="text-muted ms-2">(Select one or multiple plans)</small>
+                        Plans <span className="text-danger">*</span>
+                        <small className="text-muted ms-2">
+                          (Select one or multiple plans)
+                        </small>
                       </label>
                       {planLoading ? (
                         <div className="form-select text-center">
@@ -1940,39 +2060,62 @@ const handleDownloadReceipt = async (member) => {
                         </div>
                       ) : (
                         <div>
-                          <div className="border rounded p-3" style={{ maxHeight: "250px", overflowY: "auto" }}>
+                          <div
+                            className="border rounded p-3"
+                            style={{ maxHeight: "250px", overflowY: "auto" }}
+                          >
                             {!newMember.interestedIn ? (
-                              <p className="text-muted mb-0">Please select 'Interested In' first</p>
-                            ) : getFilteredPlans(newMember.interestedIn).length === 0 ? (
-                              <p className="text-muted mb-0">No plans available</p>
+                              <p className="text-muted mb-0">
+                                Please select 'Interested In' first
+                              </p>
+                            ) : getFilteredPlans(newMember.interestedIn)
+                                .length === 0 ? (
+                              <p className="text-muted mb-0">
+                                No plans available
+                              </p>
                             ) : (
-                              getFilteredPlans(newMember.interestedIn).map((plan) => (
-                                <div key={plan.id} className="form-check mb-2">
-                                  <input
-                                    className="form-check-input"
-                                    type="checkbox"
-                                    id={`plan-${plan.id}`}
-                                    value={plan.id}
-                                    checked={newMember.planIds.includes(plan.id)}
-                                    onChange={(e) => {
-                                      const planId = parseInt(e.target.value);
-                                      const isChecked = e.target.checked;
-                                      setNewMember({
-                                        ...newMember,
-                                        planIds: isChecked
-                                          ? [...newMember.planIds, planId]
-                                          : newMember.planIds.filter(id => id !== planId),
-                                        planId: isChecked && newMember.planIds.length === 0 
-                                          ? planId 
-                                          : newMember.planId
-                                      });
-                                    }}
-                                  />
-                                  <label className="form-check-label" htmlFor={`plan-${plan.id}`}>
-                                    <strong>{plan.name}</strong> - ₹{plan.price} ({plan.validity} days)
-                                  </label>
-                                </div>
-                              ))
+                              getFilteredPlans(newMember.interestedIn).map(
+                                (plan) => (
+                                  <div
+                                    key={plan.id}
+                                    className="form-check mb-2"
+                                  >
+                                    <input
+                                      className="form-check-input"
+                                      type="checkbox"
+                                      id={`plan-${plan.id}`}
+                                      value={plan.id}
+                                      checked={newMember.planIds.includes(
+                                        plan.id
+                                      )}
+                                      onChange={(e) => {
+                                        const planId = parseInt(e.target.value);
+                                        const isChecked = e.target.checked;
+                                        setNewMember({
+                                          ...newMember,
+                                          planIds: isChecked
+                                            ? [...newMember.planIds, planId]
+                                            : newMember.planIds.filter(
+                                                (id) => id !== planId
+                                              ),
+                                          planId:
+                                            isChecked &&
+                                            newMember.planIds.length === 0
+                                              ? planId
+                                              : newMember.planId,
+                                        });
+                                      }}
+                                    />
+                                    <label
+                                      className="form-check-label"
+                                      htmlFor={`plan-${plan.id}`}
+                                    >
+                                      <strong>{plan.name}</strong> - ₹
+                                      {plan.price} ({plan.validity} days)
+                                    </label>
+                                  </div>
+                                )
+                              )
                             )}
                           </div>
                           {newMember.planIds.length > 0 && (
@@ -2041,7 +2184,6 @@ const handleDownloadReceipt = async (member) => {
                         required
                       />
                     </div>
-
                   </div>
                   <div className="modal-footer mt-3">
                     <button
@@ -2230,7 +2372,9 @@ const handleDownloadReceipt = async (member) => {
                             name="editInterestedIn"
                             id="editGeneral"
                             value="General Trainer"
-                            checked={editMember.interestedIn === "General Trainer"}
+                            checked={
+                              editMember.interestedIn === "General Trainer"
+                            }
                             onChange={(e) => {
                               setEditMember({
                                 ...editMember,
@@ -2240,7 +2384,10 @@ const handleDownloadReceipt = async (member) => {
                             }}
                             required
                           />
-                          <label className="form-check-label" htmlFor="editGeneral">
+                          <label
+                            className="form-check-label"
+                            htmlFor="editGeneral"
+                          >
                             General Trainer
                           </label>
                         </div>
@@ -2251,7 +2398,9 @@ const handleDownloadReceipt = async (member) => {
                             name="editInterestedIn"
                             id="editGroupClasses"
                             value="Group Classes"
-                            checked={editMember.interestedIn === "Group Classes"}
+                            checked={
+                              editMember.interestedIn === "Group Classes"
+                            }
                             onChange={(e) => {
                               setEditMember({
                                 ...editMember,
@@ -2269,189 +2418,216 @@ const handleDownloadReceipt = async (member) => {
                           </label>
                         </div>
                       </div>
-              </div>
-              <div className="col-12">
-                <label className="form-label">
-                  Plans <span className="text-danger">*</span>
-                </label>
-                {planLoading ? (
-                  <div className="text-center py-3">
-                    <div className="spinner-border spinner-border-sm" role="status">
-                      <span className="visually-hidden">Loading...</span>
                     </div>
-                    <p className="mt-2 text-muted">Loading plans...</p>
-                  </div>
-                ) : planError ? (
-                  <div className="alert alert-danger" role="alert">
-                    {planError}
-                  </div>
-                ) : (
-                  <div>
-                    <div className="border rounded p-3" style={{ maxHeight: "250px", overflowY: "auto" }}>
-                      {!editMember.interestedIn ? (
-                        <p className="text-muted mb-0">Please select 'Interested In' first</p>
-                      ) : getFilteredPlans(editMember.interestedIn).length === 0 ? (
-                        <p className="text-muted mb-0">No plans available</p>
-                      ) : (
-                        getFilteredPlans(editMember.interestedIn).map((plan) => (
-                          <div key={plan.id} className="form-check mb-2">
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              id={`edit-plan-${plan.id}`}
-                              value={plan.id}
-                              checked={editMember.planIds.includes(plan.id)}
-                              onChange={(e) => {
-                                const planId = parseInt(e.target.value);
-                                const isChecked = e.target.checked;
-                                setEditMember({
-                                  ...editMember,
-                                  planIds: isChecked
-                                    ? [...editMember.planIds, planId]
-                                    : editMember.planIds.filter(id => id !== planId),
-                                  planId: isChecked && editMember.planIds.length === 0 
-                                    ? planId 
-                                    : editMember.planId
-                                });
-                              }}
-                            />
-                            <label className="form-check-label" htmlFor={`edit-plan-${plan.id}`}>
-                              <strong>{plan.name}</strong> - {plan.price} ({plan.validity} days)
-                            </label>
+                    <div className="col-12">
+                      <label className="form-label">
+                        Plans <span className="text-danger">*</span>
+                      </label>
+                      {planLoading ? (
+                        <div className="text-center py-3">
+                          <div
+                            className="spinner-border spinner-border-sm"
+                            role="status"
+                          >
+                            <span className="visually-hidden">Loading...</span>
                           </div>
-                        ))
+                          <p className="mt-2 text-muted">Loading plans...</p>
+                        </div>
+                      ) : planError ? (
+                        <div className="alert alert-danger" role="alert">
+                          {planError}
+                        </div>
+                      ) : (
+                        <div>
+                          <div
+                            className="border rounded p-3"
+                            style={{ maxHeight: "250px", overflowY: "auto" }}
+                          >
+                            {!editMember.interestedIn ? (
+                              <p className="text-muted mb-0">
+                                Please select 'Interested In' first
+                              </p>
+                            ) : getFilteredPlans(editMember.interestedIn)
+                                .length === 0 ? (
+                              <p className="text-muted mb-0">
+                                No plans available
+                              </p>
+                            ) : (
+                              getFilteredPlans(editMember.interestedIn).map(
+                                (plan) => (
+                                  <div
+                                    key={plan.id}
+                                    className="form-check mb-2"
+                                  >
+                                    <input
+                                      className="form-check-input"
+                                      type="checkbox"
+                                      id={`edit-plan-${plan.id}`}
+                                      value={plan.id}
+                                      checked={editMember.planIds.includes(
+                                        plan.id
+                                      )}
+                                      onChange={(e) => {
+                                        const planId = parseInt(e.target.value);
+                                        const isChecked = e.target.checked;
+                                        setEditMember({
+                                          ...editMember,
+                                          planIds: isChecked
+                                            ? [...editMember.planIds, planId]
+                                            : editMember.planIds.filter(
+                                                (id) => id !== planId
+                                              ),
+                                          planId:
+                                            isChecked &&
+                                            editMember.planIds.length === 0
+                                              ? planId
+                                              : editMember.planId,
+                                        });
+                                      }}
+                                    />
+                                    <label
+                                      className="form-check-label"
+                                      htmlFor={`edit-plan-${plan.id}`}
+                                    >
+                                      <strong>{plan.name}</strong> -{" "}
+                                      {plan.price} ({plan.validity} days)
+                                    </label>
+                                  </div>
+                                )
+                              )
+                            )}
+                          </div>
+                          {editMember.planIds.length > 0 && (
+                            <div className="mt-2">
+                              <small className="text-success">
+                                ✓ {editMember.planIds.length} plan(s) selected
+                              </small>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
-                    {editMember.planIds.length > 0 && (
-                      <div className="mt-2">
-                        <small className="text-success">
-                          ✓ {editMember.planIds.length} plan(s) selected
-                        </small>
-                      </div>
-                    )}
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">
+                        Start Date (for new plans){" "}
+                        <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={editMember.startDate}
+                        onChange={(e) =>
+                          setEditMember({
+                            ...editMember,
+                            startDate: e.target.value,
+                          })
+                        }
+                        required
+                      />
+                      <small className="text-muted">
+                        This date will be used for newly assigned plans
+                      </small>
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">Gender</label>
+                      <select
+                        className="form-select"
+                        value={editMember.gender}
+                        onChange={(e) =>
+                          setEditMember({
+                            ...editMember,
+                            gender: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">Date of Birth</label>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={editMember.dateOfBirth}
+                        onChange={(e) =>
+                          setEditMember({
+                            ...editMember,
+                            dateOfBirth: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">Payment Mode</label>
+                      <select
+                        className="form-select"
+                        value={editMember.paymentMode}
+                        onChange={(e) =>
+                          setEditMember({
+                            ...editMember,
+                            paymentMode: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="cash">Cash</option>
+                        <option value="upi">UPI</option>
+                        <option value="card">Card</option>
+                        <option value="bank">Bank Transfer</option>
+                      </select>
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">Amount Paid</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={editMember.amountPaid}
+                        onChange={(e) =>
+                          setEditMember({
+                            ...editMember,
+                            amountPaid: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label">Address</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editMember.address}
+                        onChange={(e) =>
+                          setEditMember({
+                            ...editMember,
+                            address: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
                   </div>
-                )}
-              </div>
-              <div className="col-12 col-md-6">
-                <label className="form-label">
-                  Start Date (for new plans) <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={editMember.startDate}
-                  onChange={(e) =>
-                    setEditMember({
-                      ...editMember,
-                      startDate: e.target.value,
-                    })
-                  }
-                  required
-                />
-                <small className="text-muted">
-                  This date will be used for newly assigned plans
-                </small>
-              </div>
-              <div className="col-12 col-md-6">
-                <label className="form-label">Gender</label>
-                <select
-                  className="form-select"
-                  value={editMember.gender}
-                  onChange={(e) =>
-                    setEditMember({
-                      ...editMember,
-                      gender: e.target.value,
-                    })
-                  }
-                >
-                  <option value="">Select Gender</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div className="col-12 col-md-6">
-                <label className="form-label">Date of Birth</label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={editMember.dateOfBirth}
-                  onChange={(e) =>
-                    setEditMember({
-                      ...editMember,
-                      dateOfBirth: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div className="col-12 col-md-6">
-                <label className="form-label">Payment Mode</label>
-                <select
-                  className="form-select"
-                  value={editMember.paymentMode}
-                  onChange={(e) =>
-                    setEditMember({
-                      ...editMember,
-                      paymentMode: e.target.value,
-                    })
-                  }
-                >
-                  <option value="cash">Cash</option>
-                  <option value="upi">UPI</option>
-                  <option value="card">Card</option>
-                  <option value="bank">Bank Transfer</option>
-                </select>
-              </div>
-              <div className="col-12 col-md-6">
-                <label className="form-label">Amount Paid</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={editMember.amountPaid}
-                  onChange={(e) =>
-                    setEditMember({
-                      ...editMember,
-                      amountPaid: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div className="col-12">
-                <label className="form-label">Address</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={editMember.address}
-                  onChange={(e) =>
-                    setEditMember({
-                      ...editMember,
-                      address: e.target.value,
-                    })
-                  }
-                />
+                  <div className="modal-footer mt-3">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setShowEditForm(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn text-white"
+                      style={{ backgroundColor: "#6EB2CC" }}
+                      disabled={editLoading}
+                    >
+                      {editLoading ? "Updating..." : "Save Changes"}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
-            <div className="modal-footer mt-3">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setShowEditForm(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn text-white"
-                style={{ backgroundColor: "#6EB2CC" }}
-                disabled={editLoading}
-              >
-                {editLoading ? "Updating..." : "Save Changes"}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+          </div>
         </div>
       )}
 
@@ -2459,221 +2635,239 @@ const handleDownloadReceipt = async (member) => {
       {showRenewForm && (
         <div
           className="modal fade show d-block"
-      tabIndex="-1"
-      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-    >
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Renew Membership Plan</h5>
-            <button
-              type="button"
-              className="btn-close"
-              onClick={() => setShowRenewForm(false)}
-            ></button>
+          tabIndex="-1"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Renew Membership Plan</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowRenewForm(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <form onSubmit={handleRenewPlan}>
+                  <div className="mb-3">
+                    <label className="form-label">Membership Plan</label>
+                    <select
+                      className="form-select"
+                      value={renewPlan.plan}
+                      onChange={(e) =>
+                        setRenewPlan({ ...renewPlan, plan: e.target.value })
+                      }
+                      required
+                    >
+                      <option value="">Select Plan</option>
+                      {plansLoaded &&
+                        apiPlans.map((plan) => (
+                          <option key={plan.id} value={plan.id}>
+                            {plan.name} - {plan.price} ({plan.validity} days)
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Payment Mode</label>
+                    <select
+                      className="form-select"
+                      value={renewPlan.paymentMode}
+                      onChange={(e) =>
+                        setRenewPlan({
+                          ...renewPlan,
+                          paymentMode: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="card">Card</option>
+                      <option value="upi">UPI</option>
+                      <option value="bank">Bank Transfer</option>
+                    </select>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Amount Paid</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      value={renewPlan.amountPaid}
+                      onChange={(e) =>
+                        setRenewPlan({
+                          ...renewPlan,
+                          amountPaid: e.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setShowRenewForm(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn text-white"
+                      style={{ backgroundColor: "#6EB2CC" }}
+                    >
+                      Renew Plan
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
           </div>
-          <div className="modal-body">
-            <form onSubmit={handleRenewPlan}>
-              <div className="mb-3">
-                <label className="form-label">Membership Plan</label>
-                <select
-                  className="form-select"
-                  value={renewPlan.plan}
-                  onChange={(e) =>
-                    setRenewPlan({ ...renewPlan, plan: e.target.value })
-                  }
-                  required
-                >
-                  <option value="">Select Plan</option>
-                  {plansLoaded &&
-                    apiPlans.map((plan) => (
-                      <option key={plan.id} value={plan.id}>
-                        {plan.name} - {plan.price} ({plan.validity} days)
-                      </option>
-                    ))}
-                </select>
+        </div>
+      )}
+
+      {/* View Member Modal */}
+      {showViewModal && selectedMember && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Member Details</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowViewModal(false)}
+                ></button>
               </div>
-              <div className="mb-3">
-                <label className="form-label">Payment Mode</label>
-                <select
-                  className="form-select"
-                  value={renewPlan.paymentMode}
-                  onChange={(e) =>
-                    setRenewPlan({
-                      ...renewPlan,
-                      paymentMode: e.target.value,
-                    })
-                  }
-                >
-                  <option value="cash">Cash</option>
-                  <option value="card">Card</option>
-                  <option value="upi">UPI</option>
-                  <option value="bank">Bank Transfer</option>
-                </select>
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Amount Paid</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={renewPlan.amountPaid}
-                  onChange={(e) =>
-                    setRenewPlan({
-                      ...renewPlan,
-                      amountPaid: e.target.value,
-                    })
-                  }
-                  required
-                />
+              <div
+                className="modal-body"
+                style={{ maxHeight: "70vh", overflowY: "auto" }}
+              >
+                <div className="row">
+                  <div className="col-12 col-lg-4 text-center mb-4 mb-lg-0">
+                    {selectedMember.profileImage ? (
+                      <img
+                        src={selectedMember.profileImage}
+                        alt="Profile"
+                        className="rounded-circle mb-3"
+                        style={{
+                          width: "120px",
+                          height: "120px",
+                          objectFit: "cover",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className="d-flex justify-content-center align-items-center rounded-circle bg-primary text-white mx-auto mb-3"
+                        style={{ width: "120px", height: "120px" }}
+                      >
+                        <span className="fs-1 fw-bold">
+                          {selectedMember.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </span>
+                      </div>
+                    )}
+                    <h5 className="mb-2">{selectedMember.name}</h5>
+                    <span
+                      className={`badge ${getStatusClass(
+                        selectedMember.status
+                      )}`}
+                    >
+                      {selectedMember.status}
+                    </span>
+                  </div>
+                  <div className="col-12 col-lg-8">
+                    <div className="row g-3">
+                      <div className="col-12 col-sm-6">
+                        <strong>Phone:</strong>
+                        <div>{selectedMember.phone}</div>
+                      </div>
+                      <div className="col-12 col-sm-6">
+                        <strong>Email:</strong>
+                        <div>{selectedMember.email}</div>
+                      </div>
+                      <div className="col-12 col-sm-6">
+                        <strong>Gender:</strong>
+                        <div>{selectedMember.gender}</div>
+                      </div>
+                      <div className="col-12">
+                        <strong>Assigned Plans:</strong>
+                        {selectedMember.assignedPlans &&
+                        selectedMember.assignedPlans.length > 0 ? (
+                          <div className="mt-2">
+                            <MemberPlansDisplay
+                              plans={selectedMember.assignedPlans}
+                              compact={false}
+                            />
+                          </div>
+                        ) : (
+                          <div className="mt-2">
+                            <div className="text-muted">
+                              <small>
+                                Plan:{" "}
+                                {getPlanNameById(selectedMember.planId) ||
+                                  "No Plan"}
+                              </small>
+                              {selectedMember.planStart && (
+                                <div>
+                                  <small>
+                                    Start:{" "}
+                                    {new Date(
+                                      selectedMember.planStart
+                                    ).toLocaleDateString()}
+                                  </small>
+                                </div>
+                              )}
+                              {selectedMember.expiry && (
+                                <div>
+                                  <small>
+                                    Expiry:{" "}
+                                    {new Date(
+                                      selectedMember.expiry
+                                    ).toLocaleDateString()}
+                                  </small>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="col-12 col-sm-6">
+                        <strong>Date of Birth:</strong>
+                        <div>
+                          {new Date(selectedMember.dob).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div className="col-12 col-sm-6">
+                        <strong>Interested In:</strong>
+                        <div>{selectedMember.interestedIn}</div>
+                      </div>
+                      <div className="col-12">
+                        <strong>Address:</strong>
+                        <div>{selectedMember.address}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="modal-footer">
                 <button
                   type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowRenewForm(false)}
+                  className="btn btn-secondary w-100 w-md-auto"
+                  onClick={() => setShowViewModal(false)}
                 >
-                  Cancel
+                  Close
                 </button>
-                <button
-                  type="submit"
-                  className="btn text-white"
-                  style={{ backgroundColor: "#6EB2CC" }}
-                >
-                  Renew Plan
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  )}
-
-      {/* View Member Modal */}
-      {showViewModal && selectedMember && (
-    <div
-      className="modal fade show d-block"
-      tabIndex="-1"
-      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-    >
-      <div className="modal-dialog modal-lg modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Member Details</h5>
-            <button
-              type="button"
-              className="btn-close"
-              onClick={() => setShowViewModal(false)}
-            ></button>
-          </div>
-          <div
-            className="modal-body"
-            style={{ maxHeight: "70vh", overflowY: "auto" }}
-          >
-            <div className="row">
-              <div className="col-12 col-lg-4 text-center mb-4 mb-lg-0">
-                {selectedMember.profileImage ? (
-                  <img
-                    src={selectedMember.profileImage}
-                    alt="Profile"
-                    className="rounded-circle mb-3"
-                    style={{
-                      width: "120px",
-                      height: "120px",
-                      objectFit: "cover",
-                    }}
-                  />
-                ) : (
-                  <div
-                    className="d-flex justify-content-center align-items-center rounded-circle bg-primary text-white mx-auto mb-3"
-                    style={{ width: "120px", height: "120px" }}
-                  >
-                    <span className="fs-1 fw-bold">
-                      {selectedMember.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </span>
-                  </div>
-                )}
-                <h5 className="mb-2">{selectedMember.name}</h5>
-                <span
-                  className={`badge ${getStatusClass(
-                    selectedMember.status
-                  )}`}
-                >
-                  {selectedMember.status}
-                </span>
-              </div>
-              <div className="col-12 col-lg-8">
-                <div className="row g-3">
-                  <div className="col-12 col-sm-6">
-                    <strong>Phone:</strong>
-                    <div>{selectedMember.phone}</div>
-                  </div>
-                  <div className="col-12 col-sm-6">
-                    <strong>Email:</strong>
-                    <div>{selectedMember.email}</div>
-                  </div>
-                  <div className="col-12 col-sm-6">
-                    <strong>Gender:</strong>
-                    <div>{selectedMember.gender}</div>
-                  </div>
-                  <div className="col-12">
-                    <strong>Assigned Plans:</strong>
-                    {selectedMember.assignedPlans && selectedMember.assignedPlans.length > 0 ? (
-                      <div className="mt-2">
-                        <MemberPlansDisplay plans={selectedMember.assignedPlans} compact={false} />
-                      </div>
-                    ) : (
-                      <div className="mt-2">
-                        <div className="text-muted">
-                          <small>Plan: {getPlanNameById(selectedMember.planId) || "No Plan"}</small>
-                          {selectedMember.planStart && (
-                            <div>
-                              <small>Start: {new Date(selectedMember.planStart).toLocaleDateString()}</small>
-                            </div>
-                          )}
-                          {selectedMember.expiry && (
-                            <div>
-                              <small>Expiry: {new Date(selectedMember.expiry).toLocaleDateString()}</small>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-12 col-sm-6">
-                    <strong>Date of Birth:</strong>
-                    <div>
-                      {new Date(selectedMember.dob).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <div className="col-12 col-sm-6">
-                    <strong>Interested In:</strong>
-                    <div>{selectedMember.interestedIn}</div>
-                  </div>
-                  <div className="col-12">
-                    <strong>Address:</strong>
-                    <div>{selectedMember.address}</div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
-          <div className="modal-footer">
-            <button
-              type="button"
-              className="btn btn-secondary w-100 w-md-auto"
-              onClick={() => setShowViewModal(false)}
-            >
-              Close
-            </button>
-          </div>
         </div>
-      </div>
-    </div>
-  )}
+      )}
       {/* Image Cropper Modal */}
       {showCropper && cropperImage && (
         <ImageCropper
