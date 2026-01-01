@@ -49,13 +49,13 @@ const GroupPlansBookings = () => {
   const [membershipPlans, setMembershipPlans] = useState([]);
   const [membershipLoading, setMembershipLoading] = useState(false);
   const [membershipError, setMembershipError] = useState(null);
-  
+
   // New state for plan details modal
   const [showPlanDetailsModal, setShowPlanDetailsModal] = useState(false);
   const [selectedPlanDetails, setSelectedPlanDetails] = useState(null);
   const [planDetailsLoading, setPlanDetailsLoading] = useState(false);
 
-   const getUserFromStorage = () => {
+  const getUserFromStorage = () => {
     try {
       const userStr = localStorage.getItem('user');
       return userStr ? JSON.parse(userStr) : null;
@@ -66,7 +66,7 @@ const GroupPlansBookings = () => {
   };
 
   const user = getUserFromStorage();
-  const memberId = user?.id || null;
+  const trainerId = user?.id || null;
   const branchId = user?.branchId || null;
   const name = user?.fullName || null;
   const staffId = user?.staffId || null;
@@ -171,17 +171,19 @@ const GroupPlansBookings = () => {
         const response = await fetch(
           `${BaseUrl}MemberPlan?adminId=${adminId}`
         );
-
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
-
         const data = await response.json();
-
         if (data.success) {
-          // Filter only MEMBER type plans with trainer type "general" and transform data
+          // 🔑 Filter: MEMBER + general + trainerId === current user's ID
           const memberPlansGeneral = data.plans
-            .filter((plan) => plan.type === "MEMBER" && plan.trainerType === "general")
+            .filter(
+              (plan) =>
+                plan.type === "MEMBER" &&
+                plan.trainerType === "general" &&
+                plan.trainerId === user?.id // ✅ Only show if assigned to logged-in user
+            )
             .map((plan) => ({
               id: plan.id,
               name: plan.name,
@@ -197,7 +199,6 @@ const GroupPlansBookings = () => {
               updatedAt: plan.updatedAt,
               status: plan.status,
             }));
-
           setMembershipPlans(memberPlansGeneral);
         } else {
           setMembershipError("Failed to fetch membership plans data");
@@ -213,7 +214,7 @@ const GroupPlansBookings = () => {
     if (activeTab === "membership") {
       fetchMembershipPlans();
     }
-  }, [adminId, activeTab]);
+  }, [adminId, activeTab, user?.id]); // 🔁 Include user.id in dependency array
 
   // Get customers for selected plan
   const getCustomersForPlan = (planId) => {
@@ -249,7 +250,7 @@ const GroupPlansBookings = () => {
 
     return customers;
   };
-  
+
   // Memoized filtered members for the "All Members" tab
   const filteredMembers = useMemo(() => {
     let filtered = [...members];
@@ -290,66 +291,66 @@ const GroupPlansBookings = () => {
   };
 
   // Handle view member details
-// Handle view member details - UPDATED TO USE NEW API
-const handleViewMember = async (member) => {
-  try {
-    // Show loading state
-    setShowCustomerModal(true);
-    setSelectedCustomer(null);
-    
-    // Fetch member details from the new API endpoint
-    const response = await fetch(
-      `${BaseUrl}members/detail/${member.id}`
-    );
+  // Handle view member details - UPDATED TO USE NEW API
+  const handleViewMember = async (member) => {
+    try {
+      // Show loading state
+      setShowCustomerModal(true);
+      setSelectedCustomer(null);
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
+      // Fetch member details from the new API endpoint
+      const response = await fetch(
+        `${BaseUrl}members/detail/${member.id}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Transform member data to match customer structure for modal
+        const transformedMember = {
+          id: data.member.id,
+          name: data.member.fullName,
+          email: data.member.email,
+          contact: data.member.phone,
+          purchaseDate: data.member.membershipFrom,
+          expiryDate: data.member.membershipTo,
+          sessionsBooked: data.member.sessionDetails.attended || 0,
+          sessionsRemaining: data.member.sessionDetails.remaining || 0,
+          status: data.member.status || "Active",
+          planName: data.member.planName || "Unknown",
+          planDuration: `${data.member.validityDays} days`,
+          planPrice: data.member.amountPaid || "0",
+          paymentMode: data.member.paymentMode || "Unknown",
+          amountPaid: data.member.amountPaid || "0",
+          gender: data.member.gender || "Unknown",
+          dateOfBirth: data.member.dateOfBirth || "Unknown",
+          interestedIn: data.member.interestedIn || "Unknown",
+          address: data.member.address || "Unknown",
+          joinDate: data.member.joinDate,
+          type: data.member.planType || "Unknown",
+          trainerType: data.member.trainerType || "Not Assigned",
+          planId: data.member.planId,
+          profileImage: data.member.profileImage || "",
+          totalSessions: data.member.totalSessions || 0,
+          validityDays: data.member.validityDays || 0,
+          sessionState: data.member.sessionDetails.sessionState || "Active",
+          // Add a flag to indicate this is a member, not a plan
+          isMember: true
+        };
+
+        setSelectedCustomer(transformedMember);
+      } else {
+        setError("Failed to fetch member details");
+      }
+    } catch (err) {
+      setError(`Error fetching member details: ${err.message}`);
+      console.error("Error fetching member details:", err);
     }
-
-    const data = await response.json();
-
-    if (data.success) {
-      // Transform member data to match customer structure for modal
-      const transformedMember = {
-        id: data.member.id,
-        name: data.member.fullName,
-        email: data.member.email,
-        contact: data.member.phone,
-        purchaseDate: data.member.membershipFrom,
-        expiryDate: data.member.membershipTo,
-        sessionsBooked: data.member.sessionDetails.attended || 0,
-        sessionsRemaining: data.member.sessionDetails.remaining || 0,
-        status: data.member.status || "Active",
-        planName: data.member.planName || "Unknown",
-        planDuration: `${data.member.validityDays} days`,
-        planPrice: data.member.amountPaid || "0",
-        paymentMode: data.member.paymentMode || "Unknown",
-        amountPaid: data.member.amountPaid || "0",
-        gender: data.member.gender || "Unknown",
-        dateOfBirth: data.member.dateOfBirth || "Unknown",
-        interestedIn: data.member.interestedIn || "Unknown",
-        address: data.member.address || "Unknown",
-        joinDate: data.member.joinDate,
-        type: data.member.planType || "Unknown",
-        trainerType: data.member.trainerType || "Not Assigned",
-        planId: data.member.planId,
-        profileImage: data.member.profileImage || "",
-        totalSessions: data.member.totalSessions || 0,
-        validityDays: data.member.validityDays || 0,
-        sessionState: data.member.sessionDetails.sessionState || "Active",
-        // Add a flag to indicate this is a member, not a plan
-        isMember: true
-      };
-
-      setSelectedCustomer(transformedMember);
-    } else {
-      setError("Failed to fetch member details");
-    }
-  } catch (err) {
-    setError(`Error fetching member details: ${err.message}`);
-    console.error("Error fetching member details:", err);
-  }
-};
+  };
 
   // Handle view membership plan details - fetch members and show plan modal
   const handleViewMembershipPlan = async (plan) => {
@@ -438,7 +439,7 @@ const handleViewMember = async (member) => {
   const handleViewPlanDetails = async (planId) => {
     try {
       setPlanDetailsLoading(true);
-      
+
       // Fetch plan details from the new API endpoint
       const response = await fetch(
         `${BaseUrl}members/group-plan/${adminId}/admin/${planId}`
@@ -485,7 +486,7 @@ const handleViewMember = async (member) => {
             planType: member.planType || data.data.plan.type,
           }))
         };
-        
+
         // Update the planCustomers state with the fetched members
         setPlanCustomers(prev => ({
           ...prev,
@@ -503,7 +504,7 @@ const handleViewMember = async (member) => {
             planName: member.planName,
           }))
         }));
-        
+
         setSelectedPlanDetails(planDetails);
         setShowPlanDetailsModal(true);
       } else {
@@ -518,70 +519,70 @@ const handleViewMember = async (member) => {
   };
 
   // Get status indicator
-const getStatusIndicator = (status, sessionsRemaining, expiryDate) => {
-  // If status is explicitly provided, use it
-  if (status) {
-    const statusStr = status.toString().toLowerCase();
-    if (statusStr === "active") {
+  const getStatusIndicator = (status, sessionsRemaining, expiryDate) => {
+    // If status is explicitly provided, use it
+    if (status) {
+      const statusStr = status.toString().toLowerCase();
+      if (statusStr === "active") {
+        return (
+          <Badge bg="success">
+            <FaCheckCircle className="me-1" />
+            Active
+          </Badge>
+        );
+      } else if (statusStr === "inactive") {
+        return (
+          <Badge bg="danger">
+            <FaExclamationCircle className="me-1" />
+            Inactive
+          </Badge>
+        );
+      } else if (statusStr === "expired") {
+        return (
+          <Badge bg="danger">
+            <FaExclamationCircle className="me-1" />
+            Expired
+          </Badge>
+        );
+      } else if (statusStr === "completed") {
+        return (
+          <Badge bg="secondary">
+            <FaTimesCircle className="me-1" />
+            Completed
+          </Badge>
+        );
+      }
+    }
+
+    // Otherwise, calculate status from sessions and expiry date
+    const today = new Date();
+    const expiry = new Date(expiryDate);
+
+    if (sessionsRemaining === 0) {
       return (
-        <Badge bg="success">
-          <FaCheckCircle className="me-1" />
-          Active
+        <Badge bg="secondary">
+          <FaTimesCircle className="me-1" />
+          Sessions Completed
         </Badge>
       );
-    } else if (statusStr === "inactive") {
-      return (
-        <Badge bg="danger">
-          <FaExclamationCircle className="me-1" />
-          Inactive
-        </Badge>
-      );
-    } else if (statusStr === "expired") {
+    }
+
+    if (expiry < today) {
       return (
         <Badge bg="danger">
           <FaExclamationCircle className="me-1" />
           Expired
         </Badge>
       );
-    } else if (statusStr === "completed") {
-      return (
-        <Badge bg="secondary">
-          <FaTimesCircle className="me-1" />
-          Completed
-        </Badge>
-      );
     }
-  }
 
-  // Otherwise, calculate status from sessions and expiry date
-  const today = new Date();
-  const expiry = new Date(expiryDate);
-
-  if (sessionsRemaining === 0) {
     return (
-      <Badge bg="secondary">
-        <FaTimesCircle className="me-1" />
-        Sessions Completed
+      <Badge bg="success">
+        <FaCheckCircle className="me-1" />
+        Active
       </Badge>
     );
-  }
-
-  if (expiry < today) {
-    return (
-      <Badge bg="danger">
-        <FaExclamationCircle className="me-1" />
-        Expired
-      </Badge>
-    );
-  }
-
-  return (
-    <Badge bg="success">
-      <FaCheckCircle className="me-1" />
-      Active
-    </Badge>
-  );
-};
+  };
 
   // Calculate session progress percentage
   const getProgressPercentage = (sessionsBooked, sessionsRemaining) => {
@@ -677,69 +678,70 @@ const getStatusIndicator = (status, sessionsRemaining, expiryDate) => {
   );
 
   // Mobile member card view
-const MobileMemberCard = ({ member, index }) => (
-  <Card className="mb-3 border shadow-sm">
-    <Card.Body className="p-3">
-      <div className="d-flex justify-content-between align-items-start mb-2">
-        <div className="d-flex align-items-center">
-          <div
-            className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2"
-            style={{ width: "32px", height: "32px", fontSize: "14px" }}
-          >
-            {index + 1}
-          </div>
-          <h5 className="mb-0 fw-bold" style={{ color: "#2f6a87" }}>
-            {member.fullName}
-          </h5>
-        </div>
-        <Button
-          variant="outline-primary"
-          size="sm"
-          onClick={() => handleViewMember(member)}
-          style={{
-            borderColor: "#2f6a87",
-            color: "#2f6a87",
-            borderRadius: "50%",
-            width: "32px",
-            height: "32px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "0",
-          }}
-        >
-          <FaEye size={14} />
-        </Button>
-      </div>
-
-      <div className="mb-2">
-        {getStatusIndicator(member.status)}
-      </div>
-
-      <div className="row g-2">
-        <div className="col-6">
-          <small className="text-muted d-block">Plan Type</small>
-          <span className="small">{member.type || "Unknown"}</span>
-        </div>
-        <div className="col-6">
-          <small className="text-muted d-block">Trainer Type</small>
-          <span className="small">{member.trainerType || "Not Assigned"}</span>
-        </div>
-        <div className="col-6">
-          <small className="text-muted d-block">Join Date</small>
+  const MobileMemberCard = ({ member, index }) => (
+    <Card className="mb-3 border shadow-sm">
+      <Card.Body className="p-3">
+        <div className="d-flex justify-content-between align-items-start mb-2">
           <div className="d-flex align-items-center">
-            <FaCalendar size={12} className="text-muted me-1" />
-            <span className="small">{member.membershipFrom || member.joinDate}</span>
+            <div
+              className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2"
+              style={{ width: "32px", height: "32px", fontSize: "14px" }}
+            >
+              {index + 1}
+            </div>
+            <h5 className="mb-0 fw-bold" style={{ color: "#2f6a87" }}>
+              {member.fullName}
+            </h5>
+          </div>
+          <Button
+            variant="outline-primary"
+            size="sm"
+            onClick={() => handleViewMember(member)}
+            style={{
+              borderColor: "#2f6a87",
+              color: "#2f6a87",
+              borderRadius: "50%",
+              width: "32px",
+              height: "32px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0",
+            }}
+          >
+            <FaEye size={14} />
+          </Button>
+        </div>
+
+        <div className="mb-2">
+          {getStatusIndicator(member.status)}
+        </div>
+
+        <div className="row g-2">
+          <div className="col-6">
+            <small className="text-muted d-block">Plan Type</small>
+            <span className="small">{member.type || "Unknown"}</span>
+          </div>
+
+          <div className="col-6">
+            <small className="text-muted d-block">Trainer Type</small>
+            <span className="small">{member.trainerType || "Not Assigned"}</span>
+          </div>
+          <div className="col-6">
+            <small className="text-muted d-block">Join Date</small>
+            <div className="d-flex align-items-center">
+              <FaCalendar size={12} className="text-muted me-1" />
+              <span className="small">{member.membershipFrom || member.joinDate}</span>
+            </div>
+          </div>
+          <div className="col-6">
+            <small className="text-muted d-block">Email</small>
+            <span className="small text-truncate">{member.email}</span>
           </div>
         </div>
-        <div className="col-6">
-          <small className="text-muted d-block">Email</small>
-          <span className="small text-truncate">{member.email}</span>
-        </div>
-      </div>
-    </Card.Body>
-  </Card>
-);
+      </Card.Body>
+    </Card>
+  );
 
   // Mobile membership plan card view
   const MobileMembershipPlanCard = ({ plan, index }) => (
@@ -1951,349 +1953,349 @@ const MobileMemberCard = ({ member, index }) => (
           </Modal>
         )}
 
-{/* Member Details Modal - Updated to use new API */}
-<Modal
-  show={showCustomerModal}
-  onHide={() => setShowCustomerModal(false)}
-  centered
-  size="lg"
-  fullscreen="sm-down"
->
-  <Modal.Header
-    closeButton
-    style={{
-      backgroundColor: "#f8f9fa",
-      borderBottom: "1px solid #dee2e6",
-    }}
-  >
-    <Modal.Title
-      style={{ color: "#333", fontWeight: "600", fontSize: "1.2rem" }}
-    >
-      {selectedCustomer?.isMember 
-        ? "Member Details" 
-        : selectedCustomer?.type
-        ? "Membership Plan Details"
-        : "Customer Details"}
-    </Modal.Title>
-  </Modal.Header>
-  <Modal.Body className="p-3 p-md-4">
-    {selectedCustomer ? (
-      <div>
-        <div className="mb-3">
-          <div className="d-flex align-items-center mb-2">
-            {selectedCustomer.profileImage && (
-              <img
-                src={selectedCustomer.profileImage}
-                alt={selectedCustomer.name}
-                className="rounded-circle me-3"
-                style={{ width: "80px", height: "80px", objectFit: "cover" }}
-              />
-            )}
-            <div>
-              <h5
-                className="fw-bold mb-1"
-                style={{ color: "#2f6a87", fontSize: "1.3rem" }}
-              >
-                {selectedCustomer.name}
-              </h5>
-              <div className="d-flex align-items-center">
-                <span className="text-muted me-2">Status:</span>
-                {getStatusIndicator(
-                  selectedCustomer.status,
-                  selectedCustomer.sessionsRemaining,
-                  selectedCustomer.expiryDate
+        {/* Member Details Modal - Updated to use new API */}
+        <Modal
+          show={showCustomerModal}
+          onHide={() => setShowCustomerModal(false)}
+          centered
+          size="lg"
+          fullscreen="sm-down"
+        >
+          <Modal.Header
+            closeButton
+            style={{
+              backgroundColor: "#f8f9fa",
+              borderBottom: "1px solid #dee2e6",
+            }}
+          >
+            <Modal.Title
+              style={{ color: "#333", fontWeight: "600", fontSize: "1.2rem" }}
+            >
+              {selectedCustomer?.isMember
+                ? "Member Details"
+                : selectedCustomer?.type
+                  ? "Membership Plan Details"
+                  : "Customer Details"}
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="p-3 p-md-4">
+            {selectedCustomer ? (
+              <div>
+                <div className="mb-3">
+                  <div className="d-flex align-items-center mb-2">
+                    {selectedCustomer.profileImage && (
+                      <img
+                        src={selectedCustomer.profileImage}
+                        alt={selectedCustomer.name}
+                        className="rounded-circle me-3"
+                        style={{ width: "80px", height: "80px", objectFit: "cover" }}
+                      />
+                    )}
+                    <div>
+                      <h5
+                        className="fw-bold mb-1"
+                        style={{ color: "#2f6a87", fontSize: "1.3rem" }}
+                      >
+                        {selectedCustomer.name}
+                      </h5>
+                      <div className="d-flex align-items-center">
+                        <span className="text-muted me-2">Status:</span>
+                        {getStatusIndicator(
+                          selectedCustomer.status,
+                          selectedCustomer.sessionsRemaining,
+                          selectedCustomer.expiryDate
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row mb-3">
+                  <div className="col-12 col-md-6 mb-3 mb-md-0">
+                    <div className="mb-2">
+                      <small className="text-muted d-block">Email</small>
+                      <div className="d-flex align-items-center">
+                        <FaEnvelope size={14} className="text-muted me-2" />
+                        <span className="text-break">
+                          {selectedCustomer.email}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="col-12 col-md-6">
+                    <div className="mb-2">
+                      <small className="text-muted d-block">Phone</small>
+                      <div className="d-flex align-items-center">
+                        <FaPhone size={14} className="text-muted me-2" />
+                        <span>{selectedCustomer.contact}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedCustomer.planName && (
+                  <div className="row mb-3">
+                    <div className="col-12 col-md-6 mb-3 mb-md-0">
+                      <div className="mb-2">
+                        <small className="text-muted d-block">Plan</small>
+                        <span>{selectedCustomer.planName}</span>
+                      </div>
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <div className="mb-2">
+                        <small className="text-muted d-block">Duration</small>
+                        <span>{selectedCustomer.planDuration}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="row mb-3">
+                  <div className="col-12 col-md-6 mb-3 mb-md-0">
+                    <div className="mb-2">
+                      <small className="text-muted d-block">
+                        Purchase Date
+                      </small>
+                      <div className="d-flex align-items-center">
+                        <FaCalendar size={14} className="text-muted me-2" />
+                        <span>
+                          {selectedCustomer.purchaseDate
+                            ? new Date(selectedCustomer.purchaseDate).toLocaleDateString()
+                            : selectedCustomer.joinDate
+                              ? new Date(selectedCustomer.joinDate).toLocaleDateString()
+                              : "Unknown"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="col-12 col-md-6">
+                    <div className="mb-2">
+                      <small className="text-muted d-block">Expiry Date</small>
+                      <div className="d-flex align-items-center">
+                        <FaCalendar size={14} className="text-muted me-2" />
+                        <span>
+                          {selectedCustomer.expiryDate
+                            ? new Date(selectedCustomer.expiryDate).toLocaleDateString()
+                            : "Unknown"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedCustomer.paymentMode && (
+                  <div className="row mb-3">
+                    <div className="col-12 col-md-6 mb-3 mb-md-0">
+                      <div className="mb-2">
+                        <small className="text-muted d-block">
+                          Payment Mode
+                        </small>
+                        <span>{selectedCustomer.paymentMode}</span>
+                      </div>
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <div className="mb-2">
+                        <small className="text-muted d-block">
+                          Amount Paid
+                        </small>
+                        <span>₹{selectedCustomer.amountPaid}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedCustomer.type && (
+                  <div className="row mb-3">
+                    <div className="col-12 col-md-6 mb-3 mb-md-0">
+                      <div className="mb-2">
+                        <small className="text-muted d-block">Plan Type</small>
+                        <span>{selectedCustomer.type}</span>
+                      </div>
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <div className="mb-2">
+                        <small className="text-muted d-block">Trainer Type</small>
+                        <span>{selectedCustomer.trainerType || "Not Assigned"}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedCustomer.sessionsBooked !== undefined && (
+                  <div className="border-top pt-3">
+                    <h6 className="fw-bold mb-3" style={{ color: "#2f6a87" }}>
+                      Session Details
+                    </h6>
+                    <div className="row text-center">
+                      <div className="col-4">
+                        <div className="p-2 p-md-3 bg-light rounded">
+                          <div
+                            className="fw-bold"
+                            style={{ color: "#2f6a87", fontSize: "1.2rem" }}
+                          >
+                            {selectedCustomer.sessionsBooked}
+                          </div>
+                          <small className="text-muted">Attended</small>
+                        </div>
+                      </div>
+                      <div className="col-4">
+                        <div className="p-2 p-md-3 bg-light rounded">
+                          <div
+                            className="fw-bold"
+                            style={{ color: "#2f6a87", fontSize: "1.2rem" }}
+                          >
+                            {selectedCustomer.sessionsRemaining}
+                          </div>
+                          <small className="text-muted">Remaining</small>
+                        </div>
+                      </div>
+                      <div className="col-4">
+                        <div className="p-2 p-md-3 bg-light rounded">
+                          <div
+                            className="fw-bold"
+                            style={{ color: "#2f6a87", fontSize: "1.2rem" }}
+                          >
+                            {selectedCustomer.sessionsBooked +
+                              selectedCustomer.sessionsRemaining}
+                          </div>
+                          <small className="text-muted">Total</small>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3">
+                      <div className="d-flex justify-content-between mb-1">
+                        <small>
+                          Progress:{" "}
+                          {getProgressPercentage(
+                            selectedCustomer.sessionsBooked,
+                            selectedCustomer.sessionsRemaining
+                          )}
+                          %
+                        </small>
+                        <small>
+                          {selectedCustomer.sessionsBooked}/
+                          {selectedCustomer.sessionsBooked +
+                            selectedCustomer.sessionsRemaining}
+                        </small>
+                      </div>
+                      <div className="progress" style={{ height: "8px" }}>
+                        <div
+                          className="progress-bar"
+                          role="progressbar"
+                          style={{
+                            width: `${getProgressPercentage(
+                              selectedCustomer.sessionsBooked,
+                              selectedCustomer.sessionsRemaining
+                            )}%`,
+                            backgroundColor: "#2f6a87",
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedCustomer.daysUsed !== undefined && (
+                  <div className="border-top pt-3">
+                    <h6 className="fw-bold mb-3" style={{ color: "#2f6a87" }}>
+                      Plan Usage Details
+                    </h6>
+                    <div className="row text-center">
+                      <div className="col-4">
+                        <div className="p-2 p-md-3 bg-light rounded">
+                          <div
+                            className="fw-bold"
+                            style={{ color: "#2f6a87", fontSize: "1.2rem" }}
+                          >
+                            {selectedCustomer.daysUsed}
+                          </div>
+                          <small className="text-muted">Days Used</small>
+                        </div>
+                      </div>
+                      <div className="col-4">
+                        <div className="p-2 p-md-3 bg-light rounded">
+                          <div
+                            className="fw-bold"
+                            style={{ color: "#2f6a87", fontSize: "1.2rem" }}
+                          >
+                            {selectedCustomer.daysLeft}
+                          </div>
+                          <small className="text-muted">Days Left</small>
+                        </div>
+                      </div>
+                      <div className="col-4">
+                        <div className="p-2 p-md-3 bg-light rounded">
+                          <div
+                            className="fw-bold"
+                            style={{ color: "#2f6a87", fontSize: "1.2rem" }}
+                          >
+                            {parseInt(selectedCustomer.daysUsed) +
+                              parseInt(selectedCustomer.daysLeft)}
+                          </div>
+                          <small className="text-muted">Total Days</small>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3">
+                      <div className="d-flex justify-content-between mb-1">
+                        <small>
+                          Progress:{" "}
+                          {Math.round(
+                            (parseInt(selectedCustomer.daysUsed) /
+                              (parseInt(selectedCustomer.daysUsed) +
+                                parseInt(selectedCustomer.daysLeft))) *
+                            100
+                          )}
+                          %
+                        </small>
+                        <small>
+                          {selectedCustomer.daysUsed}/
+                          {parseInt(selectedCustomer.daysUsed) +
+                            parseInt(selectedCustomer.daysLeft)}
+                        </small>
+                      </div>
+                      <div className="progress" style={{ height: "8px" }}>
+                        <div
+                          className="progress-bar"
+                          role="progressbar"
+                          style={{
+                            width: `${Math.round(
+                              (parseInt(selectedCustomer.daysUsed) /
+                                (parseInt(selectedCustomer.daysUsed) +
+                                  parseInt(selectedCustomer.daysLeft))) *
+                              100
+                            )}%`,
+                            backgroundColor: "#2f6a87",
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="row mb-3">
-          <div className="col-12 col-md-6 mb-3 mb-md-0">
-            <div className="mb-2">
-              <small className="text-muted d-block">Email</small>
-              <div className="d-flex align-items-center">
-                <FaEnvelope size={14} className="text-muted me-2" />
-                <span className="text-break">
-                  {selectedCustomer.email}
-                </span>
+            ) : (
+              <div className="d-flex justify-content-center align-items-center py-5">
+                <Spinner
+                  animation="border"
+                  role="status"
+                  style={{ color: "#2f6a87" }}
+                >
+                  <span className="visually-hidden">Loading member details...</span>
+                </Spinner>
               </div>
-            </div>
-          </div>
-          <div className="col-12 col-md-6">
-            <div className="mb-2">
-              <small className="text-muted d-block">Phone</small>
-              <div className="d-flex align-items-center">
-                <FaPhone size={14} className="text-muted me-2" />
-                <span>{selectedCustomer.contact}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {selectedCustomer.planName && (
-          <div className="row mb-3">
-            <div className="col-12 col-md-6 mb-3 mb-md-0">
-              <div className="mb-2">
-                <small className="text-muted d-block">Plan</small>
-                <span>{selectedCustomer.planName}</span>
-              </div>
-            </div>
-            <div className="col-12 col-md-6">
-              <div className="mb-2">
-                <small className="text-muted d-block">Duration</small>
-                <span>{selectedCustomer.planDuration}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="row mb-3">
-          <div className="col-12 col-md-6 mb-3 mb-md-0">
-            <div className="mb-2">
-              <small className="text-muted d-block">
-                Purchase Date
-              </small>
-              <div className="d-flex align-items-center">
-                <FaCalendar size={14} className="text-muted me-2" />
-                <span>
-                  {selectedCustomer.purchaseDate
-                    ? new Date(selectedCustomer.purchaseDate).toLocaleDateString()
-                    : selectedCustomer.joinDate
-                    ? new Date(selectedCustomer.joinDate).toLocaleDateString()
-                    : "Unknown"}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="col-12 col-md-6">
-            <div className="mb-2">
-              <small className="text-muted d-block">Expiry Date</small>
-              <div className="d-flex align-items-center">
-                <FaCalendar size={14} className="text-muted me-2" />
-                <span>
-                  {selectedCustomer.expiryDate
-                    ? new Date(selectedCustomer.expiryDate).toLocaleDateString()
-                    : "Unknown"}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {selectedCustomer.paymentMode && (
-          <div className="row mb-3">
-            <div className="col-12 col-md-6 mb-3 mb-md-0">
-              <div className="mb-2">
-                <small className="text-muted d-block">
-                  Payment Mode
-                </small>
-                <span>{selectedCustomer.paymentMode}</span>
-              </div>
-            </div>
-            <div className="col-12 col-md-6">
-              <div className="mb-2">
-                <small className="text-muted d-block">
-                  Amount Paid
-                </small>
-                <span>₹{selectedCustomer.amountPaid}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {selectedCustomer.type && (
-          <div className="row mb-3">
-            <div className="col-12 col-md-6 mb-3 mb-md-0">
-              <div className="mb-2">
-                <small className="text-muted d-block">Plan Type</small>
-                <span>{selectedCustomer.type}</span>
-              </div>
-            </div>
-            <div className="col-12 col-md-6">
-              <div className="mb-2">
-                <small className="text-muted d-block">Trainer Type</small>
-                <span>{selectedCustomer.trainerType || "Not Assigned"}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {selectedCustomer.sessionsBooked !== undefined && (
-          <div className="border-top pt-3">
-            <h6 className="fw-bold mb-3" style={{ color: "#2f6a87" }}>
-              Session Details
-            </h6>
-            <div className="row text-center">
-              <div className="col-4">
-                <div className="p-2 p-md-3 bg-light rounded">
-                  <div
-                    className="fw-bold"
-                    style={{ color: "#2f6a87", fontSize: "1.2rem" }}
-                  >
-                    {selectedCustomer.sessionsBooked}
-                  </div>
-                  <small className="text-muted">Attended</small>
-                </div>
-              </div>
-              <div className="col-4">
-                <div className="p-2 p-md-3 bg-light rounded">
-                  <div
-                    className="fw-bold"
-                    style={{ color: "#2f6a87", fontSize: "1.2rem" }}
-                  >
-                    {selectedCustomer.sessionsRemaining}
-                  </div>
-                  <small className="text-muted">Remaining</small>
-                </div>
-              </div>
-              <div className="col-4">
-                <div className="p-2 p-md-3 bg-light rounded">
-                  <div
-                    className="fw-bold"
-                    style={{ color: "#2f6a87", fontSize: "1.2rem" }}
-                  >
-                    {selectedCustomer.sessionsBooked +
-                      selectedCustomer.sessionsRemaining}
-                  </div>
-                  <small className="text-muted">Total</small>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-3">
-              <div className="d-flex justify-content-between mb-1">
-                <small>
-                  Progress:{" "}
-                  {getProgressPercentage(
-                    selectedCustomer.sessionsBooked,
-                    selectedCustomer.sessionsRemaining
-                  )}
-                  %
-                </small>
-                <small>
-                  {selectedCustomer.sessionsBooked}/
-                  {selectedCustomer.sessionsBooked +
-                    selectedCustomer.sessionsRemaining}
-                </small>
-              </div>
-              <div className="progress" style={{ height: "8px" }}>
-                <div
-                  className="progress-bar"
-                  role="progressbar"
-                  style={{
-                    width: `${getProgressPercentage(
-                      selectedCustomer.sessionsBooked,
-                      selectedCustomer.sessionsRemaining
-                    )}%`,
-                    backgroundColor: "#2f6a87",
-                  }}
-                ></div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {selectedCustomer.daysUsed !== undefined && (
-          <div className="border-top pt-3">
-            <h6 className="fw-bold mb-3" style={{ color: "#2f6a87" }}>
-              Plan Usage Details
-            </h6>
-            <div className="row text-center">
-              <div className="col-4">
-                <div className="p-2 p-md-3 bg-light rounded">
-                  <div
-                    className="fw-bold"
-                    style={{ color: "#2f6a87", fontSize: "1.2rem" }}
-                  >
-                    {selectedCustomer.daysUsed}
-                  </div>
-                  <small className="text-muted">Days Used</small>
-                </div>
-              </div>
-              <div className="col-4">
-                <div className="p-2 p-md-3 bg-light rounded">
-                  <div
-                    className="fw-bold"
-                    style={{ color: "#2f6a87", fontSize: "1.2rem" }}
-                  >
-                    {selectedCustomer.daysLeft}
-                  </div>
-                  <small className="text-muted">Days Left</small>
-                </div>
-              </div>
-              <div className="col-4">
-                <div className="p-2 p-md-3 bg-light rounded">
-                  <div
-                    className="fw-bold"
-                    style={{ color: "#2f6a87", fontSize: "1.2rem" }}
-                  >
-                    {parseInt(selectedCustomer.daysUsed) +
-                      parseInt(selectedCustomer.daysLeft)}
-                  </div>
-                  <small className="text-muted">Total Days</small>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-3">
-              <div className="d-flex justify-content-between mb-1">
-                <small>
-                  Progress:{" "}
-                  {Math.round(
-                    (parseInt(selectedCustomer.daysUsed) /
-                      (parseInt(selectedCustomer.daysUsed) +
-                        parseInt(selectedCustomer.daysLeft))) *
-                        100
-                  )}
-                  %
-                </small>
-                <small>
-                  {selectedCustomer.daysUsed}/
-                  {parseInt(selectedCustomer.daysUsed) +
-                    parseInt(selectedCustomer.daysLeft)}
-                </small>
-              </div>
-              <div className="progress" style={{ height: "8px" }}>
-                <div
-                  className="progress-bar"
-                  role="progressbar"
-                  style={{
-                    width: `${Math.round(
-                      (parseInt(selectedCustomer.daysUsed) /
-                        (parseInt(selectedCustomer.daysUsed) +
-                          parseInt(selectedCustomer.daysLeft))) *
-                        100
-                    )}%`,
-                    backgroundColor: "#2f6a87",
-                  }}
-                ></div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    ) : (
-      <div className="d-flex justify-content-center align-items-center py-5">
-        <Spinner
-          animation="border"
-          role="status"
-          style={{ color: "#2f6a87" }}
-        >
-          <span className="visually-hidden">Loading member details...</span>
-        </Spinner>
-      </div>
-    )}
-  </Modal.Body>
-  <Modal.Footer style={{ borderTop: "1px solid #dee2e6" }}>
-    <Button
-      variant="secondary"
-      onClick={() => setShowCustomerModal(false)}
-    >
-      Close
-    </Button>
-  </Modal.Footer>
-</Modal>
+            )}
+          </Modal.Body>
+          <Modal.Footer style={{ borderTop: "1px solid #dee2e6" }}>
+            <Button
+              variant="secondary"
+              onClick={() => setShowCustomerModal(false)}
+            >
+              Close
+            </Button>
+          </Modal.Footer>
+        </Modal>
       </Container>
     </div>
   );
