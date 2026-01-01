@@ -36,6 +36,8 @@ const PersonalTrainerDashboard = () => {
 
   const user = getUserFromStorage();
   const adminId = user?.adminId || null;
+  const trainerId = user?.id || null;
+  console.log('Trainer ID:', trainerId);
 
   // Fetch data on component mount
   useEffect(() => {
@@ -47,7 +49,7 @@ const PersonalTrainerDashboard = () => {
 
     const fetchDashboardData = async () => {
       try {
-        const response = await axiosInstance.get(`personal-trainer-dashboard/trainer/${adminId}`);
+        const response = await axiosInstance.get(`personal-trainer-dashboard/trainer/${adminId}/${trainerId}`);
         if (response.data.success && response.data.data) {
           // Process the API response to match frontend expectations
           const apiData = response.data.data;
